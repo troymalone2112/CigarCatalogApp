@@ -77,8 +77,9 @@ CREATE POLICY "Users can update their own inventory" ON inventory
 CREATE POLICY "Users can delete their own inventory" ON inventory
   FOR DELETE USING (auth.uid() = user_id);
 
--- 7. Create view for humidor statistics
-CREATE OR REPLACE VIEW humidor_stats AS
+-- 7. Create view for humidor statistics (drop existing first)
+DROP VIEW IF EXISTS humidor_stats;
+CREATE VIEW humidor_stats AS
 SELECT 
   h.id as humidor_id,
   h.user_id,
@@ -95,8 +96,9 @@ FROM humidors h
 LEFT JOIN inventory i ON h.id = i.humidor_id
 GROUP BY h.id, h.user_id, h.name, h.description, h.capacity, h.created_at, h.updated_at;
 
--- 8. Create view for user aggregate stats
-CREATE OR REPLACE VIEW user_humidor_aggregate AS
+-- 8. Create view for user aggregate stats (drop existing first)
+DROP VIEW IF EXISTS user_humidor_aggregate;
+CREATE VIEW user_humidor_aggregate AS
 SELECT 
   user_id,
   COUNT(DISTINCT h.id) as total_humidors,
