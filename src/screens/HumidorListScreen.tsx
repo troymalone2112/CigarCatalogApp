@@ -293,11 +293,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     marginHorizontal: 0,
     marginTop: 0,
-    marginBottom: 16, // Add bottom margin for spacing between sections
+    marginBottom: 0, // No margin to avoid gap
     paddingHorizontal: 16,
     paddingVertical: 16,
     paddingTop: 20, // Add extra padding at top since no margin
-    paddingBottom: 16,
+    paddingBottom: 24, // Increase bottom padding for spacing
     // No border radius or borders for seamless flush design
   },
   aggregateStats: {
