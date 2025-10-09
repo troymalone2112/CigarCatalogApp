@@ -239,7 +239,7 @@ export default function HumidorListScreen() {
     <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.container}
-      imageStyle={styles.backgroundImage}
+      imageStyle={styles.tobaccoBackgroundImage}
     >
       {/* Full width stats section outside content wrapper */}
       {renderHeader()}
@@ -276,8 +276,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent', // Let tobacco background show through
   },
-  backgroundImage: {
-    opacity: 0.4,
+  tobaccoBackgroundImage: {
+    opacity: 0.4, // Increased opacity to make the background more prominent
     resizeMode: 'cover',
   },
   content: {
