@@ -253,6 +253,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 12,
     marginTop: 12,
+    paddingLeft: 4, // Add padding to move photos away from left edge
   },
   photoItem: {
     position: 'relative',
