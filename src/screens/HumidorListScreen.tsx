@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    backgroundColor: 'rgba(10, 10, 10, 0.85)',
+    backgroundColor: '#0a0a0a',
   },
   listContainer: {
     paddingHorizontal: 16,
