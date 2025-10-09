@@ -122,13 +122,19 @@ export class StorageService {
   // Journal Management
   static async getJournalEntries(): Promise<JournalEntry[]> {
     try {
-      const storageKeys = this.getStorageKeys();
-      const data = await AsyncStorage.getItem(storageKeys.JOURNAL);
-      const entries = data ? JSON.parse(data) : [];
-      // Convert date strings back to Date objects
+      const userId = this.getCurrentUserId();
+      const { JournalService } = await import('../services/supabaseService');
+      const entries = await JournalService.getJournalEntries(userId);
       return entries.map((entry: any) => ({
         ...entry,
         date: new Date(entry.date),
+        // Map database fields to JournalEntry interface
+        cigar: entry.cigar_data,
+        rating: entry.rating,
+        selectedFlavors: entry.selected_flavors,
+        location: entry.location,
+        photos: entry.photos,
+        notes: entry.notes,
       }));
     } catch (error) {
       console.error('Error loading journal entries:', error);
@@ -138,52 +144,40 @@ export class StorageService {
 
   static async saveJournalEntry(entry: JournalEntry): Promise<void> {
     try {
-      const entries = await this.getJournalEntries();
-      const existingIndex = entries.findIndex(e => e.id === entry.id);
+      const userId = this.getCurrentUserId();
+      const { JournalService } = await import('../services/supabaseService');
       
-      if (existingIndex >= 0) {
-        entries[existingIndex] = entry;
-        // Log update activity
-        try {
-          await UserManagementService.logUserActivity(
-            'update_journal_entry',
-            'journal_entry',
-            entry.id,
-            { 
-              cigarBrand: entry.cigar.brand,
-              cigarName: entry.cigar.name,
-              rating: entry.rating.overall,
-              selectedFlavors: entry.selectedFlavors
-            }
-          );
-        } catch (logError) {
-          console.log('User activity logging failed (non-critical):', logError);
-        }
-      } else {
-        entries.push(entry);
-        // Log add activity
-        try {
-          await UserManagementService.logUserActivity(
-            'add_journal_entry',
-            'journal_entry',
-            entry.id,
-            { 
-              cigarBrand: entry.cigar.brand,
-              cigarName: entry.cigar.name,
-              rating: entry.rating.overall,
-              selectedFlavors: entry.selectedFlavors
-            }
-          );
-        } catch (logError) {
-          console.log('User activity logging failed (non-critical):', logError);
-        }
+      // Prepare journal entry for database
+      const journalData = {
+        id: entry.id,
+        user_id: userId,
+        cigar_data: entry.cigar,
+        date: entry.date.toISOString(),
+        rating: entry.rating,
+        selected_flavors: entry.selectedFlavors,
+        notes: entry.notes,
+        location: entry.location,
+        photos: entry.photos,
+      };
+      
+      await JournalService.saveJournalEntry(journalData);
+      
+      // Log activity
+      try {
+        await UserManagementService.logUserActivity(
+          'save_journal_entry',
+          'journal_entry',
+          entry.id,
+          { 
+            cigarBrand: entry.cigar.brand,
+            cigarName: entry.cigar.name,
+            rating: entry.rating?.overall,
+            selectedFlavors: entry.selectedFlavors
+          }
+        );
+      } catch (logError) {
+        console.log('User activity logging failed (non-critical):', logError);
       }
-      
-      // Sort by date (newest first)
-      entries.sort((a, b) => b.date.getTime() - a.date.getTime());
-      
-      const storageKeys = this.getStorageKeys();
-      await AsyncStorage.setItem(storageKeys.JOURNAL, JSON.stringify(entries));
     } catch (error) {
       console.error('Error saving journal entry:', error);
       throw error;
@@ -192,26 +186,32 @@ export class StorageService {
 
   static async removeJournalEntry(entryId: string): Promise<void> {
     try {
-      const storageKeys = this.getStorageKeys();
+      const { JournalService } = await import('../services/supabaseService');
+      
+      // Get entry before deletion for logging
       const entries = await this.getJournalEntries();
       const entryToRemove = entries.find(entry => entry.id === entryId);
       
+      // Delete from database
+      await JournalService.deleteJournalEntry(entryId);
+      
       // Log removal activity
       if (entryToRemove) {
-        await UserManagementService.logUserActivity(
-          'remove_journal_entry',
-          'journal_entry',
-          entryId,
-          { 
-            cigarBrand: entryToRemove.cigar.brand,
-            cigarName: entryToRemove.cigar.name,
-            rating: entryToRemove.rating.overall
-          }
-        );
+        try {
+          await UserManagementService.logUserActivity(
+            'remove_journal_entry',
+            'journal_entry',
+            entryId,
+            { 
+              cigarBrand: entryToRemove.cigar.brand,
+              cigarName: entryToRemove.cigar.name,
+              rating: entryToRemove.rating?.overall
+            }
+          );
+        } catch (logError) {
+          console.log('User activity logging failed (non-critical):', logError);
+        }
       }
-      
-      const filteredEntries = entries.filter(entry => entry.id !== entryId);
-      await AsyncStorage.setItem(storageKeys.JOURNAL, JSON.stringify(filteredEntries));
     } catch (error) {
       console.error('Error removing journal entry:', error);
       throw error;

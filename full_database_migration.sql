@@ -30,16 +30,35 @@ CREATE TABLE IF NOT EXISTS inventory (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Create indexes for better performance
+-- 3. Create journal entries table
+CREATE TABLE IF NOT EXISTS journal_entries (
+  id VARCHAR(255) PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  cigar_data JSONB NOT NULL, -- Store the complete cigar object
+  date TIMESTAMP WITH TIME ZONE NOT NULL,
+  rating JSONB, -- Store rating object {overall, draw, burn, flavor, value}
+  selected_flavors JSONB, -- Array of selected flavors
+  notes TEXT,
+  location JSONB, -- Store location object {city, state, country}
+  photos JSONB, -- Array of photo URIs
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 4. Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_humidors_user_id ON humidors(user_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_user_id ON inventory(user_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_humidor_id ON inventory(humidor_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_cigar_brand ON inventory ((cigar_data->>'brand'));
 CREATE INDEX IF NOT EXISTS idx_inventory_cigar_line ON inventory ((cigar_data->>'line'));
+CREATE INDEX IF NOT EXISTS idx_journal_entries_user_id ON journal_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_journal_entries_date ON journal_entries(date);
+CREATE INDEX IF NOT EXISTS idx_journal_entries_cigar_brand ON journal_entries ((cigar_data->>'brand'));
 
--- 4. Enable RLS on both tables
+-- 5. Enable RLS on all tables
 ALTER TABLE humidors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE journal_entries ENABLE ROW LEVEL SECURITY;
 
 -- 5. Humidors RLS policies (drop existing first to avoid conflicts)
 DROP POLICY IF EXISTS "Users can view their own humidors" ON humidors;
@@ -75,6 +94,24 @@ CREATE POLICY "Users can update their own inventory" ON inventory
   FOR UPDATE USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own inventory" ON inventory
+  FOR DELETE USING (auth.uid() = user_id);
+
+-- 6.5. Journal Entries RLS policies (drop existing first to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view their own journal entries" ON journal_entries;
+DROP POLICY IF EXISTS "Users can insert their own journal entries" ON journal_entries;
+DROP POLICY IF EXISTS "Users can update their own journal entries" ON journal_entries;
+DROP POLICY IF EXISTS "Users can delete their own journal entries" ON journal_entries;
+
+CREATE POLICY "Users can view their own journal entries" ON journal_entries
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own journal entries" ON journal_entries
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own journal entries" ON journal_entries
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own journal entries" ON journal_entries
   FOR DELETE USING (auth.uid() = user_id);
 
 -- 7. Create view for humidor statistics (drop existing first)

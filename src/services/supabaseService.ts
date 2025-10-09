@@ -373,3 +373,49 @@ export const DatabaseService = {
     return data;
   },
 };
+
+// Journal Entries Service
+export const JournalService = {
+  async getJournalEntries(userId: string) {
+    const { data, error } = await supabase
+      .from('journal_entries')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  async saveJournalEntry(entry: any) {
+    const { data, error } = await supabase
+      .from('journal_entries')
+      .upsert(entry, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteJournalEntry(entryId: string) {
+    const { error } = await supabase
+      .from('journal_entries')
+      .delete()
+      .eq('id', entryId);
+
+    if (error) throw error;
+  },
+
+  async updateJournalEntry(entryId: string, updates: any) {
+    const { data, error } = await supabase
+      .from('journal_entries')
+      .update(updates)
+      .eq('id', entryId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+};
