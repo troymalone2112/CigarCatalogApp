@@ -12,6 +12,7 @@ import {
   Modal,
   Dimensions,
   Linking,
+  ImageBackground,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -608,22 +609,28 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
 
   if (!permission.granted) {
     return (
-      <View style={styles.errorContainer}>
-        <Ionicons name="camera-outline" size={64} color="#ccc" />
-        <Text style={styles.errorTitle}>Camera Access Required</Text>
-        <Text style={styles.errorText}>
-          This app needs camera access to identify cigars from photos. Please grant permission to continue.
-        </Text>
-        <TouchableOpacity style={styles.primaryButton} onPress={handleRequestPermission}>
-          <Text style={styles.primaryButtonText}>Grant Camera Permission</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.manualButton} onPress={() => setShowManualEntry(true)}>
-          <Text style={styles.manualButtonText}>Search Instead</Text>
-        </TouchableOpacity>
-        <Text style={styles.helpText}>
-          If permission was previously denied, you may need to enable it in your device settings.
-        </Text>
-      </View>
+      <ImageBackground 
+        source={require('../../assets/tobacco-leaves-bg.jpg')}
+        style={styles.errorContainer}
+        imageStyle={styles.tobaccoBackgroundImage}
+      >
+        <View style={styles.errorContent}>
+          <Ionicons name="camera-outline" size={80} color="#DC851F" />
+          <Text style={styles.errorTitle}>Camera Access Required</Text>
+          <Text style={styles.errorText}>
+            This app needs camera access to identify cigars from photos. Please grant permission to continue.
+          </Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleRequestPermission}>
+            <Text style={styles.primaryButtonText}>Grant Camera Permission</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.manualButton} onPress={() => setShowManualEntry(true)}>
+            <Text style={styles.manualButtonText}>Search Instead</Text>
+          </TouchableOpacity>
+          <Text style={styles.helpText}>
+            If permission was previously denied, you may need to enable it in your device settings.
+          </Text>
+        </View>
+      </ImageBackground>
     );
   }
 
@@ -1032,7 +1039,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#0a0a0a',
-    padding: 20,
+  },
+  errorContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+    backgroundColor: 'rgba(10, 10, 10, 0.9)',
+    borderRadius: 12,
+    margin: 20,
+  },
+  tobaccoBackgroundImage: {
+    opacity: 0.4,
+    resizeMode: 'cover',
   },
   errorTitle: {
     color: '#CCCCCC',
@@ -1053,6 +1071,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 16,
     fontStyle: 'italic',
+  },
+  primaryButton: {
+    backgroundColor: '#DC851F',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    minWidth: 200,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   settingsHeader: {
     flexDirection: 'row',
@@ -1393,15 +1425,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   manualButton: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
     backgroundColor: '#7C2D12',
+    minWidth: 200,
+    marginBottom: 16,
   },
   manualButtonText: {
-    color: '#CCCCCC',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    textAlign: 'center',
   },
   modalContainer: {
     flex: 1,
