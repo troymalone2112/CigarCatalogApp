@@ -11,6 +11,7 @@ import {
   TextInput,
   Modal,
   Dimensions,
+  Linking,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -79,6 +80,22 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
   // Settings
 
   // Permission is now handled by useCameraPermissions hook
+  const handleRequestPermission = async () => {
+    const result = await requestPermission();
+    if (!result.granted) {
+      Alert.alert(
+        'Camera Permission Required',
+        'This app needs camera access to identify cigars. Please go to Settings > Privacy & Security > Camera and enable access for this app.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Open Settings', onPress: () => {
+            // On iOS, this will open the app settings
+            Linking.openSettings();
+          }}
+        ]
+      );
+    }
+  };
 
   const takePicture = async () => {
     if (camera) {
@@ -578,14 +595,17 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         <Ionicons name="camera-outline" size={64} color="#ccc" />
         <Text style={styles.errorTitle}>Camera Access Required</Text>
         <Text style={styles.errorText}>
-          Please enable camera access to identify cigars from photos.
+          This app needs camera access to identify cigars from photos. Please grant permission to continue.
         </Text>
-        <TouchableOpacity style={styles.primaryButton} onPress={requestPermission}>
-          <Text style={styles.primaryButtonText}>Grant Permission</Text>
+        <TouchableOpacity style={styles.primaryButton} onPress={handleRequestPermission}>
+          <Text style={styles.primaryButtonText}>Grant Camera Permission</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.manualButton} onPress={() => setShowManualEntry(true)}>
           <Text style={styles.manualButtonText}>Search Instead</Text>
         </TouchableOpacity>
+        <Text style={styles.helpText}>
+          If permission was previously denied, you may need to enable it in your device settings.
+        </Text>
       </View>
     );
   }
@@ -1009,6 +1029,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     marginBottom: 24,
+  },
+  helpText: {
+    color: '#666',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 16,
+    fontStyle: 'italic',
   },
   settingsHeader: {
     flexDirection: 'row',
