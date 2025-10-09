@@ -287,15 +287,15 @@ const styles = StyleSheet.create({
   },
   headerContainer: {
     marginBottom: 16,
+    marginHorizontal: 0,
+    marginTop: 0,
   },
   aggregateStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     backgroundColor: '#1a1a1a',
-    borderRadius: 12,
     padding: 16,
-    borderWidth: 1,
-    borderColor: '#333333',
+    paddingTop: 20, // Add extra padding at top since no margin
   },
   aggregateStat: {
     alignItems: 'center',
