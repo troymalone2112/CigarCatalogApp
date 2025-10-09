@@ -163,15 +163,33 @@ export default function InventoryScreen() {
   const updateQuantity = async (itemId: string, newQuantity: number) => {
     try {
       console.log('🔄 Updating quantity for item:', itemId, 'to:', newQuantity);
+      
+      // Update local state immediately for instant UI feedback
+      setInventory(prevInventory => 
+        prevInventory.map(item => 
+          item.id === itemId 
+            ? { ...item, quantity: Math.max(0, newQuantity) }
+            : item
+        )
+      );
+      
+      // Also update filtered inventory if it exists
+      setFilteredInventory(prevFiltered => 
+        prevFiltered.map(item => 
+          item.id === itemId 
+            ? { ...item, quantity: Math.max(0, newQuantity) }
+            : item
+        )
+      );
+      
+      // Update database in background
       await StorageService.updateInventoryQuantity(itemId, newQuantity);
       console.log('✅ Quantity updated successfully');
-      await loadInventory();
-      console.log('🔄 Inventory reloaded after quantity update');
-      // Force a re-render
-      setForceUpdate(prev => prev + 1);
-      console.log('🔄 Force update triggered');
     } catch (error) {
       console.error('Error updating quantity:', error);
+      
+      // Revert local state on error
+      await loadInventory();
       Alert.alert('Error', 'Failed to update quantity');
     }
   };
