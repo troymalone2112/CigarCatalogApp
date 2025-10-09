@@ -177,7 +177,7 @@ export const DatabaseService = {
       humidorName: h.humidor_name,
       description: h.description,
       capacity: h.capacity,
-      cigarCount: h.cigar_count,
+      cigarCount: h.total_cigars,
       totalValue: h.total_value,
       avgCigarPrice: h.avg_cigar_price,
       createdAt: new Date(h.created_at),
