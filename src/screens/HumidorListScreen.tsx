@@ -239,7 +239,7 @@ export default function HumidorListScreen() {
     <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.container}
-      imageStyle={styles.tobaccoBackgroundImage}
+      imageStyle={styles.backgroundImage}
     >
       {/* Full width stats section outside content wrapper */}
       {renderHeader()}
@@ -274,15 +274,15 @@ export default function HumidorListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent', // Let tobacco background show through
+    backgroundColor: '#0a0a0a',
   },
-  tobaccoBackgroundImage: {
-    opacity: 0.4, // Increased opacity to make the background more prominent
+  backgroundImage: {
+    opacity: 0.4,
     resizeMode: 'cover',
   },
   content: {
     flex: 1,
-    backgroundColor: 'transparent', // Let tobacco background show through
+    backgroundColor: 'transparent',
   },
   listContainer: {
     padding: 16,
