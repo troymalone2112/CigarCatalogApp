@@ -282,8 +282,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(10, 10, 10, 0.85)',
   },
   listContainer: {
-    padding: 16,
+    paddingHorizontal: 16,
     paddingBottom: 100,
+    paddingTop: 0, // No top padding to allow flush header
   },
   topContentWrapper: {
     backgroundColor: '#1a1a1a',
@@ -292,6 +293,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     padding: 16,
     paddingTop: 20, // Add extra padding at top since no margin
+    // No border radius or borders for seamless flush design
   },
   aggregateStats: {
     flexDirection: 'row',
