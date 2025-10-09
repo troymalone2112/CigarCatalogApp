@@ -274,7 +274,7 @@ export default function HumidorListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0a0a0a', // Solid background to cover any gaps
+    backgroundColor: 'transparent', // Let tobacco background show through
   },
   backgroundImage: {
     opacity: 0.4,
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: 'transparent', // Let tobacco background show through
   },
   listContainer: {
     padding: 16,
