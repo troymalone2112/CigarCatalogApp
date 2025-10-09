@@ -34,8 +34,8 @@ CREATE TABLE IF NOT EXISTS inventory (
 CREATE INDEX IF NOT EXISTS idx_humidors_user_id ON humidors(user_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_user_id ON inventory(user_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_humidor_id ON inventory(humidor_id);
-CREATE INDEX IF NOT EXISTS idx_inventory_cigar_brand ON inventory USING GIN ((cigar_data->>'brand'));
-CREATE INDEX IF NOT EXISTS idx_inventory_cigar_line ON inventory USING GIN ((cigar_data->>'line'));
+CREATE INDEX IF NOT EXISTS idx_inventory_cigar_brand ON inventory ((cigar_data->>'brand'));
+CREATE INDEX IF NOT EXISTS idx_inventory_cigar_line ON inventory ((cigar_data->>'line'));
 
 -- 4. Enable RLS on both tables
 ALTER TABLE humidors ENABLE ROW LEVEL SECURITY;
