@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import axios from 'axios';
 import { ChatGPTRecognitionResponse, PerplexitySearchResponse, Cigar } from '../types';
 import { normalizeStrength } from '../utils/helpers';
+import { StrengthLevel } from '../utils/strengthUtils';
 import { 
   CIGAR_RECOGNITION_SYSTEM_PROMPT, 
   CIGAR_RECOGNITION_EXAMPLES,

@@ -18,6 +18,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList, JournalEntry, TabParamList } from '../types';
 import { StorageService } from '../storage/storageService';
 import { normalizeStrength } from '../utils/helpers';
+import { getStrengthInfo } from '../utils/strengthUtils';
 
 type JournalScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 type JournalScreenRouteProp = RouteProp<TabParamList, 'Journal'>;
@@ -141,13 +142,7 @@ export default function JournalScreen() {
   };
 
   const getStrengthColor = (strength: string) => {
-    const normalizedStrength = normalizeStrength(strength);
-    switch (normalizedStrength) {
-      case 'Mild': return '#4CAF50';
-      case 'Medium': return '#FF9800';
-      case 'Strong': return '#F44336';
-      default: return '#666';
-    }
+    return getStrengthInfo(strength).color;
   };
 
   const renderJournalEntry = ({ item }: { item: JournalEntry }) => {

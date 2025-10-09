@@ -19,6 +19,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList, Cigar, RecognitionMode } from '../types';
 import { APIService } from '../services/apiService';
 import { normalizeStrength } from '../utils/helpers';
+import { getStrengthInfo } from '../utils/strengthUtils';
 
 type JournalCigarRecognitionScreenNavigationProp = StackNavigationProp<RootStackParamList, 'JournalCigarRecognition'>;
 
@@ -152,13 +153,7 @@ export default function JournalCigarRecognitionScreen() {
   };
 
   const getStrengthColor = (strength: string) => {
-    const normalizedStrength = normalizeStrength(strength);
-    switch (normalizedStrength) {
-      case 'Mild': return '#4CAF50';
-      case 'Medium': return '#FF9800';
-      case 'Strong': return '#F44336';
-      default: return '#666';
-    }
+    return getStrengthInfo(strength).color;
   };
 
   if (isProcessing) {

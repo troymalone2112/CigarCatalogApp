@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Recommendation } from '../types';
 import { RecommendationService, CigarRecommendation } from '../services/recommendationService';
 import { useAuth } from '../contexts/AuthContext';
+import { getStrengthInfo } from '../utils/strengthUtils';
 
 export default function RecommendationsScreen() {
   const { user } = useAuth();
@@ -254,8 +255,14 @@ export default function RecommendationsScreen() {
           <View style={styles.cigarInfo}>
             <Text style={styles.cigarBrand}>{recommendation.cigar.brand}</Text>
             <Text style={styles.cigarName}>{recommendation.cigar.line}</Text>
-            <View style={styles.strengthBadge}>
-              <Text style={styles.strengthBadgeText}>{recommendation.cigar.strength}</Text>
+            <View style={[styles.strengthBadge, {
+              backgroundColor: getStrengthInfo(recommendation.cigar.strength).backgroundColor,
+              borderColor: getStrengthInfo(recommendation.cigar.strength).borderColor,
+              borderWidth: 1,
+            }]}>
+              <Text style={[styles.strengthBadgeText, {
+                color: getStrengthInfo(recommendation.cigar.strength).color,
+              }]}>{recommendation.cigar.strength}</Text>
             </View>
           </View>
           
@@ -553,7 +560,6 @@ const styles = StyleSheet.create({
     color: '#999999',
   },
   strengthBadge: {
-    backgroundColor: '#FFA737',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -563,7 +569,6 @@ const styles = StyleSheet.create({
   strengthBadgeText: {
     fontSize: 10,
     fontWeight: '500',
-    color: '#FFFFFF',
   },
   reasonsContainer: {
     marginBottom: 12,

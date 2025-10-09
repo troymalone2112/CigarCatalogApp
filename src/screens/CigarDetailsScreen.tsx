@@ -12,6 +12,7 @@ import { RouteProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { normalizeStrength } from '../utils/helpers';
+import { getStrengthInfo } from '../utils/strengthUtils';
 
 type CigarDetailsScreenRouteProp = RouteProp<RootStackParamList, 'CigarDetails'>;
 
@@ -24,17 +25,11 @@ export default function CigarDetailsScreen({ route }: Props) {
   const { cigar } = route.params;
 
   const getStrengthBadgeStyle = (strength: string) => {
-    const normalizedStrength = normalizeStrength(strength);
-    switch (normalizedStrength) {
-      case 'Mild':
-        return styles.strengthBadgeMild;
-      case 'Medium':
-        return styles.strengthBadgeMedium;
-      case 'Strong':
-        return styles.strengthBadgeStrong;
-      default:
-        return styles.strengthBadgeDefault;
-    }
+    const strengthInfo = getStrengthInfo(strength);
+    return {
+      backgroundColor: strengthInfo.backgroundColor,
+      borderColor: strengthInfo.borderColor,
+    };
   };
 
   return (
@@ -63,7 +58,9 @@ export default function CigarDetailsScreen({ route }: Props) {
                 {/* Strength Badge */}
                 {cigar.strength && (
                   <View style={[styles.strengthBadge, getStrengthBadgeStyle(cigar.strength)]}>
-                    <Text style={styles.strengthText}>{normalizeStrength(cigar.strength)}</Text>
+                    <Text style={[styles.strengthText, { color: getStrengthInfo(cigar.strength).color }]}>
+                      {normalizeStrength(cigar.strength)}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -263,21 +260,9 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignSelf: 'flex-start',
     marginBottom: 16,
-  },
-  strengthBadgeMild: {
-    backgroundColor: '#FFA737',
-  },
-  strengthBadgeMedium: {
-    backgroundColor: '#FFA737',
-  },
-  strengthBadgeStrong: {
-    backgroundColor: '#FFA737',
-  },
-  strengthBadgeDefault: {
-    backgroundColor: '#FFA737',
+    borderWidth: 1,
   },
   strengthText: {
-    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '500',
   },

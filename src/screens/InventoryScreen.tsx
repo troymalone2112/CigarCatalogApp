@@ -18,6 +18,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList, InventoryItem, TabParamList } from '../types';
 import { StorageService } from '../storage/storageService';
 import { normalizeStrength } from '../utils/helpers';
+import { getStrengthInfo } from '../utils/strengthUtils';
 
 type InventoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Inventory'>;
 
@@ -212,7 +213,9 @@ export default function InventoryScreen() {
             
             <View style={styles.detailsRow}>
               <View style={[styles.strengthBadge, getStrengthBadgeStyle(item.cigar.strength)]}>
-                <Text style={styles.strengthText}>{normalizeStrength(item.cigar.strength)}</Text>
+                <Text style={[styles.strengthText, { color: getStrengthInfo(item.cigar.strength).color }]}>
+                  {normalizeStrength(item.cigar.strength)}
+                </Text>
               </View>
               {item.cigar.cigarAficionadoRating && (
                 <View style={styles.ratingBadge}>
@@ -316,17 +319,11 @@ export default function InventoryScreen() {
   }, [inventory, forceUpdate]);
 
   const getStrengthBadgeStyle = (strength: string) => {
-    const normalizedStrength = normalizeStrength(strength);
-    switch (normalizedStrength) {
-      case 'Mild':
-        return styles.strengthBadgeMild;
-      case 'Medium':
-        return styles.strengthBadgeMedium;
-      case 'Strong':
-        return styles.strengthBadgeStrong;
-      default:
-        return styles.strengthBadgeDefault;
-    }
+    const strengthInfo = getStrengthInfo(strength);
+    return {
+      backgroundColor: strengthInfo.backgroundColor,
+      borderColor: strengthInfo.borderColor,
+    };
   };
 
   return (
@@ -529,18 +526,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 10,
     marginRight: 8,
-  },
-  strengthBadgeMild: {
-    backgroundColor: '#FFA737', // Yellow
-  },
-  strengthBadgeMedium: {
-    backgroundColor: '#FFA737', // Yellow
-  },
-  strengthBadgeStrong: {
-    backgroundColor: '#FFA737', // Yellow
-  },
-  strengthBadgeDefault: {
-    backgroundColor: '#FFA737', // Yellow
+    borderWidth: 1,
   },
   ratingBadge: {
     backgroundColor: '#DC851F',
@@ -556,7 +542,6 @@ const styles = StyleSheet.create({
   },
   strengthText: {
     fontSize: 12,
-    color: '#FFFFFF',
     fontWeight: '600',
   },
   locationText: {

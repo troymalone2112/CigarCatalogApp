@@ -1,5 +1,6 @@
 import { supabase } from './supabaseService';
 import { Cigar, DatabaseCigar } from '../types';
+import { StrengthLevel } from '../utils/strengthUtils';
 
 export interface CigarRecommendation {
   cigar: Cigar;

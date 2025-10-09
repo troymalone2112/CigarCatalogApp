@@ -7,6 +7,8 @@ export enum RecognitionMode {
   PERPLEXITY_ONLY = 'perplexity_only' // Perplexity with user description
 }
 
+import { StrengthLevel } from '../utils/strengthUtils';
+
 export interface Cigar {
   id: string;
   brand: string;
@@ -17,7 +19,7 @@ export interface Cigar {
   filler: string;
   binder: string;
   tobacco?: string;
-  strength: 'Mild' | 'Medium' | 'Strong';
+  strength: StrengthLevel;
   flavorProfile: string[];
   tobaccoOrigins: string[];
   smokingExperience: {

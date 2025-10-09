@@ -25,58 +25,23 @@ export const formatRating = (rating: number): number => {
   return Math.round(rating / 2);
 };
 
+// Import the new strength system
+import { normalizeStrength as newNormalizeStrength, getStrengthColor as newGetStrengthColor } from './strengthUtils';
+
 /**
- * Normalize strength to standard values: Mild, Medium, Strong
- * If ambiguous (mild-medium), choose the stronger option
+ * Normalize strength to standard values: Mild, Mild-Medium, Medium, Medium-Full, Full
+ * @deprecated Use normalizeStrength from strengthUtils instead
  */
-export const normalizeStrength = (strength: string): 'Mild' | 'Medium' | 'Strong' => {
-  if (!strength) return 'Medium';
-  
-  const lowerStrength = strength.toLowerCase();
-  
-  // Handle strong/full variations
-  if (lowerStrength.includes('strong') || lowerStrength.includes('full') || lowerStrength.includes('bold')) {
-    return 'Strong';
-  }
-  
-  // Handle medium variations
-  if (lowerStrength.includes('medium') || lowerStrength.includes('moderate')) {
-    return 'Medium';
-  }
-  
-  // Handle mild variations
-  if (lowerStrength.includes('mild') || lowerStrength.includes('light') || lowerStrength.includes('smooth')) {
-    return 'Mild';
-  }
-  
-  // Handle ambiguous cases - choose the stronger option
-  if (lowerStrength.includes('mild-medium') || lowerStrength.includes('light-medium')) {
-    return 'Medium';
-  }
-  
-  if (lowerStrength.includes('medium-full') || lowerStrength.includes('medium-strong')) {
-    return 'Strong';
-  }
-  
-  // Default to medium for unknown values
-  return 'Medium';
+export const normalizeStrength = (strength: string): 'Mild' | 'Mild-Medium' | 'Medium' | 'Medium-Full' | 'Full' => {
+  return newNormalizeStrength(strength);
 };
 
 /**
  * Get strength color for UI display
+ * @deprecated Use getStrengthColor from strengthUtils instead
  */
 export const getStrengthColor = (strength: string): string => {
-  const normalizedStrength = normalizeStrength(strength);
-  switch (normalizedStrength) {
-    case 'Mild':
-      return '#4CAF50';
-    case 'Medium':
-      return '#FF9800';
-    case 'Strong':
-      return '#F44336';
-    default:
-      return '#9E9E9E';
-  }
+  return newGetStrengthColor(strength);
 };
 
 /**
@@ -138,10 +103,10 @@ export const sortCigars = <T extends { cigar: any }>(
       case 'brand':
         return a.cigar.brand.localeCompare(b.cigar.brand);
       case 'strength':
-        const strengthOrder = { 'Mild': 1, 'Medium': 2, 'Strong': 3 };
+        const strengthOrder = { 'Mild': 1, 'Mild-Medium': 2, 'Medium': 3, 'Medium-Full': 4, 'Full': 5 };
         const normalizedA = normalizeStrength(a.cigar.strength);
         const normalizedB = normalizeStrength(b.cigar.strength);
-        return (strengthOrder[normalizedA] || 0) - (strengthOrder[normalizedB] || 0);
+        return (strengthOrder[normalizedA] || 3) - (strengthOrder[normalizedB] || 3);
       case 'date':
         // Assumes items have a date property
         const dateA = (a as any).date || (a as any).purchaseDate || new Date(0);
