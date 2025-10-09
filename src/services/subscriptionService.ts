@@ -109,18 +109,18 @@ export class SubscriptionService {
         console.log('🔍 SubscriptionService - No subscription found, providing default trial status');
         // Provide a default trial status for new users
         const trialStartDate = new Date();
-        const trialEndDate = new Date(trialStartDate.getTime() + 7 * 24 * 60 * 60 * 1000); // 7 days from now
+        const trialEndDate = new Date(trialStartDate.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days from now
         
         return {
           hasAccess: true,
           isTrialActive: true,
           isPremium: false,
-          daysRemaining: 7,
+          daysRemaining: 3,
           status: 'trial',
           plan: {
             id: 'free',
             name: 'Free Trial',
-            description: '7-day free trial with full access',
+            description: '3-day free trial with full access',
             price_monthly: 0,
             price_yearly: 0,
             features: ['Cigar Recognition', 'Journal Entries', 'Humidor Management'],

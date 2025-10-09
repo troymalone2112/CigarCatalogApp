@@ -55,7 +55,7 @@ export default function SignUpScreen() {
       await signUp(email, password, fullName);
       Alert.alert(
         'Success', 
-        'Account created successfully! Please check your email to verify your account.',
+        'Account created successfully! You can now start using the app.',
         [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
       );
     } catch (error: any) {

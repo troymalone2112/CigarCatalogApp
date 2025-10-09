@@ -41,7 +41,7 @@ const Stack = createStackNavigator<RootStackParamList>();
 const CustomHeader = ({ title }: { title?: string }) => {
   const { user, profile, signOut } = useAuth();
   
-  const userName = profile?.full_name || user?.email || "User";
+  const userName = profile?.full_name || "User";
   const userInitials = userName.split(' ').map(name => name[0]).join('').toUpperCase();
 
   const handleLogout = async () => {
