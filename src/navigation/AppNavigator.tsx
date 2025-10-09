@@ -10,6 +10,7 @@ import { StorageService } from '../storage/storageService';
 
 // Import screens (we'll create these next)
 import HomeScreen from '../screens/HomeScreen';
+import HumidorListScreen from '../screens/HumidorListScreen';
 import InventoryScreen from '../screens/InventoryScreen';
 import JournalScreen from '../screens/JournalScreen';
 import RecommendationsScreen from '../screens/RecommendationsScreen';
@@ -33,6 +34,8 @@ import OnboardingExperienceScreen from '../screens/OnboardingExperienceScreen';
 import OnboardingLevelScreen from '../screens/OnboardingLevelScreen';
 import OnboardingTastePreferencesScreen from '../screens/OnboardingTastePreferencesScreen';
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
+import CreateHumidorScreen from '../screens/CreateHumidorScreen';
+import EditHumidorScreen from '../screens/EditHumidorScreen';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
@@ -191,13 +194,13 @@ function TabNavigator() {
         }}
       />
       <Tab.Screen 
-        name="Inventory" 
-        component={InventoryScreen} 
+        name="HumidorList" 
+        component={HumidorListScreen} 
         options={({ navigation }) => ({
           title: 'Humidor',
           header: () => (
             <TabHeader 
-              title="My Humidor" 
+              title="My Humidors" 
               onBackPress={() => navigation.navigate('Home')} 
             />
           ),
@@ -367,6 +370,30 @@ export default function AppNavigator() {
           }}
         />
         <Stack.Screen 
+          name="HumidorList" 
+          component={HumidorListScreen}
+          options={({ navigation }) => ({
+            header: () => (
+              <TabHeader 
+                title="My Humidors" 
+                onBackPress={() => navigation.goBack()} 
+              />
+            ),
+          })}
+        />
+        <Stack.Screen 
+          name="Inventory" 
+          component={InventoryScreen}
+          options={({ navigation }) => ({
+            header: () => (
+              <TabHeader 
+                title="Humidor Details" 
+                onBackPress={() => navigation.goBack()} 
+              />
+            ),
+          })}
+        />
+        <Stack.Screen 
           name="AddToInventory" 
           component={AddToInventoryScreen}
           options={{ 
@@ -378,6 +405,16 @@ export default function AppNavigator() {
               color: '#FFFFFF',
             },
           }}
+        />
+        <Stack.Screen 
+          name="CreateHumidor" 
+          component={CreateHumidorScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="EditHumidor" 
+          component={EditHumidorScreen}
+          options={{ headerShown: false }}
         />
         <Stack.Screen 
           name="EditOptions" 

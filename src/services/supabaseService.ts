@@ -142,4 +142,130 @@ export const DatabaseService = {
     if (error) throw error;
     return data;
   },
+
+  // Humidor Management Functions
+  async getHumidors(userId: string) {
+    const { data, error } = await supabase
+      .from('humidors')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data?.map(h => ({
+      id: h.id,
+      userId: h.user_id,
+      name: h.name,
+      description: h.description,
+      capacity: h.capacity,
+      createdAt: new Date(h.created_at),
+      updatedAt: new Date(h.updated_at),
+    })) || [];
+  },
+
+  async getHumidorStats(userId: string) {
+    const { data, error } = await supabase
+      .from('humidor_stats')
+      .select('*')
+      .eq('user_id', userId)
+      .order('cigar_count', { ascending: false });
+
+    if (error) throw error;
+    return data?.map(h => ({
+      humidorId: h.humidor_id,
+      userId: h.user_id,
+      humidorName: h.humidor_name,
+      description: h.description,
+      capacity: h.capacity,
+      cigarCount: h.cigar_count,
+      totalValue: h.total_value,
+      avgCigarPrice: h.avg_cigar_price,
+      createdAt: new Date(h.created_at),
+      updatedAt: new Date(h.updated_at),
+    })) || [];
+  },
+
+  async getUserHumidorAggregate(userId: string) {
+    const { data, error } = await supabase
+      .from('user_humidor_aggregate')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error) throw error;
+    if (!data) {
+      return {
+        userId,
+        totalHumidors: 0,
+        totalCigars: 0,
+        totalCollectionValue: 0,
+        avgCigarValue: 0,
+        uniqueBrands: 0,
+      };
+    }
+
+    return {
+      userId: data.user_id,
+      totalHumidors: data.total_humidors,
+      totalCigars: data.total_cigars,
+      totalCollectionValue: data.total_collection_value,
+      avgCigarValue: data.avg_cigar_value,
+      uniqueBrands: data.unique_brands,
+    };
+  },
+
+  async createHumidor(userId: string, name: string, description?: string, capacity?: number) {
+    const { data, error } = await supabase
+      .from('humidors')
+      .insert([
+        {
+          user_id: userId,
+          name,
+          description,
+          capacity,
+        }
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return {
+      id: data.id,
+      userId: data.user_id,
+      name: data.name,
+      description: data.description,
+      capacity: data.capacity,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    };
+  },
+
+  async updateHumidor(humidorId: string, updates: { name?: string; description?: string; capacity?: number }) {
+    const { data, error } = await supabase
+      .from('humidors')
+      .update(updates)
+      .eq('id', humidorId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return {
+      id: data.id,
+      userId: data.user_id,
+      name: data.name,
+      description: data.description,
+      capacity: data.capacity,
+      createdAt: new Date(data.created_at),
+      updatedAt: new Date(data.updated_at),
+    };
+  },
+
+  async deleteHumidor(humidorId: string) {
+    const { error } = await supabase
+      .from('humidors')
+      .delete()
+      .eq('id', humidorId);
+
+    if (error) throw error;
+  },
 };

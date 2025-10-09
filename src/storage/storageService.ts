@@ -44,11 +44,18 @@ export class StorageService {
   }
 
   // Inventory Management
-  static async getInventory(): Promise<InventoryItem[]> {
+  static async getInventory(humidorId?: string): Promise<InventoryItem[]> {
     try {
       const storageKeys = this.getStorageKeys();
       const data = await AsyncStorage.getItem(storageKeys.INVENTORY);
-      return data ? JSON.parse(data) : [];
+      const allItems = data ? JSON.parse(data) : [];
+      
+      // If humidorId is specified, filter by humidor
+      if (humidorId) {
+        return allItems.filter((item: InventoryItem) => item.humidorId === humidorId);
+      }
+      
+      return allItems;
     } catch (error) {
       console.error('Error loading inventory:', error);
       return [];
@@ -58,7 +65,7 @@ export class StorageService {
   static async saveInventoryItem(item: InventoryItem): Promise<void> {
     try {
       const storageKeys = this.getStorageKeys();
-      const inventory = await this.getInventory();
+      const inventory = await this.getInventory(); // Get all items, not filtered
       const existingIndex = inventory.findIndex(i => i.id === item.id);
       
       if (existingIndex >= 0) {
@@ -72,7 +79,8 @@ export class StorageService {
             cigarBrand: item.cigar.brand,
             cigarName: item.cigar.name,
             quantity: item.quantity,
-            pricePaid: item.pricePaid
+            pricePaid: item.pricePaid,
+            humidorId: item.humidorId
           }
         );
       } else {
@@ -86,7 +94,8 @@ export class StorageService {
             cigarBrand: item.cigar.brand,
             cigarName: item.cigar.name,
             quantity: item.quantity,
-            pricePaid: item.pricePaid
+            pricePaid: item.pricePaid,
+            humidorId: item.humidorId
           }
         );
       }

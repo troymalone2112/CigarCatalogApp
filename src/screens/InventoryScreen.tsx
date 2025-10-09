@@ -13,18 +13,22 @@ import {
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList, InventoryItem, TabParamList } from '../types';
+import { RootStackParamList, InventoryItem, TabParamList, Humidor } from '../types';
 import { StorageService } from '../storage/storageService';
+import { DatabaseService } from '../services/supabaseService';
+import { useAuth } from '../contexts/AuthContext';
 import { normalizeStrength } from '../utils/helpers';
 import { getStrengthInfo } from '../utils/strengthUtils';
 
 type InventoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Inventory'>;
+type InventoryScreenRouteProp = RouteProp<RootStackParamList, 'Inventory'>;
 
 export default function InventoryScreen() {
   const navigation = useNavigation<InventoryScreenNavigationProp>();
-  const route = useRoute();
+  const route = useRoute<InventoryScreenRouteProp>();
+  const { user } = useAuth();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,6 +36,9 @@ export default function InventoryScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [forceUpdate, setForceUpdate] = useState(0);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+  const [currentHumidor, setCurrentHumidor] = useState<Humidor | null>(null);
+  const [availableHumidors, setAvailableHumidors] = useState<Humidor[]>([]);
+  const [showHumidorSelector, setShowHumidorSelector] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const highlightAnimation = useRef(new Animated.Value(0)).current;
   const processedHighlightId = useRef<string | null>(null);
@@ -39,13 +46,46 @@ export default function InventoryScreen() {
   useFocusEffect(
     useCallback(() => {
       loadInventory();
-    }, [])
+    }, [route.params?.humidorId])
   );
+
+  const handleHumidorSelect = async (humidor: Humidor) => {
+    setCurrentHumidor(humidor);
+    setShowHumidorSelector(false);
+    
+    // Load inventory for the selected humidor
+    const items = await StorageService.getInventory(humidor.id);
+    setInventory(items);
+    setFilteredInventory(items);
+  };
+
+  const handleAddCigar = () => {
+    navigation.navigate('CigarRecognition', { humidorId: currentHumidor?.id });
+  };
 
 
   const loadInventory = async () => {
+    if (!user) return;
+    
     try {
-      const items = await StorageService.getInventory();
+      // Load humidors first
+      const humidors = await DatabaseService.getHumidors(user.id);
+      setAvailableHumidors(humidors);
+      
+      // Determine which humidor to show
+      const targetHumidorId = route.params?.humidorId;
+      let selectedHumidor: Humidor | null = null;
+      
+      if (targetHumidorId) {
+        selectedHumidor = humidors.find(h => h.id === targetHumidorId) || null;
+      } else if (humidors.length > 0) {
+        selectedHumidor = humidors[0]; // Default to first humidor
+      }
+      
+      setCurrentHumidor(selectedHumidor);
+      
+      // Load inventory for the selected humidor
+      const items = await StorageService.getInventory(selectedHumidor?.id);
       console.log('📦 Loaded inventory items:', items.length);
       console.log('📦 Inventory data:', items);
       setInventory(items);
@@ -333,6 +373,21 @@ export default function InventoryScreen() {
       imageStyle={styles.tobaccoBackgroundImage}
     >
       <View style={styles.container}>
+        {/* Humidor Selector */}
+        {availableHumidors.length > 1 && (
+          <View style={styles.humidorSelector}>
+            <TouchableOpacity
+              style={styles.humidorSelectorButton}
+              onPress={() => setShowHumidorSelector(true)}
+            >
+              <Text style={styles.humidorSelectorText}>
+                {currentHumidor?.name || 'Select Humidor'}
+              </Text>
+              <Ionicons name="chevron-down" size={16} color="#DC851F" />
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Header Stats */}
         <View style={styles.headerStats}>
           <View style={styles.statItem}>
@@ -345,6 +400,14 @@ export default function InventoryScreen() {
             </Text>
             <Text style={styles.statLabel}>Value</Text>
           </View>
+          {currentHumidor?.capacity && (
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>
+                {Math.round((inventory.reduce((sum, item) => sum + item.quantity, 0) / currentHumidor.capacity) * 100)}%
+              </Text>
+              <Text style={styles.statLabel}>Capacity</Text>
+            </View>
+          )}
         </View>
 
         {/* Search and Sort */}
@@ -381,10 +444,56 @@ export default function InventoryScreen() {
         {/* Floating Action Button */}
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => navigation.navigate('CigarRecognition')}
+          onPress={handleAddCigar}
         >
           <Ionicons name="add" size={24} color="#CCCCCC" />
         </TouchableOpacity>
+
+        {/* Humidor Selector Modal */}
+        {showHumidorSelector && (
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Humidor</Text>
+                <TouchableOpacity
+                  onPress={() => setShowHumidorSelector(false)}
+                  style={styles.modalCloseButton}
+                >
+                  <Ionicons name="close" size={24} color="#DC851F" />
+                </TouchableOpacity>
+              </View>
+              
+              <FlatList
+                data={availableHumidors}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.humidorOption,
+                      currentHumidor?.id === item.id && styles.selectedHumidorOption
+                    ]}
+                    onPress={() => handleHumidorSelect(item)}
+                  >
+                    <Text style={[
+                      styles.humidorOptionText,
+                      currentHumidor?.id === item.id && styles.selectedHumidorOptionText
+                    ]}>
+                      {item.name}
+                    </Text>
+                    {item.description && (
+                      <Text style={styles.humidorOptionDescription}>
+                        {item.description}
+                      </Text>
+                    )}
+                    {currentHumidor?.id === item.id && (
+                      <Ionicons name="checkmark" size={20} color="#DC851F" />
+                    )}
+                  </TouchableOpacity>
+                )}
+              />
+            </View>
+          </View>
+        )}
       </View>
     </ImageBackground>
   );
@@ -402,6 +511,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent', // Let tobacco background show through
+  },
+  humidorSelector: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  humidorSelectorButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 133, 31, 0.3)',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  humidorSelectorText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   headerStats: {
     flexDirection: 'row',
@@ -657,5 +786,69 @@ const styles = StyleSheet.create({
     minWidth: 36,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  modalContent: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    margin: 20,
+    maxHeight: '70%',
+    minWidth: '80%',
+    borderWidth: 1,
+    borderColor: '#DC851F',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  modalCloseButton: {
+    padding: 8,
+  },
+  humidorOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  selectedHumidorOption: {
+    backgroundColor: 'rgba(220, 133, 31, 0.2)',
+    borderWidth: 1,
+    borderColor: '#DC851F',
+  },
+  humidorOptionText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    flex: 1,
+  },
+  selectedHumidorOptionText: {
+    color: '#DC851F',
+    fontWeight: '600',
+  },
+  humidorOptionDescription: {
+    fontSize: 12,
+    color: '#CCCCCC',
+    marginTop: 2,
   },
 });

@@ -39,6 +39,7 @@ interface RecognitionResult {
 
 export default function EnhancedCigarRecognitionScreen({ route }: { route?: any }) {
   const navigation = useNavigation<CigarRecognitionNavigationProp>();
+  const humidorId = route?.params?.humidorId;
 
   
   // Camera states
@@ -301,7 +302,8 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
     // Navigate directly to AddToInventory for manual entry
     navigation.navigate('AddToInventory', { 
       cigar,
-      singleStickPrice: null
+      singleStickPrice: null,
+      humidorId
     });
   };
 
@@ -376,7 +378,8 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         // No duplicate found, proceed normally
         navigation.navigate('AddToInventory', { 
           cigar, 
-          singleStickPrice: result.enrichedCigar.singleStickPrice
+          singleStickPrice: result.enrichedCigar.singleStickPrice,
+          humidorId
         });
       }
     } catch (error) {
@@ -442,7 +445,8 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         // No duplicate found, proceed normally
         navigation.navigate('AddToInventory', { 
           cigar, 
-          singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice
+          singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
+          humidorId
         });
       }
     } catch (error) {
@@ -545,7 +549,8 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       cigar,
       singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
       existingItem: duplicateItem,
-      mode: 'addMore'
+      mode: 'addMore',
+      humidorId
     });
     
     setShowDuplicateDialog(false);
@@ -591,7 +596,8 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
 
     navigation.navigate('AddToInventory', {
       cigar,
-      singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice
+      singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
+      humidorId
     });
     
     setShowDuplicateDialog(false);

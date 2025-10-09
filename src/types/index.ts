@@ -65,6 +65,38 @@ export interface DatabaseCigar {
   updated_at: string;
 }
 
+export interface Humidor {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  capacity?: number; // Optional capacity limit
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface HumidorStats {
+  humidorId: string;
+  userId: string;
+  humidorName: string;
+  description?: string;
+  capacity?: number;
+  cigarCount: number;
+  totalValue: number;
+  avgCigarPrice: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UserHumidorAggregate {
+  userId: string;
+  totalHumidors: number;
+  totalCigars: number;
+  totalCollectionValue: number;
+  avgCigarValue: number;
+  uniqueBrands: number;
+}
+
 export interface InventoryItem {
   id: string;
   cigar: Cigar;
@@ -75,6 +107,7 @@ export interface InventoryItem {
   sticksPerBox?: number; // Number of cigars per box (for editing)
   location?: string; // Humidor location
   notes?: string;
+  humidorId?: string; // Reference to specific humidor
 }
 
 export interface JournalEntry {
@@ -187,11 +220,14 @@ export interface RecognitionResult {
 // Navigation types
 export type RootStackParamList = {
   MainTabs: { screen: keyof TabParamList; params?: any } | undefined;
-  CigarRecognition: { openSearch?: boolean } | undefined;
+  CigarRecognition: { openSearch?: boolean; humidorId?: string } | undefined;
   CigarDetails: { cigar: Cigar };
-  Inventory: { highlightItemId?: string };
-  AddToInventory: { cigar: Cigar; singleStickPrice?: string; existingItem?: InventoryItem; mode?: 'addMore' | 'edit' };
+  HumidorList: undefined;
+  Inventory: { humidorId?: string; highlightItemId?: string };
+  AddToInventory: { cigar: Cigar; singleStickPrice?: string; existingItem?: InventoryItem; mode?: 'addMore' | 'edit'; humidorId?: string };
   EditOptions: { item: InventoryItem };
+  CreateHumidor: undefined;
+  EditHumidor: { humidor: Humidor };
   Journal: undefined;
   JournalCigarRecognition: undefined;
   JournalManualEntry: undefined;
@@ -216,7 +252,7 @@ export type RootStackParamList = {
 
 export type TabParamList = {
   Home: undefined;
-  Inventory: { highlightItemId?: string };
+  HumidorList: undefined;
   Journal: undefined;
   Recommendations: undefined;
 };

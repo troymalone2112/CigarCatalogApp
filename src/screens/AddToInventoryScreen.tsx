@@ -24,7 +24,7 @@ interface Props {
 
 export default function AddToInventoryScreen({ route }: Props) {
   const navigation = useNavigation<AddToInventoryScreenNavigationProp>();
-  const { cigar, singleStickPrice, existingItem, mode } = route.params;
+  const { cigar, singleStickPrice, existingItem, mode, humidorId } = route.params;
 
   useLayoutEffect(() => {
     console.log('Setting header options for AddToInventoryScreen');
@@ -154,6 +154,7 @@ export default function AddToInventoryScreen({ route }: Props) {
           // Keep original box data if it was a box purchase
           originalBoxPrice: existingItem.originalBoxPrice,
           sticksPerBox: existingItem.sticksPerBox,
+          humidorId: humidorId || existingItem.humidorId,
         };
       } else {
         // Edit mode or new item: replace/create
@@ -167,6 +168,7 @@ export default function AddToInventoryScreen({ route }: Props) {
           sticksPerBox: priceType === 'box' ? parseInt(sticksInBox) : undefined,
           location: location.trim() || undefined,
           notes: notes.trim() || undefined,
+          humidorId: humidorId || existingItem?.humidorId,
         };
       }
 
