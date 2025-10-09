@@ -474,17 +474,19 @@ export default function InventoryScreen() {
                     ]}
                     onPress={() => handleHumidorSelect(item)}
                   >
-                    <Text style={[
-                      styles.humidorOptionText,
-                      currentHumidor?.id === item.id && styles.selectedHumidorOptionText
-                    ]}>
-                      {item.name}
-                    </Text>
-                    {item.description && (
-                      <Text style={styles.humidorOptionDescription}>
-                        {item.description}
+                    <View style={styles.humidorOptionContent}>
+                      <Text style={[
+                        styles.humidorOptionText,
+                        currentHumidor?.id === item.id && styles.selectedHumidorOptionText
+                      ]}>
+                        {item.name}
                       </Text>
-                    )}
+                      {item.description && (
+                        <Text style={styles.humidorOptionDescription}>
+                          {item.description}
+                        </Text>
+                      )}
+                    </View>
                     {currentHumidor?.id === item.id && (
                       <Ionicons name="checkmark" size={20} color="#DC851F" />
                     )}
@@ -837,18 +839,22 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#DC851F',
   },
+  humidorOptionContent: {
+    flex: 1,
+    marginRight: 12,
+  },
   humidorOptionText: {
     fontSize: 16,
     color: '#FFFFFF',
-    flex: 1,
+    fontWeight: '600',
+    marginBottom: 2,
   },
   selectedHumidorOptionText: {
     color: '#DC851F',
-    fontWeight: '600',
   },
   humidorOptionDescription: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#CCCCCC',
-    marginTop: 2,
+    lineHeight: 18,
   },
 });

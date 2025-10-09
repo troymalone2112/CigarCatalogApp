@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   aggregateStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(220, 133, 31, 0.1)',
+    backgroundColor: '#1a1a1a',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   humidorCard: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#1a1a1a',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
