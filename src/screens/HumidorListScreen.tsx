@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0a0a0a',
   },
   listContainer: {
-    paddingHorizontal: 16,
+    padding: 16,
     paddingBottom: 100,
     paddingTop: 0, // No top padding to allow flush header
   },
@@ -293,11 +293,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     marginHorizontal: 0,
     marginTop: 0,
-    marginBottom: 0, // No margin to avoid gap
+    marginBottom: 16, // Add margin for spacing like InventoryScreen
     paddingHorizontal: 16,
     paddingVertical: 16,
     paddingTop: 20, // Add extra padding at top since no margin
-    paddingBottom: 24, // Increase bottom padding for spacing
+    paddingBottom: 16,
     // No border radius or borders for seamless flush design
   },
   aggregateStats: {
