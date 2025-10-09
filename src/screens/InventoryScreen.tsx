@@ -390,6 +390,7 @@ export default function InventoryScreen() {
             )}
           </View>
           
+          <View style={styles.headerStats}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{inventory.length}</Text>
               <Text style={styles.statLabel}>Types</Text>
