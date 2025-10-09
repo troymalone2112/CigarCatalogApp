@@ -50,52 +50,11 @@ export default function HumidorListScreen() {
         humidorsList.push(defaultHumidor);
       }
       
-      // Load inventory from local storage to calculate stats
-      const allInventory = await StorageService.getInventory();
+      // Get humidor statistics from database
+      const humidorsWithStats = await DatabaseService.getHumidorStats(user.id);
       
-      // Calculate stats for each humidor
-      const humidorsWithStats: HumidorStats[] = humidorsList.map(humidor => {
-        const humidorInventory = humidor.id ? 
-          allInventory.filter(item => item.humidorId === humidor.id) :
-          allInventory.filter(item => !item.humidorId); // Default humidor gets items without humidorId
-        
-        const cigarCount = humidorInventory.length;
-        const totalValue = humidorInventory.reduce((sum, item) => {
-          const price = item.pricePaid || 0;
-          return sum + (price * item.quantity);
-        }, 0);
-        const avgCigarPrice = cigarCount > 0 ? totalValue / cigarCount : 0;
-        
-        return {
-          humidorId: humidor.id,
-          userId: humidor.userId,
-          humidorName: humidor.name,
-          description: humidor.description,
-          capacity: humidor.capacity,
-          cigarCount,
-          totalValue,
-          avgCigarPrice,
-          createdAt: humidor.createdAt,
-          updatedAt: humidor.updatedAt,
-        };
-      });
-      
-      // Calculate aggregate stats
-      const totalCigars = allInventory.length;
-      const totalCollectionValue = allInventory.reduce((sum, item) => {
-        const price = item.pricePaid || 0;
-        return sum + (price * item.quantity);
-      }, 0);
-      const uniqueBrands = new Set(allInventory.map(item => item.cigar.brand)).size;
-      
-      const aggregateData: UserHumidorAggregate = {
-        userId: user.id,
-        totalHumidors: humidorsWithStats.length,
-        totalCigars,
-        totalCollectionValue,
-        avgCigarValue: totalCigars > 0 ? totalCollectionValue / totalCigars : 0,
-        uniqueBrands,
-      };
+      // Get aggregate statistics from database
+      const aggregateData = await DatabaseService.getUserHumidorAggregate(user.id);
 
       setHumidors(humidorsWithStats);
       setAggregateStats(aggregateData);

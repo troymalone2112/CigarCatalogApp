@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { InventoryItem, JournalEntry, UserPreferences, Cigar, UserProfile } from '../types';
 import { UserManagementService } from '../services/userManagementService';
+import { DatabaseService } from '../services/supabaseService';
 
 // Base storage keys - will be made user-specific
 const BASE_STORAGE_KEYS = {
@@ -43,19 +44,11 @@ export class StorageService {
     return getUserStorageKeys(userId);
   }
 
-  // Inventory Management
+  // Inventory Management - Now using Database
   static async getInventory(humidorId?: string): Promise<InventoryItem[]> {
     try {
-      const storageKeys = this.getStorageKeys();
-      const data = await AsyncStorage.getItem(storageKeys.INVENTORY);
-      const allItems = data ? JSON.parse(data) : [];
-      
-      // If humidorId is specified, filter by humidor
-      if (humidorId) {
-        return allItems.filter((item: InventoryItem) => item.humidorId === humidorId);
-      }
-      
-      return allItems;
+      const userId = this.getCurrentUserId();
+      return await DatabaseService.getInventory(userId, humidorId);
     } catch (error) {
       console.error('Error loading inventory:', error);
       return [];
@@ -64,43 +57,38 @@ export class StorageService {
 
   static async saveInventoryItem(item: InventoryItem): Promise<void> {
     try {
-      const storageKeys = this.getStorageKeys();
-      const inventory = await this.getInventory(); // Get all items, not filtered
-      const existingIndex = inventory.findIndex(i => i.id === item.id);
+      const userId = this.getCurrentUserId();
       
-      if (existingIndex >= 0) {
-        inventory[existingIndex] = item;
-        // Log update activity
-        await UserManagementService.logUserActivity(
-          'update_inventory_item',
-          'inventory_item',
-          item.id,
-          { 
-            cigarBrand: item.cigar.brand,
-            cigarName: item.cigar.name,
-            quantity: item.quantity,
-            pricePaid: item.pricePaid,
-            humidorId: item.humidorId
-          }
-        );
-      } else {
-        inventory.push(item);
-        // Log add activity
-        await UserManagementService.logUserActivity(
-          'add_inventory_item',
-          'inventory_item',
-          item.id,
-          { 
-            cigarBrand: item.cigar.brand,
-            cigarName: item.cigar.name,
-            quantity: item.quantity,
-            pricePaid: item.pricePaid,
-            humidorId: item.humidorId
-          }
-        );
-      }
+      // Prepare inventory item for database
+      const inventoryData = {
+        id: item.id,
+        user_id: userId,
+        humidor_id: item.humidorId,
+        cigar_data: item.cigar,
+        quantity: item.quantity,
+        purchase_date: item.purchaseDate?.toISOString(),
+        price_paid: item.pricePaid,
+        original_box_price: item.originalBoxPrice,
+        sticks_per_box: item.sticksPerBox,
+        location: item.location,
+        notes: item.notes,
+      };
       
-      await AsyncStorage.setItem(storageKeys.INVENTORY, JSON.stringify(inventory));
+      await DatabaseService.saveInventoryItem(inventoryData);
+      
+      // Log activity
+      await UserManagementService.logUserActivity(
+        'save_inventory_item',
+        'inventory_item',
+        item.id,
+        { 
+          cigarBrand: item.cigar.brand,
+          cigarName: item.cigar.name,
+          quantity: item.quantity,
+          pricePaid: item.pricePaid,
+          humidorId: item.humidorId
+        }
+      );
     } catch (error) {
       console.error('Error saving inventory item:', error);
       throw error;
@@ -109,30 +97,7 @@ export class StorageService {
 
   static async removeInventoryItem(itemId: string): Promise<void> {
     try {
-      const storageKeys = this.getStorageKeys();
-      const inventory = await this.getInventory();
-      const itemToRemove = inventory.find(item => item.id === itemId);
-      
-      // Log removal activity (graceful degradation if service fails)
-      if (itemToRemove) {
-        try {
-          await UserManagementService.logUserActivity(
-            'remove_inventory_item',
-            'inventory_item',
-            itemId,
-            { 
-              cigarBrand: itemToRemove.cigar.brand,
-              cigarName: itemToRemove.cigar.name,
-              quantity: itemToRemove.quantity
-            }
-          );
-        } catch (logError) {
-          console.log('User activity logging failed (non-critical):', logError);
-        }
-      }
-      
-      const filteredInventory = inventory.filter(item => item.id !== itemId);
-      await AsyncStorage.setItem(storageKeys.INVENTORY, JSON.stringify(filteredInventory));
+      await DatabaseService.deleteInventoryItem(itemId);
     } catch (error) {
       console.error('Error removing inventory item:', error);
       throw error;
@@ -141,42 +106,13 @@ export class StorageService {
 
   static async updateInventoryQuantity(itemId: string, quantity: number): Promise<void> {
     try {
-      const inventory = await this.getInventory();
-      const itemIndex = inventory.findIndex(item => item.id === itemId);
-      
       console.log('🔄 StorageService: Updating quantity for itemId:', itemId, 'to:', quantity);
-      console.log('🔄 StorageService: Found item at index:', itemIndex);
       
-      if (itemIndex >= 0) {
-        const item = inventory[itemIndex];
-        const oldQuantity = item.quantity;
-        console.log('🔄 StorageService: Before update - item quantity:', item.quantity, 'pricePaid:', item.pricePaid);
-        
-        // Update quantity - allow zero quantity (don't auto-delete)
-        // pricePaid represents what the user paid for single stick or box
-        item.quantity = Math.max(0, quantity); // Ensure quantity is never negative
-        
-        // Log quantity update activity
-        await UserManagementService.logUserActivity(
-          'update_inventory_quantity',
-          'inventory_item',
-          itemId,
-          { 
-            cigarBrand: item.cigar.brand,
-            cigarName: item.cigar.name,
-            oldQuantity,
-            newQuantity: quantity
-          }
-        );
-        
-        console.log('🔄 StorageService: After update - item quantity:', item.quantity);
-        
-        const storageKeys = this.getStorageKeys();
-        await AsyncStorage.setItem(storageKeys.INVENTORY, JSON.stringify(inventory));
-        console.log('🔄 StorageService: Saved to storage successfully');
-      } else {
-        console.log('🔄 StorageService: Item not found with id:', itemId);
-      }
+      // Ensure quantity is never negative
+      const validQuantity = Math.max(0, quantity);
+      
+      await DatabaseService.updateInventoryItem(itemId, { quantity: validQuantity });
+      console.log('🔄 StorageService: Updated quantity in database successfully');
     } catch (error) {
       console.error('Error updating inventory quantity:', error);
       throw error;

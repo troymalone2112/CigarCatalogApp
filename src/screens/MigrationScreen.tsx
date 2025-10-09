@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
-import { checkMigrationStatus, migrateLocalDataToDatabase } from '../migrateLocalToDatabase';
+import { checkMigrationNeeded, migrateLocalDataToDatabase } from '../utils/migrationUtils';
 
 interface MigrationScreenProps {
   onMigrationComplete: () => void;
@@ -23,14 +23,14 @@ export default function MigrationScreen({ onMigrationComplete }: MigrationScreen
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkMigrationNeeded();
+    checkMigrationStatus();
   }, []);
 
-  const checkMigrationNeeded = async () => {
+  const checkMigrationStatus = async () => {
     if (!user) return;
 
     try {
-      const status = await checkMigrationStatus(user.id);
+      const status = await checkMigrationNeeded(user.id);
       setMigrationStatus(status);
     } catch (error) {
       console.error('Error checking migration status:', error);
