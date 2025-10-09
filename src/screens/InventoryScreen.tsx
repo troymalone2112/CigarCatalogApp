@@ -376,8 +376,8 @@ export default function InventoryScreen() {
       imageStyle={styles.tobaccoBackgroundImage}
     >
       <View style={styles.container}>
-        {/* Humidor Stats and Search */}
-        <View style={styles.humidorInfoContainer}>
+        {/* Combined Stats and Search Container */}
+        <View style={styles.topContentWrapper}>
           <View style={styles.headerStats}>
             {availableHumidors.length > 1 && (
               <TouchableOpacity
@@ -511,20 +511,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent', // Let tobacco background show through
   },
-  humidorInfoContainer: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 0,
+  topContentWrapper: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#333333',
+    padding: 16,
   },
   headerStats: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1a1a1a',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333333',
-    borderRadius: 8,
     marginBottom: 16,
     position: 'relative',
   },
@@ -552,10 +551,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   searchSection: {
-    backgroundColor: '#1a1a1a',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333333',
+    // No background, padding, or border - handled by topContentWrapper
   },
   searchContainer: {
     flexDirection: 'row',
