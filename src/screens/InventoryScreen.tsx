@@ -531,13 +531,11 @@ const styles = StyleSheet.create({
   },
   topContentWrapper: {
     backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginTop: 8,
+    marginHorizontal: 0,
+    marginTop: 0,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#333333',
     padding: 16,
+    paddingTop: 20, // Add extra padding at top since no margin
   },
   headerStats: {
     flexDirection: 'row',
