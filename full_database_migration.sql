@@ -100,7 +100,7 @@ GROUP BY h.id, h.user_id, h.name, h.description, h.capacity, h.created_at, h.upd
 DROP VIEW IF EXISTS user_humidor_aggregate;
 CREATE VIEW user_humidor_aggregate AS
 SELECT 
-  user_id,
+  h.user_id,
   COUNT(DISTINCT h.id) as total_humidors,
   COUNT(DISTINCT i.id) as total_cigar_types,
   COALESCE(SUM(i.quantity), 0) as total_cigars,
@@ -109,7 +109,7 @@ SELECT
   COUNT(DISTINCT i.cigar_data->>'brand') as unique_brands
 FROM humidors h
 LEFT JOIN inventory i ON h.id = i.humidor_id
-GROUP BY user_id;
+GROUP BY h.user_id;
 
 -- 9. Create triggers for updated_at timestamps
 CREATE OR REPLACE FUNCTION update_updated_at_column()
