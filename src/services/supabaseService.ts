@@ -381,7 +381,7 @@ export const JournalService = {
       .from('journal_entries')
       .select('*')
       .eq('user_id', userId)
-      .order('date', { ascending: false });
+      .order('smoking_date', { ascending: false });
 
     if (error) throw error;
     return data || [];

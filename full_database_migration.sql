@@ -45,12 +45,14 @@ CREATE TABLE IF NOT EXISTS journal_entries (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. Create indexes for better performance
+-- 4. Create indexes for better performance (humidors and inventory first)
 CREATE INDEX IF NOT EXISTS idx_humidors_user_id ON humidors(user_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_user_id ON inventory(user_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_humidor_id ON inventory(humidor_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_cigar_brand ON inventory ((cigar_data->>'brand'));
 CREATE INDEX IF NOT EXISTS idx_inventory_cigar_line ON inventory ((cigar_data->>'line'));
+
+-- 4.5. Create indexes for journal_entries (after table creation)
 CREATE INDEX IF NOT EXISTS idx_journal_entries_user_id ON journal_entries(user_id);
 CREATE INDEX IF NOT EXISTS idx_journal_entries_date ON journal_entries(date);
 CREATE INDEX IF NOT EXISTS idx_journal_entries_cigar_brand ON journal_entries ((cigar_data->>'brand'));

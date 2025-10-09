@@ -127,13 +127,28 @@ export class StorageService {
       const entries = await JournalService.getJournalEntries(userId);
       return entries.map((entry: any) => ({
         ...entry,
-        date: new Date(entry.date),
         // Map database fields to JournalEntry interface
-        cigar: entry.cigar_data,
-        rating: entry.rating,
-        selectedFlavors: entry.selected_flavors,
-        location: entry.location,
-        photos: entry.photos,
+        date: new Date(entry.smoking_date),
+        cigar: {
+          // You'll need to fetch cigar details from the cigars table using entry.cigar_id
+          // For now, create a basic cigar object
+          id: entry.cigar_id,
+          brand: 'Unknown', // Will need to fetch from cigars table
+          line: 'Unknown',
+          name: 'Unknown',
+          strength: 'Medium',
+        },
+        rating: {
+          overall: entry.rating_overall || 0,
+          draw: entry.rating_draw || 0,
+          burn: entry.rating_construction || 0,
+          flavor: entry.rating_flavor || 0,
+          value: 0,
+          complexity: entry.rating_complexity || 0,
+        },
+        selectedFlavors: [], // Not stored in current schema
+        location: entry.setting ? { city: entry.setting } : undefined,
+        photos: entry.image_url ? [entry.image_url] : undefined,
         notes: entry.notes,
       }));
     } catch (error) {
@@ -147,17 +162,23 @@ export class StorageService {
       const userId = this.getCurrentUserId();
       const { JournalService } = await import('../services/supabaseService');
       
-      // Prepare journal entry for database
+      // Prepare journal entry for database (matching your existing schema)
       const journalData = {
         id: entry.id,
         user_id: userId,
-        cigar_data: entry.cigar,
-        date: entry.date.toISOString(),
-        rating: entry.rating,
-        selected_flavors: entry.selectedFlavors,
+        cigar_id: entry.cigar.id,
+        rating_overall: entry.rating?.overall || 0,
+        rating_construction: entry.rating?.burn || 0,
+        rating_draw: entry.rating?.draw || 0,
+        rating_flavor: entry.rating?.flavor || 0,
+        rating_complexity: entry.rating?.complexity || 0,
         notes: entry.notes,
-        location: entry.location,
-        photos: entry.photos,
+        setting: entry.location?.city || '',
+        pairing: entry.location?.state || '',
+        smoking_date: entry.date.toISOString().split('T')[0], // Convert to date format
+        image_url: entry.photos?.[0] || null, // Store first photo as image_url
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
       
       await JournalService.saveJournalEntry(journalData);
