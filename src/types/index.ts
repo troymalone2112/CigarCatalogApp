@@ -223,7 +223,7 @@ export type RootStackParamList = {
   CigarRecognition: { openSearch?: boolean; humidorId?: string } | undefined;
   CigarDetails: { cigar: Cigar };
   HumidorList: undefined;
-  Inventory: { humidorId?: string; highlightItemId?: string };
+  Inventory: { humidorId?: string; humidorName?: string; highlightItemId?: string };
   AddToInventory: { cigar: Cigar; singleStickPrice?: string; existingItem?: InventoryItem; mode?: 'addMore' | 'edit'; humidorId?: string };
   EditOptions: { item: InventoryItem };
   CreateHumidor: undefined;

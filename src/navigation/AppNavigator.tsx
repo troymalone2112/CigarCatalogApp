@@ -384,10 +384,10 @@ export default function AppNavigator() {
         <Stack.Screen 
           name="Inventory" 
           component={InventoryScreen}
-          options={({ navigation }) => ({
+          options={({ navigation, route }) => ({
             header: () => (
               <TabHeader 
-                title="Humidor Details" 
+                title={route.params?.humidorName || "Humidor Details"} 
                 onBackPress={() => navigation.goBack()} 
               />
             ),

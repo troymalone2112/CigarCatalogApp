@@ -39,6 +39,7 @@ export default function InventoryScreen() {
   const [currentHumidor, setCurrentHumidor] = useState<Humidor | null>(null);
   const [availableHumidors, setAvailableHumidors] = useState<Humidor[]>([]);
   const [showHumidorSelector, setShowHumidorSelector] = useState(false);
+  const [humidorName, setHumidorName] = useState<string>('');
   const flatListRef = useRef<FlatList>(null);
   const highlightAnimation = useRef(new Animated.Value(0)).current;
   const processedHighlightId = useRef<string | null>(null);
@@ -51,6 +52,7 @@ export default function InventoryScreen() {
 
   const handleHumidorSelect = async (humidor: Humidor) => {
     setCurrentHumidor(humidor);
+    setHumidorName(humidor.name);
     setShowHumidorSelector(false);
     
     // Load inventory for the selected humidor
@@ -83,6 +85,7 @@ export default function InventoryScreen() {
       }
       
       setCurrentHumidor(selectedHumidor);
+      setHumidorName(route.params?.humidorName || selectedHumidor?.name || '');
       
       // Load inventory for the selected humidor
       const items = await StorageService.getInventory(selectedHumidor?.id);
@@ -373,56 +376,53 @@ export default function InventoryScreen() {
       imageStyle={styles.tobaccoBackgroundImage}
     >
       <View style={styles.container}>
-        {/* Humidor Selector */}
-        {availableHumidors.length > 1 && (
-          <View style={styles.humidorSelector}>
-            <TouchableOpacity
-              style={styles.humidorSelectorButton}
-              onPress={() => setShowHumidorSelector(true)}
-            >
-              <Text style={styles.humidorSelectorText}>
-                {currentHumidor?.name || 'Select Humidor'}
-              </Text>
-              <Ionicons name="chevron-down" size={16} color="#DC851F" />
-            </TouchableOpacity>
+        {/* Humidor Info and Stats */}
+        <View style={styles.humidorInfoContainer}>
+          <View style={styles.humidorHeader}>
+            <Text style={styles.humidorTitle}>{humidorName || 'Humidor'}</Text>
+            {availableHumidors.length > 1 && (
+              <TouchableOpacity
+                style={styles.humidorSwitchButton}
+                onPress={() => setShowHumidorSelector(true)}
+              >
+                <Ionicons name="swap-horizontal" size={20} color="#DC851F" />
+              </TouchableOpacity>
+            )}
           </View>
-        )}
-
-        {/* Header Stats */}
-        <View style={styles.headerStats}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{inventory.length}</Text>
-            <Text style={styles.statLabel}>Types</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>
-              ${totalValue.toFixed(0)}
-            </Text>
-            <Text style={styles.statLabel}>Value</Text>
-          </View>
-          {currentHumidor?.capacity && (
+          
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{inventory.length}</Text>
+              <Text style={styles.statLabel}>Types</Text>
+            </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>
-                {Math.round((inventory.reduce((sum, item) => sum + item.quantity, 0) / currentHumidor.capacity) * 100)}%
+                ${totalValue.toFixed(0)}
               </Text>
-              <Text style={styles.statLabel}>Capacity</Text>
+              <Text style={styles.statLabel}>Value</Text>
             </View>
-          )}
-        </View>
-
-        {/* Search and Sort */}
-        <View style={styles.searchSection}>
-          <View style={styles.searchContainer}>
-            <Ionicons name="search" size={20} color="#666" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search"
-              placeholderTextColor="#999"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-            />
+            {currentHumidor?.capacity && (
+              <View style={styles.statItem}>
+                <Text style={styles.statValue}>
+                  {Math.round((inventory.reduce((sum, item) => sum + item.quantity, 0) / currentHumidor.capacity) * 100)}%
+                </Text>
+                <Text style={styles.statLabel}>Capacity</Text>
+              </View>
+            )}
           </View>
-
+          
+          {/* Search Bar */}
+          <View style={styles.searchSection}>
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={20} color="#666" />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search"
+                placeholderTextColor="#999"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+          </View>
         </View>
 
         {/* Inventory List */}
@@ -514,25 +514,25 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent', // Let tobacco background show through
   },
-  humidorSelector: {
+  humidorInfoContainer: {
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  humidorSelectorButton: {
+  humidorHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(220, 133, 31, 0.3)',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    marginBottom: 12,
   },
-  humidorSelectorText: {
-    fontSize: 16,
-    fontWeight: '600',
+  humidorTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  humidorSwitchButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'rgba(220, 133, 31, 0.1)',
   },
   headerStats: {
     flexDirection: 'row',

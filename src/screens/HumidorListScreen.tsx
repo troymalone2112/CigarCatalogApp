@@ -83,7 +83,10 @@ export default function HumidorListScreen() {
   };
 
   const handleHumidorPress = (humidor: HumidorStats) => {
-    navigation.navigate('Inventory', { humidorId: humidor.humidorId });
+    navigation.navigate('Inventory', { 
+      humidorId: humidor.humidorId,
+      humidorName: humidor.humidorName 
+    });
   };
 
   const handleEditHumidor = (humidor: HumidorStats) => {
@@ -185,18 +188,29 @@ export default function HumidorListScreen() {
     </TouchableOpacity>
   );
 
-  const renderEmptyState = () => (
-    <View style={styles.emptyState}>
-      <Ionicons name="archive-outline" size={80} color="#DC851F" />
-      <Text style={styles.emptyTitle}>No Humidors Yet</Text>
-      <Text style={styles.emptyText}>
-        Create your first humidor to start organizing your cigar collection
-      </Text>
-      <TouchableOpacity style={styles.createButton} onPress={handleCreateHumidor}>
-        <Text style={styles.createButtonText}>Create Humidor</Text>
-      </TouchableOpacity>
-    </View>
-  );
+  const renderEmptyState = () => {
+    if (loading) {
+      return (
+        <View style={styles.emptyState}>
+          <Ionicons name="archive-outline" size={80} color="#DC851F" />
+          <Text style={styles.emptyTitle}>Loading...</Text>
+        </View>
+      );
+    }
+    
+    return (
+      <View style={styles.emptyState}>
+        <Ionicons name="archive-outline" size={80} color="#DC851F" />
+        <Text style={styles.emptyTitle}>No Humidors Yet</Text>
+        <Text style={styles.emptyText}>
+          Create your first humidor to start organizing your cigar collection
+        </Text>
+        <TouchableOpacity style={styles.createButton} onPress={handleCreateHumidor}>
+          <Text style={styles.createButtonText}>Create Humidor</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   const renderHeader = () => {
     if (!aggregateStats) return null;
