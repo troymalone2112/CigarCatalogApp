@@ -274,6 +274,7 @@ export default function HumidorListScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#0a0a0a', // Solid background to cover any gaps
   },
   backgroundImage: {
     opacity: 0.4,
@@ -292,10 +293,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     marginHorizontal: 0,
     marginTop: 0,
-    marginBottom: 16,
+    marginBottom: 0, // Remove bottom margin to eliminate gap
     paddingHorizontal: 16,
     paddingVertical: 16,
     paddingTop: 20, // Add extra padding at top since no margin
+    paddingBottom: 16, // Add bottom padding instead of margin
     // No border radius or borders for seamless flush design
   },
   aggregateStats: {
