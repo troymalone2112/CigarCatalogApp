@@ -68,15 +68,41 @@ export const DatabaseService = {
       .eq('id', userId)
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // If no profile exists, create one
+      if (error.code === 'PGRST116') {
+        console.log('🔍 No profile found for user, creating one...');
+        return await this.createProfile(userId, '', 'New User');
+      }
+      throw error;
+    }
     return data;
   },
 
   async createProfile(userId: string, email: string, fullName: string) {
-    // Profile creation is handled by database trigger
-    // This function is kept for compatibility but doesn't create profiles
-    console.log('Profile creation handled by database trigger for user:', userId);
-    return this.getProfile(userId);
+    console.log('🔍 Creating profile for user:', userId);
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert([
+        {
+          id: userId,
+          email: email || '',
+          full_name: fullName || 'New User',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating profile:', error);
+      throw error;
+    }
+    
+    console.log('✅ Profile created successfully:', data);
+    return data;
   },
 
   async updateProfile(userId: string, updates: any) {

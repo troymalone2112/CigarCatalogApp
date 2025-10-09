@@ -96,6 +96,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile(profileData);
     } catch (error) {
       console.error('Error loading profile:', error);
+      // Set a default profile if loading fails
+      setProfile({
+        id: userId,
+        email: user?.email || '',
+        full_name: 'New User',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
     }
   };
 
