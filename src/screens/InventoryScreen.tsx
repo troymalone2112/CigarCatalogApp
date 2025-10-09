@@ -38,7 +38,6 @@ export default function InventoryScreen() {
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   const [currentHumidor, setCurrentHumidor] = useState<Humidor | null>(null);
   const [availableHumidors, setAvailableHumidors] = useState<Humidor[]>([]);
-  const [showHumidorSelector, setShowHumidorSelector] = useState(false);
   const [humidorName, setHumidorName] = useState<string>('');
   const flatListRef = useRef<FlatList>(null);
   const highlightAnimation = useRef(new Animated.Value(0)).current;
@@ -50,16 +49,6 @@ export default function InventoryScreen() {
     }, [route.params?.humidorId])
   );
 
-  const handleHumidorSelect = async (humidor: Humidor) => {
-    setCurrentHumidor(humidor);
-    setHumidorName(humidor.name);
-    setShowHumidorSelector(false);
-    
-    // Load inventory for the selected humidor
-    const items = await StorageService.getInventory(humidor.id);
-    setInventory(items);
-    setFilteredInventory(items);
-  };
 
   const handleAddCigar = () => {
     navigation.navigate('CigarRecognition', { humidorId: currentHumidor?.id });
@@ -397,14 +386,6 @@ export default function InventoryScreen() {
         {/* Combined Stats and Search Container */}
         <View style={styles.topContentWrapper}>
           <View style={styles.headerStats}>
-            {availableHumidors.length > 1 && (
-              <TouchableOpacity
-                style={styles.humidorSwitchButton}
-                onPress={() => setShowHumidorSelector(true)}
-              >
-                <Ionicons name="swap-horizontal" size={16} color="#DC851F" />
-              </TouchableOpacity>
-            )}
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{inventory.length}</Text>
               <Text style={styles.statLabel}>Types</Text>
@@ -464,53 +445,6 @@ export default function InventoryScreen() {
           <Ionicons name="add" size={24} color="#CCCCCC" />
         </TouchableOpacity>
 
-        {/* Humidor Selector Modal */}
-        {showHumidorSelector && (
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <View style={styles.modalHeader}>
-                <Text style={styles.modalTitle}>Select Humidor</Text>
-                <TouchableOpacity
-                  onPress={() => setShowHumidorSelector(false)}
-                  style={styles.modalCloseButton}
-                >
-                  <Ionicons name="close" size={24} color="#DC851F" />
-                </TouchableOpacity>
-              </View>
-              
-              <FlatList
-                data={availableHumidors}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.humidorOption,
-                      currentHumidor?.id === item.id && styles.selectedHumidorOption
-                    ]}
-                    onPress={() => handleHumidorSelect(item)}
-                  >
-                    <View style={styles.humidorOptionContent}>
-                      <Text style={[
-                        styles.humidorOptionText,
-                        currentHumidor?.id === item.id && styles.selectedHumidorOptionText
-                      ]}>
-                        {item.name}
-                      </Text>
-                      {item.description && (
-                        <Text style={styles.humidorOptionDescription}>
-                          {item.description}
-                        </Text>
-                      )}
-                    </View>
-                    {currentHumidor?.id === item.id && (
-                      <Ionicons name="checkmark" size={20} color="#DC851F" />
-                    )}
-                  </TouchableOpacity>
-                )}
-              />
-            </View>
-          </View>
-        )}
       </View>
     </ImageBackground>
   );
@@ -542,15 +476,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
     position: 'relative',
-  },
-  humidorSwitchButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    padding: 6,
-    borderRadius: 6,
-    backgroundColor: 'rgba(220, 133, 31, 0.1)',
-    zIndex: 1,
   },
   statItem: {
     flex: 1,
@@ -808,73 +733,5 @@ const styles = StyleSheet.create({
     minWidth: 36,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  modalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  modalContent: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 12,
-    padding: 16,
-    margin: 20,
-    maxHeight: '70%',
-    minWidth: '80%',
-    borderWidth: 1,
-    borderColor: '#DC851F',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  modalCloseButton: {
-    padding: 8,
-  },
-  humidorOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginBottom: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  selectedHumidorOption: {
-    backgroundColor: 'rgba(220, 133, 31, 0.2)',
-    borderWidth: 1,
-    borderColor: '#DC851F',
-  },
-  humidorOptionContent: {
-    flex: 1,
-    marginRight: 12,
-  },
-  humidorOptionText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  selectedHumidorOptionText: {
-    color: '#DC851F',
-  },
-  humidorOptionDescription: {
-    fontSize: 14,
-    color: '#CCCCCC',
-    lineHeight: 18,
   },
 });
