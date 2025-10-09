@@ -376,21 +376,17 @@ export default function InventoryScreen() {
       imageStyle={styles.tobaccoBackgroundImage}
     >
       <View style={styles.container}>
-        {/* Humidor Info and Stats */}
+        {/* Humidor Stats and Search */}
         <View style={styles.humidorInfoContainer}>
-          <View style={styles.humidorHeader}>
-            <Text style={styles.humidorTitle}>{humidorName || 'Humidor'}</Text>
+          <View style={styles.headerStats}>
             {availableHumidors.length > 1 && (
               <TouchableOpacity
                 style={styles.humidorSwitchButton}
                 onPress={() => setShowHumidorSelector(true)}
               >
-                <Ionicons name="swap-horizontal" size={20} color="#DC851F" />
+                <Ionicons name="swap-horizontal" size={16} color="#DC851F" />
               </TouchableOpacity>
             )}
-          </View>
-          
-          <View style={styles.headerStats}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{inventory.length}</Text>
               <Text style={styles.statLabel}>Types</Text>
@@ -517,31 +513,29 @@ const styles = StyleSheet.create({
   },
   humidorInfoContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  humidorHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  humidorTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  humidorSwitchButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(220, 133, 31, 0.1)',
+    paddingTop: 8,
+    paddingBottom: 0,
   },
   headerStats: {
     flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#1a1a1a',
     paddingVertical: 20,
     paddingHorizontal: 16,
     borderBottomWidth: 1,
     borderBottomColor: '#333333',
+    borderRadius: 8,
+    marginBottom: 16,
+    position: 'relative',
+  },
+  humidorSwitchButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    padding: 6,
+    borderRadius: 6,
+    backgroundColor: 'rgba(220, 133, 31, 0.1)',
+    zIndex: 1,
   },
   statItem: {
     flex: 1,
