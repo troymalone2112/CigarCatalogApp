@@ -72,7 +72,21 @@ export const DatabaseService = {
       // If no profile exists, create one
       if (error.code === 'PGRST116') {
         console.log('🔍 No profile found for user, creating one...');
-        return await this.createProfile(userId, '', 'New User');
+        try {
+          return await this.createProfile(userId, '', 'New User');
+        } catch (createError: any) {
+          // If creation fails due to duplicate key, try to fetch the existing profile
+          if (createError.code === '23505') {
+            console.log('🔍 Profile already exists, fetching it...');
+            const { data: existingProfile } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', userId)
+              .single();
+            return existingProfile;
+          }
+          throw createError;
+        }
       }
       throw error;
     }
@@ -81,6 +95,18 @@ export const DatabaseService = {
 
   async createProfile(userId: string, email: string, fullName: string) {
     console.log('🔍 Creating profile for user:', userId);
+    
+    // First check if profile already exists
+    const { data: existingProfile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (existingProfile) {
+      console.log('🔍 Profile already exists, returning existing profile');
+      return existingProfile;
+    }
     
     const { data, error } = await supabase
       .from('profiles')
