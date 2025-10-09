@@ -288,7 +288,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#DC851F',
+    borderColor: '#333333',
   },
   aggregateStat: {
     alignItems: 'center',
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: 'rgba(220, 133, 31, 0.3)',
+    borderColor: '#333333',
   },
   humidorHeader: {
     flexDirection: 'row',
