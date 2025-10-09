@@ -199,7 +199,7 @@ export default function EditHumidorScreen() {
                 disabled={loading}
               >
                 <Text style={styles.updateButtonText}>
-                  {loading ? 'Updating...' : 'Update Humidor'}
+                  {loading ? 'Updating...' : 'Update'}
                 </Text>
               </TouchableOpacity>
             </View>
