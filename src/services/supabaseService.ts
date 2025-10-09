@@ -268,4 +268,108 @@ export const DatabaseService = {
 
     if (error) throw error;
   },
+
+  // Inventory Management Functions
+  async getInventory(userId: string, humidorId?: string) {
+    let query = supabase
+      .from('inventory')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (humidorId) {
+      query = query.eq('humidor_id', humidorId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    return data?.map(item => ({
+      id: item.id,
+      cigar: {
+        id: item.cigar_data.id,
+        brand: item.cigar_data.brand,
+        line: item.cigar_data.line,
+        name: item.cigar_data.name,
+        size: item.cigar_data.size,
+        wrapper: item.cigar_data.wrapper,
+        filler: item.cigar_data.filler,
+        binder: item.cigar_data.binder,
+        tobacco: item.cigar_data.tobacco,
+        strength: item.cigar_data.strength,
+        flavorProfile: item.cigar_data.flavorProfile,
+        tobaccoOrigins: item.cigar_data.tobaccoOrigins,
+        smokingExperience: item.cigar_data.smokingExperience,
+        imageUrl: item.cigar_data.imageUrl,
+        recognitionConfidence: item.cigar_data.recognitionConfidence,
+        msrp: item.cigar_data.msrp,
+        singleStickPrice: item.cigar_data.singleStickPrice,
+        releaseYear: item.cigar_data.releaseYear,
+        limitedEdition: item.cigar_data.limitedEdition,
+        professionalRating: item.cigar_data.professionalRating,
+        agingPotential: item.cigar_data.agingPotential,
+        wrapperColor: item.cigar_data.wrapperColor,
+        identifyingFeatures: item.cigar_data.identifyingFeatures,
+        overview: item.cigar_data.overview,
+        tobaccoOrigin: item.cigar_data.tobaccoOrigin,
+        flavorTags: item.cigar_data.flavorTags,
+        cigarAficionadoRating: item.cigar_data.cigarAficionadoRating,
+        detailUrl: item.cigar_data.detailUrl,
+      },
+      quantity: item.quantity,
+      purchaseDate: item.purchase_date ? new Date(item.purchase_date) : undefined,
+      pricePaid: item.price_paid || undefined,
+      originalBoxPrice: item.original_box_price || undefined,
+      sticksPerBox: item.sticks_per_box || undefined,
+      location: item.location || undefined,
+      notes: item.notes || undefined,
+      humidorId: item.humidor_id,
+    })) || [];
+  },
+
+  async saveInventoryItem(inventoryItem: any) {
+    const { data, error } = await supabase
+      .from('inventory')
+      .upsert([
+        {
+          id: inventoryItem.id,
+          user_id: inventoryItem.user_id,
+          humidor_id: inventoryItem.humidor_id,
+          cigar_data: inventoryItem.cigar_data,
+          quantity: inventoryItem.quantity,
+          purchase_date: inventoryItem.purchase_date,
+          price_paid: inventoryItem.price_paid,
+          original_box_price: inventoryItem.original_box_price,
+          sticks_per_box: inventoryItem.sticks_per_box,
+          location: inventoryItem.location,
+          notes: inventoryItem.notes,
+        }
+      ])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteInventoryItem(itemId: string) {
+    const { error } = await supabase
+      .from('inventory')
+      .delete()
+      .eq('id', itemId);
+
+    if (error) throw error;
+  },
+
+  async updateInventoryItem(itemId: string, updates: any) {
+    const { data, error } = await supabase
+      .from('inventory')
+      .update(updates)
+      .eq('id', itemId)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
 };
