@@ -369,6 +369,24 @@ export default function InventoryScreen() {
     };
   };
 
+  // Show loading state while data is being fetched
+  if (loading) {
+    return (
+      <ImageBackground 
+        source={require('../../assets/tobacco-leaves-bg.jpg')}
+        style={styles.fullScreenBackground}
+        imageStyle={styles.tobaccoBackgroundImage}
+      >
+        <View style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <Ionicons name="archive-outline" size={64} color="#DC851F" />
+            <Text style={styles.loadingText}>Loading humidor...</Text>
+          </View>
+        </View>
+      </ImageBackground>
+    );
+  }
+
   return (
     <ImageBackground 
       source={require('../../assets/tobacco-leaves-bg.jpg')}
@@ -722,6 +740,19 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     marginBottom: 24,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#DC851F',
+    marginTop: 16,
+    textAlign: 'center',
   },
   addButton: {
     backgroundColor: '#DC851F',
