@@ -217,7 +217,6 @@ export default function HumidorListScreen() {
 
     return (
       <View style={styles.headerContainer}>
-        <Text style={styles.headerTitle}>Your Humidors</Text>
         <View style={styles.aggregateStats}>
           <View style={styles.aggregateStat}>
             <Text style={styles.aggregateValue}>{aggregateStats.totalHumidors}</Text>
@@ -287,12 +286,6 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   headerContainer: {
-    marginBottom: 24,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
     marginBottom: 16,
   },
   aggregateStats: {
