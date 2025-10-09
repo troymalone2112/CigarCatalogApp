@@ -57,6 +57,23 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       setShowSimpleSearch(true);
     }
   }, [route?.params?.openSearch]);
+
+  // Automatically request camera permission on first load
+  useEffect(() => {
+    const requestInitialPermission = async () => {
+      console.log('📷 Permission state:', permission);
+      if (permission && !permission.granted) {
+        // Request permission on first load if not already granted
+        console.log('📷 Requesting camera permission on first load...');
+        const result = await requestPermission();
+        console.log('📷 Permission request result:', result);
+      }
+    };
+    
+    // Small delay to ensure component is fully mounted and permission state is loaded
+    const timer = setTimeout(requestInitialPermission, 500);
+    return () => clearTimeout(timer);
+  }, [permission, requestPermission]);
   
   // Manual entry states
   const [showManualEntry, setShowManualEntry] = useState(false);
