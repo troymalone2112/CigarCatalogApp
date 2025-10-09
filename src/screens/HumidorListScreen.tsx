@@ -241,12 +241,14 @@ export default function HumidorListScreen() {
       style={styles.container}
       imageStyle={styles.backgroundImage}
     >
+      {/* Full width stats section outside content wrapper */}
+      {renderHeader()}
+      
       <View style={styles.content}>
         <FlatList
           data={humidors}
           renderItem={renderHumidorCard}
           keyExtractor={(item) => item.humidorId}
-          ListHeaderComponent={renderHeader}
           ListEmptyComponent={renderEmptyState}
           refreshControl={
             <RefreshControl
@@ -291,7 +293,8 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
     marginTop: 0,
     marginBottom: 16,
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     paddingTop: 20, // Add extra padding at top since no margin
     // No border radius or borders for seamless flush design
   },
