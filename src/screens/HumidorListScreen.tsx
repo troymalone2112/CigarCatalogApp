@@ -16,7 +16,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { DatabaseService } from '../services/supabaseService';
-import { HumidorStats, UserHumidorAggregate } from '../types';
+import { StorageService } from '../storage/storageService';
+import { HumidorStats, UserHumidorAggregate, Humidor } from '../types';
 
 type HumidorListScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HumidorList'>;
 
@@ -35,12 +36,68 @@ export default function HumidorListScreen() {
 
     try {
       setLoading(true);
-      const [humidorsData, aggregateData] = await Promise.all([
-        DatabaseService.getHumidorStats(user.id),
-        DatabaseService.getUserHumidorAggregate(user.id),
-      ]);
+      
+      // Load humidors from database
+      const humidorsList = await DatabaseService.getHumidors(user.id);
+      
+      // If no humidors exist, create a default one
+      if (humidorsList.length === 0) {
+        const defaultHumidor = await DatabaseService.createHumidor(
+          user.id,
+          'Main Humidor',
+          'Your default humidor'
+        );
+        humidorsList.push(defaultHumidor);
+      }
+      
+      // Load inventory from local storage to calculate stats
+      const allInventory = await StorageService.getInventory();
+      
+      // Calculate stats for each humidor
+      const humidorsWithStats: HumidorStats[] = humidorsList.map(humidor => {
+        const humidorInventory = humidor.id ? 
+          allInventory.filter(item => item.humidorId === humidor.id) :
+          allInventory.filter(item => !item.humidorId); // Default humidor gets items without humidorId
+        
+        const cigarCount = humidorInventory.length;
+        const totalValue = humidorInventory.reduce((sum, item) => {
+          const price = item.pricePaid || 0;
+          return sum + (price * item.quantity);
+        }, 0);
+        const avgCigarPrice = cigarCount > 0 ? totalValue / cigarCount : 0;
+        
+        return {
+          humidorId: humidor.id,
+          userId: humidor.userId,
+          humidorName: humidor.name,
+          description: humidor.description,
+          capacity: humidor.capacity,
+          cigarCount,
+          totalValue,
+          avgCigarPrice,
+          createdAt: humidor.createdAt,
+          updatedAt: humidor.updatedAt,
+        };
+      });
+      
+      // Calculate aggregate stats
+      const totalCigars = allInventory.length;
+      const totalCollectionValue = allInventory.reduce((sum, item) => {
+        const price = item.pricePaid || 0;
+        return sum + (price * item.quantity);
+      }, 0);
+      const uniqueBrands = new Set(allInventory.map(item => item.cigar.brand)).size;
+      
+      const aggregateData: UserHumidorAggregate = {
+        userId: user.id,
+        totalHumidors: humidorsWithStats.length,
+        totalCigars,
+        totalCollectionValue,
+        avgCigarValue: totalCigars > 0 ? totalCollectionValue / totalCigars : 0,
+        uniqueBrands,
+      };
 
-      setHumidors(humidorsData);
+      setHumidors(humidorsWithStats);
       setAggregateStats(aggregateData);
     } catch (error) {
       console.error('Error loading humidor data:', error);
