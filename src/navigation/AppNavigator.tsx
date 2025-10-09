@@ -154,7 +154,7 @@ function TabNavigator() {
 
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
-          } else if (route.name === 'Inventory') {
+          } else if (route.name === 'HumidorList') {
             iconName = focused ? 'archive' : 'archive-outline';
           } else if (route.name === 'Journal') {
             iconName = focused ? 'book' : 'book-outline';
