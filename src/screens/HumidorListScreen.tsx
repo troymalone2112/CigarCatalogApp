@@ -216,7 +216,7 @@ export default function HumidorListScreen() {
     if (!aggregateStats) return null;
 
     return (
-      <View style={styles.headerContainer}>
+      <View style={styles.topContentWrapper}>
         <View style={styles.aggregateStats}>
           <View style={styles.aggregateStat}>
             <Text style={styles.aggregateValue}>{aggregateStats.totalHumidors}</Text>
@@ -285,17 +285,17 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingBottom: 100,
   },
-  headerContainer: {
-    marginBottom: 16,
+  topContentWrapper: {
+    backgroundColor: '#1a1a1a',
     marginHorizontal: 0,
     marginTop: 0,
+    marginBottom: 16,
+    padding: 16,
+    paddingTop: 20, // Add extra padding at top since no margin
   },
   aggregateStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#1a1a1a',
-    padding: 16,
-    paddingTop: 20, // Add extra padding at top since no margin
   },
   aggregateStat: {
     alignItems: 'center',
