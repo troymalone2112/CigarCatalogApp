@@ -41,7 +41,12 @@ CREATE INDEX IF NOT EXISTS idx_inventory_cigar_line ON inventory ((cigar_data->>
 ALTER TABLE humidors ENABLE ROW LEVEL SECURITY;
 ALTER TABLE inventory ENABLE ROW LEVEL SECURITY;
 
--- 5. Humidors RLS policies
+-- 5. Humidors RLS policies (drop existing first to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view their own humidors" ON humidors;
+DROP POLICY IF EXISTS "Users can insert their own humidors" ON humidors;
+DROP POLICY IF EXISTS "Users can update their own humidors" ON humidors;
+DROP POLICY IF EXISTS "Users can delete their own humidors" ON humidors;
+
 CREATE POLICY "Users can view their own humidors" ON humidors
   FOR SELECT USING (auth.uid() = user_id);
 
@@ -54,7 +59,12 @@ CREATE POLICY "Users can update their own humidors" ON humidors
 CREATE POLICY "Users can delete their own humidors" ON humidors
   FOR DELETE USING (auth.uid() = user_id);
 
--- 6. Inventory RLS policies
+-- 6. Inventory RLS policies (drop existing first to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view their own inventory" ON inventory;
+DROP POLICY IF EXISTS "Users can insert their own inventory" ON inventory;
+DROP POLICY IF EXISTS "Users can update their own inventory" ON inventory;
+DROP POLICY IF EXISTS "Users can delete their own inventory" ON inventory;
+
 CREATE POLICY "Users can view their own inventory" ON inventory
   FOR SELECT USING (auth.uid() = user_id);
 
@@ -107,6 +117,10 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Drop existing triggers if they exist
+DROP TRIGGER IF EXISTS update_humidors_updated_at ON humidors;
+DROP TRIGGER IF EXISTS update_inventory_updated_at ON inventory;
 
 CREATE TRIGGER update_humidors_updated_at
   BEFORE UPDATE ON humidors
