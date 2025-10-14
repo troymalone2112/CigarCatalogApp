@@ -3,7 +3,7 @@
 
 export const REVENUECAT_CONFIG = {
   // API Key (platform-agnostic, get from RevenueCat dashboard > Project Settings > API Keys)
-  API_KEY: 'YOUR_REVENUECAT_API_KEY_HERE',
+  API_KEY: 'appl_OdWJAJMHMYrvZGgQDapUsNfpLmf',
 
   // Product IDs (must match what you create in RevenueCat dashboard)
   PRODUCTS: {
