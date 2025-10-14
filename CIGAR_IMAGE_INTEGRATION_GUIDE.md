@@ -52,7 +52,7 @@ This guide explains how to integrate the cigar images with your database and dis
 6. **Brick House - Churchill** → `10_brick_house_churchill.jpeg`
 7. **La Aroma de Cuba - Pasión Box-Pressed Torpedo** → `11_la_aroma_de_cuba_pasion_box_pressed_torpedo.jpeg`
 8. **Casa Magna - Colorado XV Anniversary** → `14_casa_magna_colorado_xv_anniversary.jpeg`
-9. **Romeo y Julieta - Wide Churchill** → `15_romeo_y_julieta_wide_churchill.png`
+9. **Romeo y Julieta - Wide Churchill** → `15_romeo_y_julieta_wide_churchhill.jpg`
 10. **Perdomo - 30th Anniversary Sun Grown Epicure** → `16_perdomo_30th_anniversary_sun_grown_epicure.jpeg`
 11. **Herrera Estelí - Norteño Lonsdale** → `19_herrera_esteli_norteno_lonsdale.jpeg`
 12. **Warped - Corto x52** → `23_warped_corto_x52.jpeg`

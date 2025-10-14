@@ -70,7 +70,7 @@ export class CigarImageService {
       '10_brick_house_churchill.jpeg',
       '11_la_aroma_de_cuba_pasion_box_pressed_torpedo.jpeg',
       '14_casa_magna_colorado_xv_anniversary.jpeg',
-      '15_romeo_y_julieta_wide_churchill.png',
+      '15_romeo_y_julieta_wide_churchhill.jpg',
       '16_perdomo_30th_anniversary_sun_grown_epicure.jpeg',
       '19_herrera_esteli_norteno_lonsdale.jpeg',
       '23_warped_corto_x52.jpeg',

@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { RouteProp } from '@react-navigation/native';
 import { RootStackParamList, JournalEntry } from '../types';
 import { StorageService } from '../storage/storageService';
-import { normalizeStrength } from '../utils/helpers';
+import { getStrengthInfo } from '../utils/strengthUtils';
 
 type JournalEntryDetailsScreenRouteProp = RouteProp<RootStackParamList, 'JournalEntryDetails'>;
 
@@ -36,13 +36,8 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const getStrengthColor = (strength: string) => {
-    const normalizedStrength = normalizeStrength(strength);
-    switch (normalizedStrength) {
-      case 'Mild': return '#4CAF50';
-      case 'Medium': return '#FF9800';
-      case 'Strong': return '#F44336';
-      default: return '#666';
-    }
+    const strengthInfo = getStrengthInfo(strength);
+    return strengthInfo.color;
   };
 
   const formatDate = (date: Date) => {
@@ -210,7 +205,7 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
             <View style={styles.strengthContainer}>
               <Text style={styles.strengthLabel}>Strength</Text>
             <View style={[styles.strengthPill, { backgroundColor: getStrengthColor(entry.cigar.strength) }]}>
-              <Text style={styles.strengthText}>{normalizeStrength(entry.cigar.strength)}</Text>
+              <Text style={styles.strengthText}>{getStrengthInfo(entry.cigar.strength).label}</Text>
             </View>
             </View>
           </View>
@@ -600,20 +595,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   flavorTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    backgroundColor: '#333333',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#666666', // Gray for unselected
     borderWidth: 1,
     borderColor: '#555555',
   },
   flavorTagSelected: {
-    backgroundColor: '#FFA737',
+    backgroundColor: '#FFA737', // Yellow for selected
     borderColor: '#DC851F',
   },
   flavorTagText: {
     fontSize: 12,
-    color: '#CCCCCC',
+    color: '#FFFFFF', // White text for both states
     fontWeight: '500',
   },
   flavorTagTextSelected: {

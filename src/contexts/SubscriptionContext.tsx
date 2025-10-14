@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { SubscriptionService, SubscriptionStatus, SubscriptionPlan } from '../services/subscriptionService';
+import { RevenueCatService } from '../services/revenueCatService';
 import { useAuth } from './AuthContext';
 
 interface SubscriptionContextType {
@@ -58,10 +59,26 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       console.log('🔍 SubscriptionContext - Loading subscription data for user:', user.id);
-      const [status, plans] = await Promise.all([
-        SubscriptionService.checkSubscriptionStatus(user.id),
-        SubscriptionService.getSubscriptionPlans(),
-      ]);
+      
+      // First, try to get local status (fast)
+      let status = await RevenueCatService.getLocalSubscriptionStatus(user.id);
+      
+      // If user is premium or trial is active, we're good
+      // If trial expired, sync with RevenueCat to check for new purchases
+      if (!status.hasAccess) {
+        console.log('🔄 Trial expired, syncing with RevenueCat...');
+        status = await RevenueCatService.syncSubscriptionStatus(user.id);
+      }
+      
+      // Also sync with RevenueCat periodically (every 5th time or if status is expired)
+      const shouldSync = Math.random() < 0.2 || status.status === 'expired';
+      if (shouldSync) {
+        console.log('🔄 Periodic sync with RevenueCat...');
+        status = await RevenueCatService.syncSubscriptionStatus(user.id);
+      }
+      
+      // Get subscription plans
+      const plans = await SubscriptionService.getSubscriptionPlans();
 
       console.log('🔍 SubscriptionContext - Subscription status:', status);
       console.log('🔍 SubscriptionContext - Subscription plans:', plans);

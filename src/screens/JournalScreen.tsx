@@ -17,8 +17,8 @@ import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navig
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList, JournalEntry, TabParamList } from '../types';
 import { StorageService } from '../storage/storageService';
-import { normalizeStrength } from '../utils/helpers';
 import { getStrengthInfo } from '../utils/strengthUtils';
+import { useScreenLoading } from '../hooks/useScreenLoading';
 
 type JournalScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 type JournalScreenRouteProp = RouteProp<TabParamList, 'Journal'>;
@@ -27,8 +27,7 @@ export default function JournalScreen() {
   const navigation = useNavigation<JournalScreenNavigationProp>();
   const route = useRoute<JournalScreenRouteProp>();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { loading, refreshing, setLoading, setRefreshing } = useScreenLoading(true);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const highlightAnimation = useRef(new Animated.Value(0)).current;
@@ -177,74 +176,69 @@ export default function JournalScreen() {
         <View style={styles.entryInfo}>
           <View style={styles.entryTitleRow}>
             <Text style={styles.cigarBrand}>{item.cigar.brand}</Text>
-            <View style={styles.strengthContainer}>
-              <View style={[styles.strengthPill, { backgroundColor: getStrengthColor(item.cigar.strength) }]}>
-                <Text style={styles.strengthText}>{normalizeStrength(item.cigar.strength)}</Text>
-              </View>
-            </View>
           </View>
           <Text style={styles.cigarLine}>{item.cigar.line}</Text>
           <Text style={styles.entryDate}>{item.date.toLocaleDateString()}</Text>
         </View>
-        {item.imageUrl && (
-          <Image source={{ uri: item.imageUrl }} style={styles.entryImage} />
-        )}
+        <View style={styles.entryImageContainer}>
+          {item.imageUrl ? (
+            <Image source={{ uri: item.imageUrl }} style={styles.entryImage} />
+          ) : item.cigar.imageUrl && item.cigar.imageUrl !== 'placeholder' ? (
+            <Image source={{ uri: item.cigar.imageUrl }} style={styles.entryImage} />
+          ) : (
+            <Image source={require('../../assets/cigar-placeholder.jpg')} style={styles.entryImage} />
+          )}
+        </View>
       </View>
 
       <View style={styles.ratingSection}>
-        <View style={styles.overallRating}>
-          <Text style={styles.ratingLabel}>Rating</Text>
-          <Text style={styles.ratingValue}>{item.rating.overall}/10</Text>
+        <View style={styles.ratingAndStrength}>
+          <View style={styles.overallRating}>
+            <Text style={styles.ratingLabel}>Rating</Text>
+            <Text style={styles.ratingValue}>{item.rating.overall}/10</Text>
+          </View>
+          <View style={styles.strengthContainer}>
+            <View style={[styles.strengthPill, { backgroundColor: getStrengthColor(item.cigar.strength) }]}>
+              <Text style={styles.strengthText}>{getStrengthInfo(item.cigar.strength).label}</Text>
+            </View>
+          </View>
         </View>
       </View>
 
-      {item.selectedFlavors && item.selectedFlavors.length > 0 && (
-        <View style={styles.flavorsSection}>
-          <View style={styles.flavorsContainer}>
-            {item.selectedFlavors.slice(0, 3).map((flavor, index) => (
-              <View key={index} style={styles.flavorChip}>
-                <Text style={styles.flavorChipText}>{flavor}</Text>
-              </View>
-            ))}
-            {item.selectedFlavors.length > 3 && (
-              <Text style={styles.moreFlavorsText}>+{item.selectedFlavors.length - 3} more</Text>
-            )}
-          </View>
-        </View>
-      )}
-
-      <Text style={styles.entryNotes} numberOfLines={2}>
+      <Text style={styles.entryNotes} numberOfLines={1}>
         {item.notes}
       </Text>
 
-      {item.location && (
-        <View style={styles.locationSection}>
-          <Ionicons name="location" size={14} color="#7C2D12" />
-          <Text style={styles.locationText}>
-            {item.location.city}{item.location.state ? `, ${item.location.state}` : ''}
-          </Text>
-        </View>
-      )}
+      <View style={styles.locationAndActions}>
+        {item.location && (
+          <View style={styles.locationSection}>
+            <Ionicons name="location" size={14} color="#7C2D12" />
+            <Text style={styles.locationText}>
+              {item.location.city}{item.location.state ? `, ${item.location.state}` : ''}
+            </Text>
+          </View>
+        )}
 
-      <View style={styles.actionButtons}>
-        <TouchableOpacity 
-          style={styles.deleteButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            deleteEntry(item.id);
-          }}
-        >
-          <Ionicons name="trash-outline" size={16} color="#dc3545" />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={styles.editButton}
-          onPress={(e) => {
-            e.stopPropagation();
-            navigation.navigate('JournalEntryDetails', { entry: item });
-          }}
-        >
-          <Ionicons name="pencil-outline" size={16} color="#DC851F" />
-        </TouchableOpacity>
+        <View style={styles.actionButtons}>
+          <TouchableOpacity 
+            style={styles.deleteButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              deleteEntry(item.id);
+            }}
+          >
+            <Ionicons name="trash-outline" size={16} color="#dc3545" />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.editButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              navigation.navigate('JournalEntryDetails', { entry: item });
+            }}
+          >
+            <Ionicons name="pencil-outline" size={16} color="#DC851F" />
+          </TouchableOpacity>
+        </View>
       </View>
         </Pressable>
       </Animated.View>
@@ -309,7 +303,9 @@ const styles = StyleSheet.create({
   entryCard: {
     backgroundColor: '#1a1a1a',
     borderRadius: 12,
-    padding: 16,
+    paddingTop: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -355,16 +351,24 @@ const styles = StyleSheet.create({
     color: '#999',
     marginTop: 4,
   },
+  entryImageContainer: {
+    marginLeft: 12,
+  },
   entryImage: {
-    width: 60,
-    height: 60,
+    width: 80,
+    height: 80,
     borderRadius: 8,
   },
   ratingSection: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 12,
+  },
+  ratingAndStrength: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: 8,
   },
   overallRating: {
     flexDirection: 'row',
@@ -382,14 +386,12 @@ const styles = StyleSheet.create({
   },
   strengthContainer: {
     alignSelf: 'flex-start',
-    marginLeft: 8,
   },
   actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     justifyContent: 'flex-end',
-    marginTop: 12,
   },
   deleteButton: {
     padding: 8,
@@ -419,38 +421,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  locationAndActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   locationSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
     gap: 4,
+    flex: 1,
   },
   locationText: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
-  },
-  flavorsSection: {
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  flavorsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-  },
-  flavorChip: {
-    backgroundColor: '#FFA737',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  flavorChipText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  moreFlavorsText: {
     fontSize: 12,
     color: '#999',
     fontStyle: 'italic',
@@ -462,7 +445,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#999',
     lineHeight: 14,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   entrySetting: {
     fontSize: 12,

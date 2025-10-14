@@ -19,6 +19,8 @@ import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { RootStackParamList, InventoryItem, TabParamList } from '../types';
 import { StorageService } from '../storage/storageService';
 import SubscriptionBanner from '../components/SubscriptionBanner';
+import { useScreenLoading } from '../hooks/useScreenLoading';
+import { RevenueCatService } from '../services/revenueCatService';
 
 type HomeScreenNavigationProp = BottomTabNavigationProp<TabParamList, 'Home'> & {
   navigate: (screen: string, params?: any) => void;
@@ -31,7 +33,7 @@ export default function HomeScreen() {
   const [inventoryCount, setInventoryCount] = useState(0);
   const [journalCount, setJournalCount] = useState(0);
   const [latestJournalEntries, setLatestJournalEntries] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { loading, setLoading } = useScreenLoading(true);
 
   useFocusEffect(
     useCallback(() => {
@@ -49,14 +51,74 @@ export default function HomeScreen() {
       setInventoryCount(inventory.reduce((sum, item) => sum + item.quantity, 0));
       setJournalCount(journal.length);
       
-      // Get latest 3 journal entries
-      const sortedJournal = journal.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      // Get latest 3 journal entries (already sorted by getJournalEntries, but ensure proper order)
+      const sortedJournal = journal.sort((a, b) => {
+        // Sort by date first (most recent first)
+        const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
+        if (dateComparison !== 0) return dateComparison;
+        
+        // If dates are the same, sort by ID (most recent first - assuming newer entries have higher IDs)
+        return b.id.localeCompare(a.id);
+      });
       setLatestJournalEntries(sortedJournal.slice(0, 3));
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       Alert.alert('Error', 'Failed to load dashboard data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const testRevenueCat = async () => {
+    try {
+      console.log('🧪 Testing RevenueCat connection...');
+      
+      // Step 1: Force re-initialize RevenueCat to ensure clean state
+      console.log('🔧 Force re-initializing RevenueCat...');
+      await RevenueCatService.forceReinitialize();
+      console.log('✅ RevenueCat force re-initialized');
+      
+      // Step 2: Test basic connection
+      console.log('🔍 Testing basic connection...');
+      const customerInfo = await RevenueCatService.getCustomerInfo();
+      console.log('✅ Customer info retrieved:', {
+        userId: customerInfo.originalAppUserId,
+        activeSubscriptions: Object.keys(customerInfo.activeSubscriptions),
+        entitlements: Object.keys(customerInfo.entitlements.active)
+      });
+      
+      // Step 3: Test offerings
+      console.log('📦 Testing offerings...');
+      const offerings = await RevenueCatService.getOfferings();
+      console.log('✅ RevenueCat offerings count:', offerings.length);
+      
+      // Log detailed offering information
+      offerings.forEach((offering, index) => {
+        console.log(`📦 Offering ${index + 1}:`, {
+          identifier: offering.identifier,
+          displayName: offering.serverDescription,
+          packageCount: offering.availablePackages.length
+        });
+        
+        offering.availablePackages.forEach((pkg, pkgIndex) => {
+          console.log(`  📦 Package ${pkgIndex + 1}:`, {
+            identifier: pkg.identifier,
+            title: pkg.product.title,
+            price: pkg.product.priceString
+          });
+        });
+      });
+      
+      Alert.alert(
+        'RevenueCat Test Success', 
+        `✅ Connection successful!\n\nFound ${offerings.length} offerings with ${offerings.reduce((total, offering) => total + offering.availablePackages.length, 0)} packages.\n\nCheck console for full details.`
+      );
+    } catch (error) {
+      console.error('❌ RevenueCat test failed:', error);
+      Alert.alert(
+        'RevenueCat Test Failed', 
+        `Error: ${error.message || 'Unknown error'}\n\nCheck console for details.`
+      );
     }
   };
 
@@ -98,6 +160,14 @@ export default function HomeScreen() {
         {/* Subscription Banner */}
         <SubscriptionBanner />
 
+        {/* Development Test Button */}
+        <TouchableOpacity 
+          style={styles.testButton} 
+          onPress={testRevenueCat}
+        >
+          <Text style={styles.testButtonText}>Test RevenueCat API</Text>
+        </TouchableOpacity>
+
         {/* Main Actions */}
         <View style={styles.mainActions}>
           <Pressable style={styles.actionButton} onPress={handleCigarRecognition}>
@@ -115,7 +185,7 @@ export default function HomeScreen() {
         <View style={styles.statsContainer}>
           <Pressable 
             style={styles.statItem} 
-            onPress={() => navigation.navigate('MainTabs', { screen: 'Inventory' })}
+            onPress={() => navigation.navigate('MainTabs', { screen: 'HumidorList' })}
           >
             <Text style={styles.statNumber}>{inventoryCount}</Text>
             <Text style={styles.statLabel}>Humidor</Text>
@@ -292,5 +362,18 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 20,
+  },
+  testButton: {
+    backgroundColor: '#DC851F',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  testButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

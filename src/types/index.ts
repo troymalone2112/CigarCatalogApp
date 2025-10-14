@@ -108,6 +108,13 @@ export interface InventoryItem {
   location?: string; // Humidor location
   notes?: string;
   humidorId?: string; // Reference to specific humidor
+  
+  // New cigar specification fields
+  dateAcquired?: Date; // When the cigar was acquired
+  agingPreferenceMonths?: number; // Preferred aging time in months (0-24)
+  lengthInches?: number; // Length in inches
+  ringGauge?: number; // Ring gauge (diameter in 64ths of an inch)
+  vitola?: string; // Cigar shape/vitola
 }
 
 export interface JournalEntry {
@@ -130,8 +137,8 @@ export interface JournalEntry {
   };
   setting?: string;
   pairing?: string;
-  imageUrl?: string;
-  photos?: string[]; // Array of photo URIs taken during the smoking experience
+  imageUrl?: string; // Main cigar image (from recognition)
+  photos?: string[]; // Additional photos from smoking experience
 }
 
 export interface UserPreferences {
@@ -221,22 +228,7 @@ export interface RecognitionResult {
 export type RootStackParamList = {
   MainTabs: { screen: keyof TabParamList; params?: any } | undefined;
   CigarRecognition: { openSearch?: boolean; humidorId?: string } | undefined;
-  CigarDetails: { cigar: Cigar };
-  HumidorList: undefined;
-  Inventory: { humidorId?: string; humidorName?: string; highlightItemId?: string };
-  AddToInventory: { cigar: Cigar; singleStickPrice?: string; existingItem?: InventoryItem; mode?: 'addMore' | 'edit'; humidorId?: string };
-  EditOptions: { item: InventoryItem };
-  CreateHumidor: undefined;
-  EditHumidor: { humidor: Humidor };
-  Journal: undefined;
-  JournalCigarRecognition: undefined;
-  JournalManualEntry: undefined;
-  JournalCigarPreview: { cigar: Cigar };
-  JournalInitialNotes: { cigar: Cigar };
-  JournalRating: { cigar: Cigar; initialNotes: string; location?: { city: string; state?: string; country?: string; }; photos?: string[] };
-  JournalNotes: { cigar: Cigar; rating: number; selectedFlavors: string[]; initialNotes: string; location?: { city: string; state?: string; country?: string; }; photos?: string[] };
-  JournalEntryDetails: { entry: JournalEntry };
-  Recommendations: undefined;
+  NewJournalEntry: { cigar: Cigar; recognitionImageUrl?: string };
   Settings: undefined;
   Login: undefined;
   SignUp: undefined;
@@ -255,6 +247,32 @@ export type TabParamList = {
   HumidorList: undefined;
   Journal: undefined;
   Recommendations: undefined;
+};
+
+// Nested Stack Navigator Types
+export type HumidorStackParamList = {
+  HumidorListMain: { fromRecognition?: boolean; cigar?: Cigar; singleStickPrice?: string } | undefined;
+  Inventory: { humidorId?: string; humidorName?: string; highlightItemId?: string };
+  AddToInventory: { cigar: Cigar; singleStickPrice?: string; existingItem?: InventoryItem; mode?: 'addMore' | 'edit'; humidorId?: string };
+  CigarDetails: { cigar: Cigar };
+  EditOptions: { item: InventoryItem };
+  CreateHumidor: undefined;
+  EditHumidor: { humidor: Humidor };
+};
+
+export type JournalStackParamList = {
+  Journal: undefined;
+  JournalCigarRecognition: undefined;
+  JournalManualEntry: undefined;
+  JournalInitialNotes: { cigar: Cigar };
+  JournalRating: { cigar: Cigar; initialNotes: string; location?: { city: string; state?: string; country?: string; }; photos?: string[] };
+  JournalNotes: { cigar: Cigar; rating: number; selectedFlavors: string[]; initialNotes: string; location?: { city: string; state?: string; country?: string; }; photos?: string[] };
+  JournalEntryDetails: { entry: JournalEntry };
+};
+
+export type RecommendationsStackParamList = {
+  Recommendations: undefined;
+  CigarDetails: { cigar: Cigar };
 };
 
 // API Response types

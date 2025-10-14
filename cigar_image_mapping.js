@@ -53,7 +53,7 @@ const imageMapping = {
     'Colorado XV Anniversary': '14_casa_magna_colorado_xv_anniversary.jpeg'
   },
   'Romeo y Julieta': {
-    'Wide Churchill': '15_romeo_y_julieta_wide_churchill.png'
+    'Wide Churchill': '15_romeo_y_julieta_wide_churchhill.jpg'
   },
   'Perdomo': {
     '30th Anniversary Sun Grown Epicure': '16_perdomo_30th_anniversary_sun_grown_epicure.jpeg'
@@ -66,6 +66,9 @@ const imageMapping = {
   },
   'Tatuaje': {
     'Reserva A Uno': '25_tatuaje_reserva_a_uno.jpeg'
+  },
+  'Hoyo de Monterrey': {
+    'Elegantes': 'Hoyo-de-Monterrey-Elegantes.jpg'
   },
   
   // 2023 Top 25 Cigars

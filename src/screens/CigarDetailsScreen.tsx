@@ -9,12 +9,12 @@ import {
   ImageBackground 
 } from 'react-native';
 import { RouteProp, useNavigation } from '@react-navigation/native';
-import { RootStackParamList } from '../types';
+import { RootStackParamList, HumidorStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
-import { normalizeStrength } from '../utils/helpers';
 import { getStrengthInfo } from '../utils/strengthUtils';
+import StrengthButton from '../components/StrengthButton';
 
-type CigarDetailsScreenRouteProp = RouteProp<RootStackParamList, 'CigarDetails'>;
+type CigarDetailsScreenRouteProp = RouteProp<HumidorStackParamList, 'CigarDetails'>;
 
 interface Props {
   route: CigarDetailsScreenRouteProp;
@@ -57,22 +57,20 @@ export default function CigarDetailsScreen({ route }: Props) {
                 
                 {/* Strength Badge */}
                 {cigar.strength && (
-                  <View style={[styles.strengthBadge, getStrengthBadgeStyle(cigar.strength)]}>
-                    <Text style={[styles.strengthText, { color: getStrengthInfo(cigar.strength).color }]}>
-                      {normalizeStrength(cigar.strength)}
-                    </Text>
+                  <View style={styles.flavorTags}>
+                    <View style={[styles.flavorTag, { backgroundColor: getStrengthInfo(cigar.strength).color }]}>
+                      <Text style={styles.flavorText}>{getStrengthInfo(cigar.strength).label}</Text>
+                    </View>
                   </View>
                 )}
               </View>
 
               <View style={styles.imageContainer}>
                 {/* Cigar Image */}
-                {cigar.imageUrl ? (
+                {cigar.imageUrl && cigar.imageUrl !== 'placeholder' ? (
                   <Image source={{ uri: cigar.imageUrl }} style={styles.cigarImage} />
                 ) : (
-                  <View style={styles.placeholderImage}>
-                    <Ionicons name="image-outline" size={48} color="#999" />
-                  </View>
+                  <Image source={require('../../assets/cigar-placeholder.jpg')} style={styles.cigarImage} />
                 )}
               </View>
             </View>
@@ -289,14 +287,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   flavorTag: {
-    backgroundColor: '#333333',
+    backgroundColor: '#FFA737',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
   },
   flavorText: {
     fontSize: 14,
-    color: '#CCCCCC',
+    color: '#FFFFFF',
     fontWeight: '500',
   },
   detailsGrid: {

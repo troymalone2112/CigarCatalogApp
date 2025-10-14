@@ -53,11 +53,8 @@ export default function SignUpScreen() {
       setIsSubmitting(true);
       Keyboard.dismiss();
       await signUp(email, password, fullName);
-      Alert.alert(
-        'Success', 
-        'Account created successfully! You can now start using the app.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
-      );
+      // Navigate to login directly without popup
+      navigation.navigate('Login');
     } catch (error: any) {
       Alert.alert('Sign Up Failed', error.message || 'An error occurred during sign up');
     } finally {

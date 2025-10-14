@@ -166,7 +166,7 @@ export default function RecommendationsScreen() {
       '10_brick_house_churchill.jpeg': require('../../assets/Cigar_Images/10_brick_house_churchill.jpeg'),
       '11_la_aroma_de_cuba_pasion_box_pressed_torpedo.jpeg': require('../../assets/Cigar_Images/11_la_aroma_de_cuba_pasion_box_pressed_torpedo.jpeg'),
       '14_casa_magna_colorado_xv_anniversary.jpeg': require('../../assets/Cigar_Images/14_casa_magna_colorado_xv_anniversary.jpeg'),
-      '15_romeo_y_julieta_wide_churchill.png': require('../../assets/Cigar_Images/15_romeo_y_julieta_wide_churchill.png'),
+      '15_romeo_y_julieta_wide_churchhill.jpg': require('../../assets/Cigar_Images/15_romeo_y_julieta_wide_churchhill.jpg'),
       '16_perdomo_30th_anniversary_sun_grown_epicure.jpeg': require('../../assets/Cigar_Images/16_perdomo_30th_anniversary_sun_grown_epicure.jpeg'),
       '19_herrera_esteli_norteno_lonsdale.jpeg': require('../../assets/Cigar_Images/19_herrera_esteli_norteno_lonsdale.jpeg'),
       '23_warped_corto_x52.jpeg': require('../../assets/Cigar_Images/23_warped_corto_x52.jpeg'),
@@ -602,13 +602,13 @@ const styles = StyleSheet.create({
   },
   flavorTag: {
     backgroundColor: '#FFA737',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
   },
   flavorTagText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 14,
     fontWeight: '500',
   },
   cardActions: {

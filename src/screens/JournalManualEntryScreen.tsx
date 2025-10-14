@@ -15,7 +15,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList, RecognitionMode } from '../types';
 import { APIService } from '../services/apiService';
-import { normalizeStrength } from '../utils/helpers';
+import { getStrengthInfo } from '../utils/strengthUtils';
 
 type JournalManualEntryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'JournalManualEntry'>;
 type JournalManualEntryScreenRouteProp = RouteProp<RootStackParamList, 'JournalManualEntry'>;
@@ -50,7 +50,7 @@ export default function JournalManualEntryScreen() {
         filler: result.enrichedCigar.filler || '',
         binder: result.enrichedCigar.binder || '',
         tobacco: result.enrichedCigar.tobacco || '',
-        strength: normalizeStrength(result.enrichedCigar.strength || 'Medium'),
+        strength: getStrengthInfo(result.enrichedCigar.strength || 'Medium').level,
         flavorProfile: result.enrichedCigar.flavorProfile || [],
         tobaccoOrigins: result.enrichedCigar.tobaccoOrigins || [],
         smokingExperience: result.enrichedCigar.smokingExperience || {
@@ -63,9 +63,11 @@ export default function JournalManualEntryScreen() {
         tobaccoOrigin: result.enrichedCigar.tobaccoOrigin,
         flavorTags: result.enrichedCigar.flavorTags,
         cigarAficionadoRating: result.enrichedCigar.cigarAficionadoRating,
+        imageUrl: 'placeholder', // Use placeholder for manual entries
       };
       
-      navigation.navigate('JournalInitialNotes', { cigar });
+      // Navigate to new single journal entry screen
+      navigation.navigate('NewJournalEntry', { cigar });
     } catch (error) {
       console.error('Error processing manual entry:', error);
       Alert.alert('Error', 'Failed to identify cigar. Please try again.');

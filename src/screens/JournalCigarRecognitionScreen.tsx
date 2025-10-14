@@ -18,8 +18,8 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList, Cigar, RecognitionMode } from '../types';
 import { APIService } from '../services/apiService';
-import { normalizeStrength } from '../utils/helpers';
 import { getStrengthInfo } from '../utils/strengthUtils';
+import StrengthButton from '../components/StrengthButton';
 
 type JournalCigarRecognitionScreenNavigationProp = StackNavigationProp<RootStackParamList, 'JournalCigarRecognition'>;
 
@@ -148,7 +148,8 @@ export default function JournalCigarRecognitionScreen() {
         flavorTags: recognitionResult.enrichedCigar.flavorTags,
         cigarAficionadoRating: recognitionResult.enrichedCigar.cigarAficionadoRating,
       };
-      navigation.navigate('JournalInitialNotes', { cigar });
+      // Navigate to new single journal entry screen
+      navigation.navigate('NewJournalEntry', { cigar });
     }
   };
 
@@ -193,8 +194,10 @@ export default function JournalCigarRecognitionScreen() {
               <Text style={styles.cigarName}>{recognitionResult.enrichedCigar.name}</Text>
               
               <View style={styles.strengthContainer}>
-                <View style={[styles.strengthPill, { backgroundColor: getStrengthColor(recognitionResult.enrichedCigar.strength || 'Medium') }]}>
-                  <Text style={styles.strengthText}>{normalizeStrength(recognitionResult.enrichedCigar.strength || 'Medium')}</Text>
+                <View style={styles.flavorTags}>
+                  <View style={[styles.flavorTag, { backgroundColor: getStrengthInfo(recognitionResult.enrichedCigar.strength || 'Medium').color }]}>
+                    <Text style={styles.flavorText}>{getStrengthInfo(recognitionResult.enrichedCigar.strength || 'Medium').label}</Text>
+                  </View>
                 </View>
               </View>
 
@@ -530,5 +533,21 @@ const styles = StyleSheet.create({
     height: 50,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  flavorTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  flavorTag: {
+    backgroundColor: '#FFA737',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  flavorText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

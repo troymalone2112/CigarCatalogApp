@@ -238,3 +238,7 @@ COMMENT ON FUNCTION assign_user_role(UUID, VARCHAR, UUID) IS 'Assigns a role to 
 COMMENT ON FUNCTION create_default_user_role() IS 'Automatically assigns standard_user role to new users';
 
 
+
+
+
+

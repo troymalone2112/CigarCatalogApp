@@ -318,20 +318,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   flavorTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    backgroundColor: '#333333',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#666666', // Gray for unselected
     borderWidth: 1,
     borderColor: '#555555',
   },
   flavorTagSelected: {
-    backgroundColor: '#FFA737',
+    backgroundColor: '#FFA737', // Yellow for selected
     borderColor: '#DC851F',
   },
   flavorTagText: {
     fontSize: 12,
-    color: '#CCCCCC',
+    color: '#FFFFFF', // White text for both states
     fontWeight: '500',
   },
   flavorTagTextSelected: {

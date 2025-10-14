@@ -46,22 +46,24 @@ export default function EditHumidorScreen() {
         return;
       }
 
-      await DatabaseService.updateHumidor(humidor.id, {
+      const descriptionValue = description.trim() === '' ? null : description.trim();
+      
+      console.log('🔄 Updating humidor:', humidor.id, {
         name: name.trim(),
-        description: description.trim() || undefined,
+        description: descriptionValue,
         capacity: capacityNumber,
       });
+      
+      const updatedHumidor = await DatabaseService.updateHumidor(humidor.id, {
+        name: name.trim(),
+        description: descriptionValue,
+        capacity: capacityNumber,
+      });
+      
+      console.log('✅ Humidor updated successfully:', updatedHumidor);
 
-      Alert.alert(
-        'Success',
-        'Humidor updated successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      // Navigate back directly without popup
+      navigation.goBack();
     } catch (error: any) {
       console.error('Error updating humidor:', error);
       
@@ -98,16 +100,8 @@ export default function EditHumidorScreen() {
       setLoading(true);
       await DatabaseService.deleteHumidor(humidor.id);
       
-      Alert.alert(
-        'Success',
-        'Humidor deleted successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      // Navigate back directly without popup
+      navigation.goBack();
     } catch (error) {
       console.error('Error deleting humidor:', error);
       Alert.alert('Error', 'Failed to delete humidor. Please try again.');

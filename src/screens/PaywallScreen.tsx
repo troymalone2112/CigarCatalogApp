@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,39 +7,104 @@ import {
   ScrollView,
   ImageBackground,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { SubscriptionPlan } from '../services/subscriptionService';
+import { RevenueCatService } from '../services/revenueCatService';
+import { PurchasesPackage } from 'react-native-purchases';
 
 export default function PaywallScreen() {
   const navigation = useNavigation();
   const { subscriptionStatus, subscriptionPlans, createPremiumSubscription, loading } = useSubscription();
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [purchasing, setPurchasing] = useState(false);
+  const [revenueCatPackages, setRevenueCatPackages] = useState<PurchasesPackage[]>([]);
+  const [loadingPackages, setLoadingPackages] = useState(true);
 
   const monthlyPlan = subscriptionPlans.find(plan => plan.name === 'Premium Monthly');
   const yearlyPlan = subscriptionPlans.find(plan => plan.name === 'Premium Yearly');
+
+  // Load RevenueCat packages on component mount
+  useEffect(() => {
+    loadRevenueCatPackages();
+  }, []);
+
+  const loadRevenueCatPackages = async () => {
+    try {
+      setLoadingPackages(true);
+      const offerings = await RevenueCatService.getOfferings();
+      console.log('📦 RevenueCat offerings loaded:', offerings);
+      
+      // Extract all packages from all offerings
+      const allPackages = offerings.flatMap(offering => offering.availablePackages);
+      console.log('📦 All available packages:', allPackages.map(pkg => ({
+        identifier: pkg.identifier,
+        title: pkg.product.title,
+        price: pkg.product.priceString
+      })));
+      
+      setRevenueCatPackages(allPackages);
+    } catch (error) {
+      console.error('❌ Failed to load RevenueCat packages:', error);
+    } finally {
+      setLoadingPackages(false);
+    }
+  };
 
   const handlePurchase = async (plan: SubscriptionPlan) => {
     try {
       setPurchasing(true);
       
-      // In a real app, you'd integrate with Stripe or another payment processor
-      // For now, we'll simulate a successful purchase
-      const result = await createPremiumSubscription(plan.id, 'mock_payment_method');
+      // Debug: Log available packages
+      console.log('🔍 Available RevenueCat packages:', revenueCatPackages.map(pkg => ({
+        identifier: pkg.identifier,
+        title: pkg.product.title,
+        price: pkg.product.priceString
+      })));
       
-      if (result.success) {
+      console.log('🔍 Looking for plan:', plan.name);
+      
+      // Find the corresponding RevenueCat package
+      const revenueCatPackage = revenueCatPackages.find(pkg => {
+        if (plan.name === 'Premium Monthly') {
+          return pkg.identifier === '0004';
+        } else if (plan.name === 'Premium Yearly') {
+          return pkg.identifier === '0005';
+        }
+        return false;
+      });
+
+      if (!revenueCatPackage) {
+        console.error('❌ Package not found for plan:', plan.name);
+        console.error('❌ Available packages:', revenueCatPackages.map(p => p.identifier));
+        Alert.alert('Error', 'Subscription package not available. Please try again later.');
+        return;
+      }
+      
+      console.log('✅ Found matching package:', revenueCatPackage.identifier);
+
+      console.log('🛒 Purchasing package:', revenueCatPackage.identifier);
+      
+      // Make the purchase through RevenueCat
+      const purchaseResult = await RevenueCatService.purchasePackage(revenueCatPackage);
+      
+      if (purchaseResult.success) {
+        // Sync with our database
+        await RevenueCatService.syncSubscriptionStatus();
+        
         Alert.alert(
           'Welcome to Premium!',
           'Your subscription has been activated. Enjoy unlimited access to all features!',
           [{ text: 'Continue', onPress: () => navigation.goBack() }]
         );
       } else {
-        Alert.alert('Purchase Failed', result.error || 'Something went wrong');
+        Alert.alert('Purchase Failed', purchaseResult.error || 'Something went wrong');
       }
     } catch (error) {
+      console.error('❌ Purchase error:', error);
       Alert.alert('Purchase Failed', 'Please try again later');
     } finally {
       setPurchasing(false);
@@ -80,7 +145,7 @@ export default function PaywallScreen() {
         <View style={styles.featuresContainer}>
           {plan.features.slice(0, 4).map((feature, index) => (
             <View key={index} style={styles.featureRow}>
-              <Ionicons name="checkmark-circle" size={16} color="#7C2D12" />
+              <Ionicons name="checkmark-circle" size={16} color="#DC851F" />
               <Text style={styles.featureText}>{feature}</Text>
             </View>
           ))}
@@ -124,7 +189,7 @@ export default function PaywallScreen() {
             ].map((benefit, index) => (
               <View key={index} style={styles.benefitRow}>
                 <View style={styles.benefitIcon}>
-                  <Ionicons name={benefit.icon as any} size={24} color="#7C2D12" />
+                  <Ionicons name={benefit.icon as any} size={20} color="#DC851F" />
                 </View>
                 <View style={styles.benefitContent}>
                   <Text style={styles.benefitTitle}>{benefit.title}</Text>
@@ -139,14 +204,21 @@ export default function PaywallScreen() {
         <View style={styles.plansSection}>
           <Text style={styles.plansTitle}>Choose Your Plan</Text>
           
-          <View style={styles.plansContainer}>
-            {monthlyPlan && (
-              <PlanCard plan={monthlyPlan} />
-            )}
-            {yearlyPlan && (
-              <PlanCard plan={yearlyPlan} isPopular={true} />
-            )}
-          </View>
+          {loadingPackages ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color="#7C2D12" />
+              <Text style={styles.loadingText}>Loading subscription options...</Text>
+            </View>
+          ) : (
+            <View style={styles.plansContainer}>
+              {monthlyPlan && (
+                <PlanCard plan={monthlyPlan} />
+              )}
+              {yearlyPlan && (
+                <PlanCard plan={yearlyPlan} isPopular={true} />
+              )}
+            </View>
+          )}
         </View>
 
         {/* Purchase Button */}
@@ -178,30 +250,27 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   tobaccoBackgroundImage: {
-    opacity: 0.1,
+    opacity: 0.4,
     resizeMode: 'cover',
   },
   container: {
     flex: 1,
-    backgroundColor: 'rgba(10, 10, 10, 0.9)',
+    backgroundColor: '#0a0a0a',
   },
   scrollContent: {
-    padding: 20,
+    padding: 16,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 30,
-    marginTop: 20,
+    marginBottom: 24,
+    marginTop: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: 8,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 4,
   },
   subtitle: {
     fontSize: 16,
@@ -210,33 +279,35 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   benefitsSection: {
-    marginBottom: 30,
+    marginBottom: 24,
   },
   benefitsTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 20,
+    marginBottom: 16,
     textAlign: 'center',
   },
   benefitsList: {
-    backgroundColor: 'rgba(26, 26, 26, 0.8)',
-    borderRadius: 16,
-    padding: 20,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#555555',
   },
   benefitRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   benefitIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(124, 45, 18, 0.2)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(220, 133, 31, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 12,
   },
   benefitContent: {
     flex: 1,
@@ -252,46 +323,51 @@ const styles = StyleSheet.create({
     color: '#CCCCCC',
   },
   plansSection: {
-    marginBottom: 30,
+    marginBottom: 24,
   },
   plansTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    marginBottom: 20,
+    marginBottom: 16,
     textAlign: 'center',
   },
   plansContainer: {
     gap: 16,
   },
   planCard: {
-    backgroundColor: 'rgba(26, 26, 26, 0.9)',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 2,
-    borderColor: '#333333',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#555555',
     position: 'relative',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
   },
   popularPlan: {
-    borderColor: '#7C2D12',
-    backgroundColor: 'rgba(124, 45, 18, 0.1)',
+    borderColor: '#DC851F',
+    backgroundColor: 'rgba(220, 133, 31, 0.1)',
   },
   selectedPlan: {
-    borderColor: '#7C2D12',
-    backgroundColor: 'rgba(124, 45, 18, 0.15)',
+    borderColor: '#DC851F',
+    backgroundColor: 'rgba(220, 133, 31, 0.15)',
   },
   popularBadge: {
     position: 'absolute',
     top: -8,
-    left: 20,
-    backgroundColor: '#7C2D12',
+    left: 16,
+    backgroundColor: '#DC851F',
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
   },
   popularBadgeText: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   planName: {
@@ -306,9 +382,9 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   price: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#7C2D12',
+    color: '#DC851F',
   },
   period: {
     fontSize: 16,
@@ -317,9 +393,9 @@ const styles = StyleSheet.create({
   },
   savings: {
     fontSize: 14,
-    color: '#7C2D12',
+    color: '#DC851F',
     fontWeight: '600',
-    marginBottom: 16,
+    marginBottom: 12,
   },
   featuresContainer: {
     gap: 8,
@@ -335,33 +411,43 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   purchaseButton: {
-    backgroundColor: '#7C2D12',
-    borderRadius: 16,
-    paddingVertical: 18,
+    backgroundColor: '#DC851F',
+    borderRadius: 8,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#7C2D12',
-    shadowOffset: { width: 0, height: 4 },
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    shadowRadius: 4,
+    elevation: 3,
   },
   purchaseButtonDisabled: {
-    backgroundColor: '#4A1A0A',
+    backgroundColor: '#8B5A2B',
     opacity: 0.7,
   },
   purchaseButtonText: {
     color: 'white',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   footer: {
     alignItems: 'center',
+    marginTop: 8,
   },
   footerText: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#999999',
     textAlign: 'center',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  loadingText: {
+    color: '#CCCCCC',
+    fontSize: 14,
+    marginTop: 12,
   },
 });
 

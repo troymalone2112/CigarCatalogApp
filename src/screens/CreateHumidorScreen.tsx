@@ -49,23 +49,25 @@ export default function CreateHumidorScreen() {
         return;
       }
 
-      await DatabaseService.createHumidor(
+      const descriptionValue = description.trim() === '' ? null : description.trim();
+      
+      console.log('🔄 Creating humidor with data:', {
+        name: name.trim(),
+        description: descriptionValue,
+        capacity: capacityNumber
+      });
+      
+      const newHumidor = await DatabaseService.createHumidor(
         user.id,
         name.trim(),
-        description.trim() || undefined,
+        descriptionValue,
         capacityNumber
       );
+      
+      console.log('✅ Humidor created successfully:', newHumidor);
 
-      Alert.alert(
-        'Success',
-        'Humidor created successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      // Navigate back directly without popup
+      navigation.goBack();
     } catch (error: any) {
       console.error('Error creating humidor:', error);
       

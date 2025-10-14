@@ -7,16 +7,20 @@ import {
   ImageBackground,
   ScrollView
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 
 type OnboardingAgeVerificationNavigationProp = StackNavigationProp<RootStackParamList, 'OnboardingAgeVerification'>;
+type OnboardingAgeVerificationRouteProp = RouteProp<RootStackParamList, 'OnboardingAgeVerification'>;
 
 export default function OnboardingAgeVerificationScreen() {
   const navigation = useNavigation<OnboardingAgeVerificationNavigationProp>();
+  const route = useRoute<OnboardingAgeVerificationRouteProp>();
   const [ageVerified, setAgeVerified] = useState(false);
+  
+  const onComplete = route.params?.onComplete;
 
   const handleContinue = () => {
     if (ageVerified) {
@@ -24,9 +28,22 @@ export default function OnboardingAgeVerificationScreen() {
     }
   };
 
-  const handleSkip = () => {
-    // Allow users to skip onboarding and complete later
-    navigation.navigate('MainTabs', { screen: 'Home' });
+  const handleSkip = async () => {
+    // Allow users to skip onboarding and mark as completed
+    try {
+      const { StorageService } = await import('../../storage/storageService');
+      await StorageService.updateUserProfile({ onboardingCompleted: true });
+      // Call the onComplete callback to trigger the parent component to show the main app
+      if (onComplete) {
+        onComplete();
+      }
+    } catch (error) {
+      console.error('Error marking onboarding as completed:', error);
+      // Still complete onboarding even if marking as completed fails
+      if (onComplete) {
+        onComplete();
+      }
+    }
   };
 
   return (

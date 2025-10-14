@@ -30,6 +30,7 @@ export default function JournalNotesScreen() {
   const [location, setLocation] = useState<string>('');
   const [locationLoading, setLocationLoading] = useState(false);
   const [photos, setPhotos] = useState<string[]>(initialPhotos);
+  const [isSaving, setIsSaving] = useState(false);
 
   const takePicture = async () => {
     try {
@@ -98,9 +99,20 @@ export default function JournalNotesScreen() {
   };
 
   const handleSubmit = async () => {
+    console.log('🔍 Save Journal Entry button pressed!');
+    setIsSaving(true);
     try {
+      // Generate a proper UUID for the journal entry
+      const generateUUID = () => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+          const r = Math.random() * 16 | 0;
+          const v = c == 'x' ? r : (r & 0x3 | 0x8);
+          return v.toString(16);
+        });
+      };
+
       const journalEntry: JournalEntry = {
-        id: Date.now().toString(),
+        id: generateUUID(),
         cigar,
         date: new Date(),
         rating: {
@@ -120,14 +132,31 @@ export default function JournalNotesScreen() {
 
       await StorageService.saveJournalEntry(journalEntry);
       
-      // Navigate to journal page with highlighting
-      navigation.navigate('MainTabs', { 
-        screen: 'Journal', 
-        params: { highlightItemId: journalEntry.id } 
+      console.log('🔍 Navigating to Journal tab after successful save');
+      
+      // Navigate to journal page - use reset to ensure we go to the correct tab
+      navigation.reset({
+        index: 0,
+        routes: [
+          {
+            name: 'MainTabs',
+            state: {
+              routes: [
+                { name: 'Home' },
+                { name: 'HumidorList' },
+                { name: 'Journal' },
+                { name: 'Recommendations' }
+              ],
+              index: 2 // Journal is at index 2
+            }
+          }
+        ],
       });
     } catch (error) {
       console.error('Error saving journal entry:', error);
       Alert.alert('Error', 'Failed to save journal entry');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -217,12 +246,15 @@ export default function JournalNotesScreen() {
           </View>
         </View>
 
-        <TouchableOpacity 
-          style={styles.submitButton}
+        <TouchableOpacity
+          style={[styles.submitButton, isSaving && styles.submitButtonDisabled]}
           onPress={handleSubmit}
+          disabled={isSaving}
         >
-          <Ionicons name="checkmark" size={20} color="white" />
-          <Text style={styles.submitButtonText}>Save Journal Entry</Text>
+          <Ionicons name={isSaving ? "hourglass" : "checkmark"} size={20} color="white" />
+          <Text style={styles.submitButtonText}>
+            {isSaving ? "Saving..." : "Save Journal Entry"}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </ImageBackground>
@@ -386,6 +418,10 @@ const styles = StyleSheet.create({
     margin: 20,
     marginBottom: 300,
     gap: 8,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#666666',
+    opacity: 0.7,
   },
   submitButtonText: {
     color: '#FFFFFF',

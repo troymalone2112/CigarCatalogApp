@@ -114,7 +114,7 @@ export default function AdminDashboardScreen() {
     try {
       const success = await UserManagementService.updateUserRole(userId, newRole);
       if (success) {
-        Alert.alert('Success', `User role updated to ${UserManagementService.formatUserRole(newRole)}`);
+        // Refresh the user list without popup
         await loadRecentUsers();
       } else {
         Alert.alert('Error', 'Failed to update user role');
@@ -472,5 +472,9 @@ const styles = StyleSheet.create({
     color: '#999999',
   },
 });
+
+
+
+
 
 

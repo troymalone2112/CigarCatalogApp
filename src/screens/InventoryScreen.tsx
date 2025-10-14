@@ -19,8 +19,8 @@ import { RootStackParamList, InventoryItem, TabParamList, Humidor } from '../typ
 import { StorageService } from '../storage/storageService';
 import { DatabaseService } from '../services/supabaseService';
 import { useAuth } from '../contexts/AuthContext';
-import { normalizeStrength } from '../utils/helpers';
 import { getStrengthInfo } from '../utils/strengthUtils';
+import { useScreenLoading } from '../hooks/useScreenLoading';
 
 type InventoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Inventory'>;
 type InventoryScreenRouteProp = RouteProp<RootStackParamList, 'Inventory'>;
@@ -31,8 +31,7 @@ export default function InventoryScreen() {
   const { user } = useAuth();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { loading, refreshing, setLoading, setRefreshing } = useScreenLoading(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [forceUpdate, setForceUpdate] = useState(0);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
@@ -264,7 +263,7 @@ export default function InventoryScreen() {
             <View style={styles.detailsRow}>
               <View style={[styles.strengthBadge, getStrengthBadgeStyle(item.cigar.strength)]}>
                 <Text style={[styles.strengthText, { color: getStrengthInfo(item.cigar.strength).color }]}>
-                  {normalizeStrength(item.cigar.strength)}
+                  {getStrengthInfo(item.cigar.strength).label}
                 </Text>
               </View>
               {item.cigar.cigarAficionadoRating && (
@@ -319,17 +318,17 @@ export default function InventoryScreen() {
 
           <View style={styles.actionButtons}>
             <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => navigation.navigate('EditOptions', { item: item })}
+            >
+              <Ionicons name="create-outline" size={16} color="#DC851F" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
               style={styles.deleteButton}
               onPress={() => deleteItem(item.id)}
             >
               <Ionicons name="trash-outline" size={16} color="#dc3545" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => editItem(item)}
-            >
-              <Ionicons name="pencil-outline" size={16} color="#DC851F" />
             </TouchableOpacity>
           </View>
         </View>
@@ -734,7 +733,7 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: 'flex-end',
   },
-  editButton: {
+  deleteButton: {
     padding: 8,
     borderRadius: 6,
     backgroundColor: '#333333',
@@ -743,7 +742,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  deleteButton: {
+  editButton: {
     padding: 8,
     borderRadius: 6,
     backgroundColor: '#333333',

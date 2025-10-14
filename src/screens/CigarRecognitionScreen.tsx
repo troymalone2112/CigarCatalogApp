@@ -17,7 +17,8 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList, Cigar, RecognitionResult } from '../types';
 import { APIService } from '../services/apiService';
 import { StorageService } from '../storage/storageService';
-import { normalizeStrength } from '../utils/helpers';
+import { getStrengthInfo } from '../utils/strengthUtils';
+import StrengthButton from '../components/StrengthButton';
 
 type CigarRecognitionNavigationProp = StackNavigationProp<RootStackParamList, 'CigarRecognition'>;
 
@@ -97,7 +98,7 @@ export default function CigarRecognitionScreen() {
           wrapper: details.cigar.wrapper || 'Unknown',
           filler: details.cigar.filler || 'Unknown',
           binder: details.cigar.binder || 'Unknown',
-          strength: normalizeStrength(details.cigar.strength || 'Medium'),
+          strength: getStrengthInfo(details.cigar.strength || 'Medium').level,
           flavorProfile: details.cigar.flavorProfile || [],
           tobaccoOrigins: details.cigar.tobaccoOrigins || [],
           smokingExperience: details.cigar.smokingExperience || {
@@ -206,7 +207,11 @@ export default function CigarRecognitionScreen() {
             <View style={styles.quickInfo}>
               <View style={styles.infoItem}>
                 <Text style={styles.infoLabel}>Strength</Text>
-                <Text style={styles.infoValue}>{recognitionResult.cigar.strength}</Text>
+                <View style={styles.flavorTags}>
+                  <View style={[styles.flavorTag, { backgroundColor: getStrengthInfo(recognitionResult.cigar.strength).color }]}>
+                    <Text style={styles.flavorText}>{getStrengthInfo(recognitionResult.cigar.strength).label}</Text>
+                  </View>
+                </View>
               </View>
               <View style={styles.infoItem}>
                 <Text style={styles.infoLabel}>Wrapper</Text>
@@ -567,5 +572,21 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  flavorTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  flavorTag: {
+    backgroundColor: '#FFA737',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  flavorText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

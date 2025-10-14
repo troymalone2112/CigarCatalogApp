@@ -60,6 +60,8 @@ export default function OnboardingTastePreferencesScreen() {
         return;
       }
 
+      console.log('🔍 Finishing onboarding for user:', user.id);
+      
       // Create user profile
       const userProfile: UserProfile = {
         userId: user.id, // Use actual user ID from auth
@@ -75,15 +77,19 @@ export default function OnboardingTastePreferencesScreen() {
       // Save to storage
       await StorageService.saveUserProfile(userProfile);
       
+      console.log('✅ User profile saved, calling completion handler...');
+      
       // Call the completion handler if provided
       if (route.params?.onComplete) {
+        console.log('🔍 Calling onComplete handler...');
         route.params.onComplete();
       } else {
+        console.log('🔍 No onComplete handler, using fallback navigation...');
         // Fallback navigation
         navigation.navigate('MainTabs', { screen: 'Home' });
       }
     } catch (error) {
-      console.error('Error saving user profile:', error);
+      console.error('❌ Error saving user profile:', error);
       Alert.alert('Error', 'Failed to save preferences. Please try again.');
     }
   };

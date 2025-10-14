@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import axios from 'axios';
 import { ChatGPTRecognitionResponse, PerplexitySearchResponse, Cigar } from '../types';
-import { normalizeStrength } from '../utils/helpers';
+import { getStrengthInfo } from '../utils/strengthUtils';
 import { StrengthLevel } from '../utils/strengthUtils';
 import { 
   CIGAR_RECOGNITION_SYSTEM_PROMPT, 
@@ -107,8 +107,13 @@ export class APIService {
       }
 
       return JSON.parse(jsonString) as ChatGPTRecognitionResponse;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error recognizing cigar:', error);
+      
+      // Preserve original error context
+      if (error?.message) {
+        throw new Error(error.message);
+      }
       throw new Error('Failed to recognize cigar from image');
     }
   }
@@ -461,7 +466,7 @@ export class APIService {
               filler: cleanText(details.filler) || enrichedCigar.filler,
               binder: cleanText(details.binder) || enrichedCigar.binder,
               tobacco: cleanText(details.tobacco) || enrichedCigar.tobacco,
-              strength: normalizeStrength(details.strength || enrichedCigar.strength),
+              strength: getStrengthInfo(details.strength || enrichedCigar.strength).level,
               msrp: details.msrp || enrichedCigar.msrp,
               singleStickPrice: details.singleStickPrice || enrichedCigar.singleStickPrice,
               releaseYear: details.releaseYear || enrichedCigar.releaseYear,
@@ -610,7 +615,7 @@ export class APIService {
             filler: details.cigar.filler || 'Unknown',
             binder: details.cigar.binder || 'Unknown',
             tobacco: details.cigar.tobacco || 'Unknown',
-            strength: normalizeStrength(details.cigar.strength || 'Medium'),
+            strength: getStrengthInfo(details.cigar.strength || 'Medium').level,
             flavorProfile: details.cigar.flavorProfile || [],
             tobaccoOrigins: details.cigar.tobaccoOrigins || [],
             smokingExperience: details.cigar.smokingExperience || {
@@ -636,9 +641,14 @@ export class APIService {
         default:
           throw new Error(`Unknown recognition mode: ${mode}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(`❌ Error in ${mode} recognition:`, error);
-      throw error;
+      
+      // Preserve original error context for better debugging
+      if (error?.message) {
+        throw new Error(error.message);
+      }
+      throw new Error('Failed to identify and enrich cigar data');
     }
   }
 

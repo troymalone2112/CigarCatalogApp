@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ImageBackground } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { TabParamList, RootStackParamList } from '../types';
+import { TabParamList, RootStackParamList, HumidorStackParamList, JournalStackParamList, RecommendationsStackParamList } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { StorageService } from '../storage/storageService';
 
@@ -25,6 +25,7 @@ import JournalManualEntryScreen from '../screens/JournalManualEntryScreen';
 import JournalInitialNotesScreen from '../screens/JournalInitialNotesScreen';
 import JournalRatingScreen from '../screens/JournalRatingScreen';
 import JournalNotesScreen from '../screens/JournalNotesScreen';
+import NewJournalEntryScreen from '../screens/NewJournalEntryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
@@ -39,6 +40,11 @@ import EditHumidorScreen from '../screens/EditHumidorScreen';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createStackNavigator<RootStackParamList>();
+
+// Create separate Stack Navigators for each tab
+const HumidorStack = createStackNavigator<HumidorStackParamList>();
+const JournalStack = createStackNavigator<JournalStackParamList>();
+const RecommendationsStack = createStackNavigator<RecommendationsStackParamList>();
 
 // Custom Header Component for Home
 const CustomHeader = ({ title }: { title?: string }) => {
@@ -143,7 +149,276 @@ const headerStyles = StyleSheet.create({
   headerSpacer: {
     width: 40,
   },
+  backButton: {
+    padding: 8,
+  },
 });
+
+// Humidor Stack Navigator
+function HumidorStackNavigator() {
+  return (
+    <HumidorStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#0a0a0a',
+        },
+        headerTintColor: '#FFFFFF',
+        headerTitleStyle: {
+          fontWeight: '600',
+          fontSize: 16,
+          color: '#FFFFFF',
+        },
+        headerBackTitleVisible: false,
+        headerBackTitle: '',
+      }}
+    >
+      <HumidorStack.Screen 
+        name="HumidorListMain" 
+        component={HumidorListScreen} 
+        options={({ navigation }) => ({
+          header: () => (
+            <TabHeader 
+              title="My Humidors" 
+              onBackPress={() => navigation.goBack()} 
+            />
+          ),
+        })}
+      />
+      <HumidorStack.Screen 
+        name="Inventory" 
+        component={InventoryScreen}
+        options={({ route, navigation }) => ({
+          title: route.params?.humidorName || 'Humidor',
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: '400',
+            fontSize: 14,
+            color: '#FFFFFF',
+          },
+        })}
+      />
+      <HumidorStack.Screen 
+        name="AddToInventory" 
+        component={AddToInventoryScreen}
+        options={({ route }) => ({
+          title: route.params?.existingItem ? 'Update Entry' : 'Add to Humidor',
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: '400',
+            fontSize: 14,
+            color: '#FFFFFF',
+          },
+        })}
+      />
+      <HumidorStack.Screen 
+        name="CigarDetails" 
+        component={CigarDetailsScreen}
+        options={{
+          title: 'Cigar Details',
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: '400',
+            fontSize: 14,
+            color: '#FFFFFF',
+          },
+        }}
+      />
+      <HumidorStack.Screen 
+        name="EditOptions" 
+        component={EditOptionsScreen}
+        options={{
+          title: 'Manage Cigar',
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: '400',
+            fontSize: 14,
+            color: '#FFFFFF',
+          },
+        }}
+      />
+      <HumidorStack.Screen 
+        name="CreateHumidor" 
+        component={CreateHumidorScreen}
+        options={{
+          title: 'Create Humidor',
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: '400',
+            fontSize: 14,
+            color: '#FFFFFF',
+          },
+        }}
+      />
+      <HumidorStack.Screen 
+        name="EditHumidor" 
+        component={EditHumidorScreen}
+        options={{
+          title: 'Edit Humidor',
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: '400',
+            fontSize: 14,
+            color: '#FFFFFF',
+          },
+        }}
+      />
+    </HumidorStack.Navigator>
+  );
+}
+
+// Journal Stack Navigator
+function JournalStackNavigator() {
+  return (
+    <JournalStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#0a0a0a',
+        },
+        headerTintColor: '#FFFFFF',
+        headerTitleStyle: {
+          fontWeight: '600',
+          fontSize: 16,
+          color: '#FFFFFF',
+        },
+        headerBackTitleVisible: false,
+        headerBackTitle: '',
+      }}
+    >
+      <JournalStack.Screen 
+        name="Journal" 
+        component={JournalScreen} 
+        options={({ navigation }) => ({
+          header: () => (
+            <TabHeader 
+              title="Smoking Journal" 
+              onBackPress={() => navigation.goBack()} 
+            />
+          ),
+        })}
+      />
+      <JournalStack.Screen 
+        name="JournalCigarRecognition" 
+        component={JournalCigarRecognitionScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <TabHeader 
+              title="Identify Cigar" 
+              onBackPress={() => navigation.goBack()} 
+            />
+          ),
+        })}
+      />
+      <JournalStack.Screen 
+        name="JournalManualEntry" 
+        component={JournalManualEntryScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <TabHeader 
+              title="Search by Name" 
+              onBackPress={() => navigation.goBack()} 
+            />
+          ),
+        })}
+      />
+      <JournalStack.Screen 
+        name="JournalInitialNotes" 
+        component={JournalInitialNotesScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <TabHeader 
+              title="Start Entry" 
+              onBackPress={() => navigation.goBack()} 
+            />
+          ),
+        })}
+      />
+      <JournalStack.Screen 
+        name="JournalRating" 
+        component={JournalRatingScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <TabHeader 
+              title="Rate Your Experience" 
+              onBackPress={() => navigation.goBack()} 
+            />
+          ),
+        })}
+      />
+      <JournalStack.Screen 
+        name="JournalNotes" 
+        component={JournalNotesScreen}
+        options={({ navigation }) => ({
+          header: () => (
+            <TabHeader 
+              title="Final Notes" 
+              onBackPress={() => navigation.goBack()} 
+            />
+          ),
+        })}
+      />
+      <JournalStack.Screen 
+        name="JournalEntryDetails" 
+        component={JournalEntryDetailsScreen}
+        options={{
+          title: 'Journal Entry',
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: '400',
+            fontSize: 14,
+            color: '#FFFFFF',
+          },
+        }}
+      />
+    </JournalStack.Navigator>
+  );
+}
+
+// Recommendations Stack Navigator
+function RecommendationsStackNavigator() {
+  return (
+    <RecommendationsStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: '#0a0a0a',
+        },
+        headerTintColor: '#FFFFFF',
+        headerTitleStyle: {
+          fontWeight: '600',
+          fontSize: 16,
+          color: '#FFFFFF',
+        },
+        headerBackTitleVisible: false,
+        headerBackTitle: '',
+      }}
+    >
+      <RecommendationsStack.Screen 
+        name="Recommendations" 
+        component={RecommendationsScreen} 
+        options={({ navigation }) => ({
+          header: () => (
+            <TabHeader 
+              title="Recommendations" 
+              onBackPress={() => navigation.goBack()} 
+            />
+          ),
+        })}
+      />
+      <RecommendationsStack.Screen 
+        name="CigarDetails" 
+        component={CigarDetailsScreen}
+        options={{
+          title: 'Cigar Details',
+          headerTintColor: '#FFFFFF',
+          headerTitleStyle: {
+            fontWeight: '400',
+            fontSize: 14,
+            color: '#FFFFFF',
+          },
+        }}
+      />
+    </RecommendationsStack.Navigator>
+  );
+}
 
 function TabNavigator() {
   return (
@@ -161,7 +436,7 @@ function TabNavigator() {
           } else if (route.name === 'Recommendations') {
             iconName = focused ? 'star' : 'star-outline';
           } else {
-            iconName = 'circle';
+            iconName = 'ellipse';
           }
 
           return <Ionicons name={iconName} size={size} color={color} />;
@@ -195,40 +470,27 @@ function TabNavigator() {
       />
       <Tab.Screen 
         name="HumidorList" 
-        component={HumidorListScreen} 
-        options={({ navigation }) => ({
+        component={HumidorStackNavigator} 
+        options={{
           title: 'Humidor',
-          header: () => (
-            <TabHeader 
-              title="My Humidors" 
-              onBackPress={() => navigation.navigate('Home')} 
-            />
-          ),
-        })}
+          headerShown: false,
+        }}
       />
       <Tab.Screen 
         name="Journal" 
-        component={JournalScreen} 
-        options={({ navigation }) => ({
-          header: () => (
-            <TabHeader 
-              title="Smoking Journal" 
-              onBackPress={() => navigation.navigate('Home')} 
-            />
-          ),
-        })}
+        component={JournalStackNavigator} 
+        options={{
+          title: 'Journal',
+          headerShown: false,
+        }}
       />
       <Tab.Screen 
         name="Recommendations" 
-        component={RecommendationsScreen} 
-        options={({ navigation }) => ({
-          header: () => (
-            <TabHeader 
-              title="Recommendations" 
-              onBackPress={() => navigation.navigate('Home')} 
-            />
-          ),
-        })}
+        component={RecommendationsStackNavigator} 
+        options={{
+          title: 'Recommendations',
+          headerShown: false,
+        }}
       />
     </Tab.Navigator>
   );
@@ -236,10 +498,16 @@ function TabNavigator() {
 
 // Loading Screen Component
 const LoadingScreen = () => (
-  <View style={styles.loadingContainer}>
-    <ActivityIndicator size="large" color="#7C2D12" />
-    <Text style={styles.loadingText}>Loading...</Text>
-  </View>
+  <ImageBackground 
+    source={require('../../assets/tobacco-leaves-bg.jpg')}
+    style={styles.loadingContainer}
+    imageStyle={styles.loadingBackgroundImage}
+  >
+    <View style={styles.loadingContent}>
+      <ActivityIndicator size="large" color="#DC851F" />
+      <Text style={styles.loadingText}>Loading your cigar collection...</Text>
+    </View>
+  </ImageBackground>
 );
 
 // Auth Stack Navigator
@@ -264,7 +532,11 @@ function OnboardingStack({ onComplete }: { onComplete: () => void }) {
         headerShown: false,
       }}
     >
-      <Stack.Screen name="OnboardingAgeVerification" component={OnboardingAgeVerificationScreen} />
+      <Stack.Screen 
+        name="OnboardingAgeVerification" 
+        component={OnboardingAgeVerificationScreen}
+        initialParams={{ onComplete }}
+      />
       <Stack.Screen name="OnboardingExperience" component={OnboardingExperienceScreen} />
       <Stack.Screen name="OnboardingLevel" component={OnboardingLevelScreen} />
       <Stack.Screen 
@@ -280,39 +552,72 @@ function OnboardingStack({ onComplete }: { onComplete: () => void }) {
 }
 
 export default function AppNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading, profile, refreshProfile } = useAuth();
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+  const [onboardingCheckComplete, setOnboardingCheckComplete] = useState(false);
 
-  // Check onboarding status when user changes
+  // Check onboarding status when user or profile changes
   useEffect(() => {
     const checkOnboardingStatus = async () => {
-      if (user) {
+      if (user && profile) {
         try {
-          const completed = await StorageService.isOnboardingCompleted();
+          console.log('🔍 Checking onboarding status for user:', user.id);
+          console.log('🔍 Profile onboarding_completed:', profile.onboarding_completed);
+          
+          // Use the profile data directly from AuthContext instead of making another database call
+          const completed = profile.onboarding_completed || false;
+          console.log('✅ Onboarding status from profile:', completed);
           setOnboardingCompleted(completed);
+          setOnboardingCheckComplete(true); // Only mark complete when we have both user and profile
         } catch (error) {
-          console.error('Error checking onboarding status:', error);
-          setOnboardingCompleted(false);
+          console.error('❌ Error checking onboarding status:', error);
+          setOnboardingCompleted(false); // Default to false on error
+          setOnboardingCheckComplete(true);
         }
+      } else if (user && !profile) {
+        // User exists but profile hasn't loaded yet, wait for it
+        console.log('⏳ Waiting for profile to load...');
+        setOnboardingCompleted(null);
+        // Don't mark check as complete yet - we're still waiting for profile
       } else {
         setOnboardingCompleted(null);
+        setOnboardingCheckComplete(false); // Reset when no user
       }
     };
 
-    checkOnboardingStatus();
-  }, [user]);
+    // Set a timeout to prevent infinite loading on onboarding check
+    const onboardingTimeout = setTimeout(() => {
+      console.log('⏰ Onboarding check timeout - forcing completion');
+      setOnboardingCompleted(false); // Default to false
+      setOnboardingCheckComplete(true);
+    }, 5000); // 5 second timeout for onboarding check
+
+    checkOnboardingStatus().finally(() => {
+      clearTimeout(onboardingTimeout);
+    });
+
+    return () => clearTimeout(onboardingTimeout);
+  }, [user, profile]); // Watch both user and profile
 
   // Function to mark onboarding as completed
   const handleOnboardingComplete = async () => {
     try {
+      console.log('🔍 Completing onboarding...');
       await StorageService.updateUserProfile({ onboardingCompleted: true });
+      
+      // Refresh the profile in AuthContext to get updated onboarding status
+      await refreshProfile();
+      
       setOnboardingCompleted(true);
+      console.log('✅ Onboarding marked as completed');
     } catch (error) {
-      console.error('Error completing onboarding:', error);
+      console.error('❌ Error completing onboarding:', error);
     }
   };
 
-  if (loading || (user && onboardingCompleted === null)) {
+  // Show loading screen while auth is loading or while we're determining onboarding status
+  if (loading || (user && !onboardingCheckComplete)) {
+    console.log('🔄 Showing loading screen - loading:', loading, 'user:', !!user, 'onboardingCheckComplete:', onboardingCheckComplete);
     return <LoadingScreen />;
   }
 
@@ -336,7 +641,6 @@ export default function AppNavigator() {
             },
             headerBackTitleVisible: false,
             headerBackTitle: '',
-            headerBackButtonDisplayMode: 'default',
           }}
         >
         <Stack.Screen 
@@ -357,168 +661,9 @@ export default function AppNavigator() {
           })}
         />
         <Stack.Screen 
-          name="CigarDetails" 
-          component={CigarDetailsScreen}
-          options={{ 
-            title: 'Cigar Details',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="HumidorList" 
-          component={HumidorListScreen}
-          options={({ navigation }) => ({
-            header: () => (
-              <TabHeader 
-                title="My Humidors" 
-                onBackPress={() => navigation.goBack()} 
-              />
-            ),
-          })}
-        />
-        <Stack.Screen 
-          name="Inventory" 
-          component={InventoryScreen}
-          options={({ navigation, route }) => ({
-            header: () => (
-              <TabHeader 
-                title={route.params?.humidorName || "Humidor Details"} 
-                onBackPress={() => navigation.goBack()} 
-              />
-            ),
-          })}
-        />
-        <Stack.Screen 
-          name="AddToInventory" 
-          component={AddToInventoryScreen}
-          options={{ 
-            title: 'Add to Humidor',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="CreateHumidor" 
-          component={CreateHumidorScreen}
+          name="NewJournalEntry" 
+          component={NewJournalEntryScreen}
           options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="EditHumidor" 
-          component={EditHumidorScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="EditOptions" 
-          component={EditOptionsScreen}
-          options={{ 
-            title: 'Manage Cigar',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="AddJournalEntry" 
-          component={AddJournalEntryScreen}
-          options={{ 
-            title: 'New Journal Entry',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="JournalCigarRecognition" 
-          component={JournalCigarRecognitionScreen}
-          options={{ 
-            title: 'Identify Cigar',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="JournalManualEntry" 
-          component={JournalManualEntryScreen}
-          options={{ 
-            title: 'Search',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="JournalInitialNotes" 
-          component={JournalInitialNotesScreen}
-          options={{ 
-            title: 'Start Entry',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="JournalRating" 
-          component={JournalRatingScreen}
-          options={{ 
-            title: 'Rate & Review',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="JournalNotes" 
-          component={JournalNotesScreen}
-          options={{ 
-            title: 'Final Notes',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="JournalEntryDetails" 
-          component={JournalEntryDetailsScreen}
-          options={{ 
-            title: 'Journal Entry',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-          }}
         />
         <Stack.Screen 
           name="Settings" 
@@ -569,13 +714,22 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: '#0a0a0a',
   },
+  loadingBackgroundImage: {
+    opacity: 0.4,
+    resizeMode: 'cover',
+  },
+  loadingContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(10, 10, 10, 0.8)',
+  },
   loadingText: {
-    color: '#CCCCCC',
+    color: '#FFFFFF',
     fontSize: 16,
     marginTop: 16,
+    fontWeight: '400',
   },
 });

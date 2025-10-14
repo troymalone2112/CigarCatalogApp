@@ -11,12 +11,15 @@ import {
 } from 'react-native';
 import { RouteProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList, InventoryItem } from '../types';
+import { RootStackParamList, InventoryItem, HumidorStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { StorageService } from '../storage/storageService';
+import { DatabaseService } from '../services/supabaseService';
+import { useAuth } from '../contexts/AuthContext';
+import CigarSpecificationForm from '../components/CigarSpecificationForm';
 
-type AddToInventoryScreenRouteProp = RouteProp<RootStackParamList, 'AddToInventory'>;
-type AddToInventoryScreenNavigationProp = StackNavigationProp<RootStackParamList>;
+type AddToInventoryScreenRouteProp = RouteProp<HumidorStackParamList, 'AddToInventory'>;
+type AddToInventoryScreenNavigationProp = StackNavigationProp<HumidorStackParamList>;
 
 interface Props {
   route: AddToInventoryScreenRouteProp;
@@ -24,7 +27,15 @@ interface Props {
 
 export default function AddToInventoryScreen({ route }: Props) {
   const navigation = useNavigation<AddToInventoryScreenNavigationProp>();
+  const { user } = useAuth();
   const { cigar, singleStickPrice, existingItem, mode, humidorId } = route.params;
+  
+  console.log('🔍 AddToInventoryScreen params:', { 
+    mode, 
+    humidorId, 
+    existingItem: !!existingItem,
+    existingItemHumidorId: existingItem?.humidorId 
+  });
 
   useLayoutEffect(() => {
     console.log('Setting header options for AddToInventoryScreen');
@@ -46,6 +57,15 @@ export default function AddToInventoryScreen({ route }: Props) {
   const [priceType, setPriceType] = useState<'stick' | 'box'>(
     mode === 'addMore' ? 'stick' : (existingItem?.originalBoxPrice && existingItem?.sticksPerBox ? 'box' : 'stick')
   );
+  
+  // Cigar specification state
+  const [dateAcquired, setDateAcquired] = useState<Date>(existingItem?.dateAcquired || new Date());
+  const [agingPreferenceMonths, setAgingPreferenceMonths] = useState<number>(existingItem?.agingPreferenceMonths || 0);
+  const [lengthInches, setLengthInches] = useState<number | undefined>(existingItem?.lengthInches);
+  const [ringGauge, setRingGauge] = useState<number | undefined>(existingItem?.ringGauge);
+  const [vitola, setVitola] = useState<string | undefined>(existingItem?.vitola);
+  
+  console.log('🔍 AddToInventoryScreen render - mode:', mode, 'existingItem:', !!existingItem);
   const [pricePaid, setPricePaid] = useState(() => {
     if (mode === 'addMore') {
       return '';
@@ -64,6 +84,7 @@ export default function AddToInventoryScreen({ route }: Props) {
   const [notes, setNotes] = useState(existingItem?.notes || '');
 
   const handleSave = async () => {
+    console.log('🔍 handleSave called - mode:', mode, 'existingItem:', !!existingItem);
     try {
       // Calculate quantity and per-stick price based on price type
       let totalQuantity: number;
@@ -155,6 +176,12 @@ export default function AddToInventoryScreen({ route }: Props) {
           originalBoxPrice: existingItem.originalBoxPrice,
           sticksPerBox: existingItem.sticksPerBox,
           humidorId: humidorId || existingItem.humidorId,
+          // Update cigar specifications if provided
+          dateAcquired,
+          agingPreferenceMonths,
+          lengthInches,
+          ringGauge,
+          vitola,
         };
       } else {
         // Edit mode or new item: replace/create
@@ -169,10 +196,17 @@ export default function AddToInventoryScreen({ route }: Props) {
           location: location.trim() || undefined,
           notes: notes.trim() || undefined,
           humidorId: humidorId || existingItem?.humidorId,
+          // Cigar specifications
+          dateAcquired,
+          agingPreferenceMonths,
+          lengthInches,
+          ringGauge,
+          vitola,
         };
       }
 
       // Save to storage
+      console.log('🔍 About to save inventory item:', inventoryItem.id, inventoryItem.cigar.brand);
       await StorageService.saveInventoryItem(inventoryItem);
       console.log('✅ Saved inventory item:', inventoryItem);
       
@@ -196,16 +230,49 @@ export default function AddToInventoryScreen({ route }: Props) {
         displayQuantity = priceType === 'stick' ? `${totalQuantity} cigars` : `${boxQuantity} boxes (${totalQuantity} cigars)`;
       }
       
-      // Navigate back to MainTabs and then to Inventory tab immediately
-      navigation.navigate('MainTabs', { 
-        screen: 'Inventory',
-        params: { 
-          highlightItemId: inventoryItem.id 
+      // Navigate to the specific humidor's inventory view to show the saved cigar
+      console.log('🔍 About to navigate - humidorId:', humidorId);
+      console.log('🔍 About to navigate - existingItem?.humidorId:', existingItem?.humidorId);
+      console.log('🔍 About to navigate - inventoryItem.humidorId:', inventoryItem.humidorId);
+      
+      // Use the humidorId from the route params, existingItem, or inventoryItem
+      const targetHumidorId = humidorId || existingItem?.humidorId || inventoryItem.humidorId;
+      console.log('🔍 Target humidorId for navigation:', targetHumidorId);
+      
+      if (targetHumidorId) {
+        try {
+          // Get humidor name from database
+          const humidors = await DatabaseService.getHumidors(user?.id || '');
+          const selectedHumidor = humidors.find(h => h.id === targetHumidorId);
+          const humidorName = selectedHumidor?.name || 'Humidor';
+          
+          console.log('🔍 Navigating to Inventory with targetHumidorId:', targetHumidorId, 'humidorName:', humidorName);
+          
+          // Navigate to the Inventory screen within the HumidorStack
+          navigation.navigate('Inventory', {
+            humidorId: targetHumidorId,
+            humidorName: humidorName,
+            highlightItemId: inventoryItem.id
+          });
+        } catch (error) {
+          console.error('🔍 Error fetching humidor name:', error);
+          // Fallback to generic name
+          console.log('🔍 Fallback navigation to Inventory');
+          navigation.navigate('Inventory', {
+            humidorId: targetHumidorId,
+            humidorName: 'Humidor',
+            highlightItemId: inventoryItem.id
+          });
         }
-      });
+      } else {
+        // Fallback if no humidorId - go to humidor list
+        console.log('🔍 No humidorId, navigating to HumidorList');
+        navigation.navigate('HumidorListMain');
+      }
     } catch (error) {
-      console.error('Error saving to inventory:', error);
-      Alert.alert('Error', 'Failed to save cigar to inventory. Please try again.');
+      console.error('🔍 Error saving to inventory:', error);
+      console.error('🔍 Error details:', JSON.stringify(error));
+      Alert.alert('Error', `Failed to save cigar to inventory: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
     }
   };
 
@@ -333,6 +400,20 @@ export default function AddToInventoryScreen({ route }: Props) {
           )}
         </View>
 
+        {/* Cigar Specifications */}
+        <CigarSpecificationForm
+          dateAcquired={dateAcquired}
+          agingPreferenceMonths={agingPreferenceMonths}
+          lengthInches={lengthInches}
+          ringGauge={ringGauge}
+          vitola={vitola}
+          onDateAcquiredChange={setDateAcquired}
+          onAgingPreferenceChange={setAgingPreferenceMonths}
+          onLengthChange={setLengthInches}
+          onRingGaugeChange={setRingGauge}
+          onVitolaChange={setVitola}
+        />
+
         {/* Location Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Location</Text>
@@ -361,11 +442,28 @@ export default function AddToInventoryScreen({ route }: Props) {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.cancelButton} onPress={() => navigation.goBack()}>
+          <TouchableOpacity 
+            style={styles.cancelButton} 
+            onPress={() => {
+              console.log('🔍 Cancel button pressed');
+              navigation.goBack();
+            }}
+          >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            <Text style={styles.saveButtonText}>Add</Text>
+          <TouchableOpacity 
+            style={styles.saveButton} 
+            onPress={() => {
+              console.log('🔍 Update button pressed!');
+              console.log('🔍 Button press - mode:', mode, 'existingItem:', !!existingItem);
+              console.log('🔍 About to call handleSave');
+              handleSave();
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.saveButtonText}>
+              {mode === 'edit' || existingItem ? 'Update' : 'Add'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

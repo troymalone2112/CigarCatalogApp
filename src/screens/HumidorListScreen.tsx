@@ -10,7 +10,7 @@ import {
   ImageBackground,
   Dimensions,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
@@ -18,18 +18,24 @@ import { useAuth } from '../contexts/AuthContext';
 import { DatabaseService } from '../services/supabaseService';
 import { StorageService } from '../storage/storageService';
 import { HumidorStats, UserHumidorAggregate, Humidor } from '../types';
+import { useScreenLoading } from '../hooks/useScreenLoading';
 
 type HumidorListScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HumidorList'>;
+type HumidorListScreenRouteProp = RouteProp<RootStackParamList, 'HumidorList'>;
 
 const { width } = Dimensions.get('window');
 
 export default function HumidorListScreen() {
   const navigation = useNavigation<HumidorListScreenNavigationProp>();
+  const route = useRoute<HumidorListScreenRouteProp>();
   const { user } = useAuth();
+  
+  // Check if we're coming from recognition flow
+  const { fromRecognition, cigar, singleStickPrice } = route.params || {};
+  console.log('🔍 HumidorList params:', { fromRecognition, cigar: cigar?.brand, singleStickPrice });
   const [humidors, setHumidors] = useState<HumidorStats[]>([]);
   const [aggregateStats, setAggregateStats] = useState<UserHumidorAggregate | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { loading, refreshing, setLoading, setRefreshing } = useScreenLoading(true);
 
   const loadHumidorData = useCallback(async () => {
     if (!user) return;
@@ -56,6 +62,7 @@ export default function HumidorListScreen() {
       // Get aggregate statistics from database
       const aggregateData = await DatabaseService.getUserHumidorAggregate(user.id);
 
+      console.log('🔍 Loaded humidor stats:', humidorsWithStats.map(h => ({ name: h.humidorName, description: h.description })));
       setHumidors(humidorsWithStats);
       setAggregateStats(aggregateData);
     } catch (error) {
@@ -83,10 +90,22 @@ export default function HumidorListScreen() {
   };
 
   const handleHumidorPress = (humidor: HumidorStats) => {
-    navigation.navigate('Inventory', { 
-      humidorId: humidor.humidorId,
-      humidorName: humidor.humidorName 
-    });
+    console.log('🔍 Humidor pressed:', humidor.humidorName, 'fromRecognition:', fromRecognition);
+    if (fromRecognition && cigar && singleStickPrice !== undefined) {
+      // Coming from recognition flow - go to AddToInventory with selected humidor
+      console.log('🔍 Navigating to AddToInventory with humidor:', humidor.humidorId);
+      navigation.navigate('AddToInventory', {
+        cigar,
+        singleStickPrice,
+        humidorId: humidor.humidorId
+      });
+    } else {
+      // Normal flow - go to inventory view
+      navigation.navigate('Inventory', { 
+        humidorId: humidor.humidorId,
+        humidorName: humidor.humidorName 
+      });
+    }
   };
 
   const handleEditHumidor = (humidor: HumidorStats) => {
@@ -217,6 +236,12 @@ export default function HumidorListScreen() {
 
     return (
       <View style={styles.topContentWrapper}>
+        {fromRecognition && (
+          <View style={styles.recognitionHeader}>
+            <Text style={styles.recognitionTitle}>Select Humidor</Text>
+            <Text style={styles.recognitionSubtitle}>Choose which humidor to add this cigar to</Text>
+          </View>
+        )}
         <View style={styles.aggregateStats}>
           <View style={styles.aggregateStat}>
             <Text style={styles.aggregateValue}>{aggregateStats.totalHumidors}</Text>
@@ -241,7 +266,7 @@ export default function HumidorListScreen() {
       style={styles.container}
       imageStyle={styles.backgroundImage}
     >
-      {/* Full width stats section outside content wrapper */}
+      {/* Fixed stats section at top */}
       {renderHeader()}
       
       <View style={styles.content}>
@@ -283,17 +308,18 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     backgroundColor: 'transparent',
+    marginTop: -16, // Negative margin to allow cards to scroll under stats
   },
   listContainer: {
     padding: 16,
     paddingBottom: 100,
-    paddingTop: 0, // No top padding to allow flush header
+    paddingTop: 16, // Add top padding to account for negative margin
   },
   topContentWrapper: {
     backgroundColor: '#1a1a1a',
     marginHorizontal: 0,
     marginTop: 0,
-    marginBottom: 16, // Add margin for spacing like InventoryScreen
+    marginBottom: 16, // Keep margin for spacing
     paddingHorizontal: 16,
     paddingVertical: 16,
     paddingTop: 20, // Add extra padding at top since no margin
@@ -434,5 +460,20 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
+  },
+  recognitionHeader: {
+    marginBottom: 16,
+    alignItems: 'center',
+  },
+  recognitionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 4,
+  },
+  recognitionSubtitle: {
+    fontSize: 14,
+    color: '#CCCCCC',
+    textAlign: 'center',
   },
 });

@@ -7,11 +7,11 @@ import {
   Image
 } from 'react-native';
 import { RouteProp, useNavigation, StackNavigationProp } from '@react-navigation/native';
-import { RootStackParamList, InventoryItem } from '../types';
+import { RootStackParamList, InventoryItem, HumidorStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 
-type EditOptionsScreenRouteProp = RouteProp<RootStackParamList, 'EditOptions'>;
-type EditOptionsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
+type EditOptionsScreenRouteProp = RouteProp<HumidorStackParamList, 'EditOptions'>;
+type EditOptionsScreenNavigationProp = StackNavigationProp<HumidorStackParamList>;
 
 interface Props {
   route: EditOptionsScreenRouteProp;
@@ -94,13 +94,11 @@ export default function EditOptionsScreen({ route }: Props) {
           <TouchableOpacity style={styles.addMoreButton} onPress={handleAddMore}>
             <Ionicons name="add-circle" size={24} color="#CCCCCC" />
             <Text style={styles.addMoreButtonText}>Add More Cigars</Text>
-            <Text style={styles.addMoreButtonSubtext}>Add additional cigars to this entry</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.editButton} onPress={handleEdit}>
             <Ionicons name="pencil" size={24} color="#CCCCCC" />
             <Text style={styles.editButtonText}>Edit Entry</Text>
-            <Text style={styles.editButtonSubtext}>Modify this entry's details</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -190,12 +188,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#FFFFFF',
     marginTop: 8,
-    marginBottom: 4,
-  },
-  addMoreButtonSubtext: {
-    fontSize: 12,
-    color: '#999999',
-    textAlign: 'center',
   },
   editButton: {
     backgroundColor: '#DC851F',
@@ -210,11 +202,5 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#FFFFFF',
     marginTop: 8,
-    marginBottom: 4,
-  },
-  editButtonSubtext: {
-    fontSize: 12,
-    color: '#999999',
-    textAlign: 'center',
   },
 });

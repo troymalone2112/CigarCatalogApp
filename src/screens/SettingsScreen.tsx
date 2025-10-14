@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
+import { RevenueCatTest } from '../components/RevenueCatTest';
 
 type SettingsScreenNavigationProp = {
   navigate: (screen: string, params?: any) => void;
@@ -110,6 +111,12 @@ export default function SettingsScreen() {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#999999" />
           </TouchableOpacity>
+        </View>
+
+        {/* RevenueCat Test (Development Only) */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Development</Text>
+          <RevenueCatTest />
         </View>
 
         {/* Sign Out */}

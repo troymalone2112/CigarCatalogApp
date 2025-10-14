@@ -80,12 +80,10 @@ export default function JournalInitialNotesScreen() {
         >
           <View style={styles.cigarInfo}>
             <View style={styles.cigarHeader}>
-              {cigar.imageUrl ? (
+              {cigar.imageUrl && cigar.imageUrl !== 'placeholder' ? (
                 <Image source={{ uri: cigar.imageUrl }} style={styles.cigarImage} />
               ) : (
-                <View style={styles.placeholderImage}>
-                  <Ionicons name="image-outline" size={24} color="#999" />
-                </View>
+                <Image source={require('../../assets/cigar-placeholder.jpg')} style={styles.cigarImage} />
               )}
               <View style={styles.cigarTextInfo}>
                 <Text style={styles.cigarBrand}>{cigar.brand}</Text>

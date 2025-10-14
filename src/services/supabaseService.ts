@@ -12,7 +12,36 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: false,
   },
+  global: {
+    headers: {
+      'X-Client-Info': 'cigar-catalog-app',
+    },
+  },
+  db: {
+    schema: 'public',
+  },
 });
+
+// Add connection health check
+export const checkSupabaseConnection = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('count')
+      .limit(1);
+    
+    if (error) {
+      console.error('❌ Supabase connection check failed:', error);
+      return false;
+    }
+    
+    console.log('✅ Supabase connection healthy');
+    return true;
+  } catch (error) {
+    console.error('❌ Supabase connection check error:', error);
+    return false;
+  }
+};
 
 // Auth Service
 export const AuthService = {
@@ -131,7 +160,7 @@ export const DatabaseService = {
     return data;
   },
 
-  async updateProfile(userId: string, updates: any) {
+  async updateProfile(userId: string, updates: { full_name?: string; avatar_url?: string; onboarding_completed?: boolean }) {
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
@@ -381,22 +410,30 @@ export const JournalService = {
       .from('journal_entries')
       .select('*')
       .eq('user_id', userId)
-      .order('smoking_date', { ascending: false });
+      .order('smoking_date', { ascending: false })
+      .order('created_at', { ascending: false }); // Secondary sort by creation time
 
     if (error) throw error;
     return data || [];
   },
 
-  async saveJournalEntry(entry: any) {
+  async saveJournalEntry(journalData: any) {
+    console.log('🔍 JournalService.saveJournalEntry called with:', journalData);
     const { data, error } = await supabase
       .from('journal_entries')
-      .upsert(entry, { onConflict: 'id' })
+      .upsert(journalData, { onConflict: 'id' })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error saving journal entry:', error);
+      throw error;
+    }
+    
+    console.log('✅ Journal entry saved successfully');
     return data;
   },
+
 
   async deleteJournalEntry(entryId: string) {
     const { error } = await supabase
@@ -417,5 +454,104 @@ export const JournalService = {
 
     if (error) throw error;
     return data;
+  },
+};
+
+// Inventory Service
+export const InventoryService = {
+  async saveInventoryItem(inventoryData: any) {
+    console.log('🔍 InventoryService.saveInventoryItem called with data:', inventoryData.id);
+    const { data, error } = await supabase
+      .from('inventory')
+      .upsert(inventoryData, { onConflict: 'id' })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('🔍 InventoryService save error:', error);
+      throw error;
+    }
+    console.log('✅ InventoryService saved successfully:', data.id);
+    return data;
+  },
+
+  async getInventoryItems(humidorId?: string): Promise<any[]> {
+    let query = supabase
+      .from('inventory')
+      .select('*')
+      .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+
+    if (humidorId) {
+      query = query.eq('humidor_id', humidorId);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    // Transform to InventoryItem format
+    return data.map(item => ({
+      id: item.id,
+      cigar: {
+        id: item.cigar_data.id || item.id,
+        brand: item.cigar_data.brand || 'Unknown',
+        line: item.cigar_data.line || 'Unknown',
+        name: item.cigar_data.name || 'Unknown',
+        size: item.cigar_data.size || '',
+        wrapper: item.cigar_data.wrapper || '',
+        filler: item.cigar_data.filler || '',
+        binder: item.cigar_data.binder || '',
+        strength: item.cigar_data.strength || 'Medium',
+        flavorProfile: item.cigar_data.flavorProfile || item.cigar_data.flavor_profile || [],
+        tobaccoOrigins: item.cigar_data.tobaccoOrigins || item.cigar_data.tobacco_origins || [],
+        smokingExperience: item.cigar_data.smokingExperience || item.cigar_data.smoking_experience || {
+          first: '',
+          second: '',
+          final: '',
+        },
+        imageUrl: item.cigar_data.imageUrl || item.cigar_data.image_url,
+        msrp: item.cigar_data.msrp,
+        singleStickPrice: item.cigar_data.singleStickPrice || item.cigar_data.single_stick_price,
+        overview: item.cigar_data.overview,
+        tobaccoOrigin: item.cigar_data.tobaccoOrigin || item.cigar_data.tobacco_origin,
+        flavorTags: item.cigar_data.flavorTags || item.cigar_data.flavor_tags || [],
+        cigarAficionadoRating: item.cigar_data.cigarAficionadoRating || item.cigar_data.cigar_aficionado_rating,
+      },
+      quantity: item.quantity,
+      purchaseDate: new Date(item.created_at),
+      pricePaid: item.price_paid,
+      originalBoxPrice: item.original_box_price,
+      sticksPerBox: item.sticks_per_box,
+      location: item.location,
+      notes: item.notes,
+      humidorId: item.humidor_id,
+      // New cigar specification fields
+      dateAcquired: item.date_acquired ? new Date(item.date_acquired) : undefined,
+      agingPreferenceMonths: item.aging_preference_months || 0,
+      lengthInches: item.length_inches,
+      ringGauge: item.ring_gauge,
+      vitola: item.vitola,
+    }));
+  },
+
+  async updateInventoryQuantity(itemId: string, newQuantity: number) {
+    const { error } = await supabase
+      .from('inventory')
+      .update({ 
+        quantity: newQuantity,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', itemId);
+
+    if (error) throw error;
+  },
+
+  async removeInventoryItem(itemId: string) {
+    const { error } = await supabase
+      .from('inventory')
+      .delete()
+      .eq('id', itemId);
+
+    if (error) throw error;
   },
 };
