@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
   "name": "cigar-catalog-app",
   "version": "1.0.0",
   "main": "index.ts",
@@ -56,23 +55,3 @@
     "@types/react": "~19.1.10"
   }
 }
-=======
-  "name": "cigar-catalog-webhook",
-  "version": "1.0.0",
-  "description": "RevenueCat webhook handler for cigar app subscriptions",
-  "main": "index.js",
-  "scripts": {
-    "start": "netlify dev",
-    "build": "echo 'No build step needed for functions'"
-  },
-  "dependencies": {
-    "@supabase/supabase-js": "^2.39.3"
-  },
-  "devDependencies": {
-    "netlify-cli": "^17.0.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  }
-}
->>>>>>> 7c88dae1fa13c3c6ff60f293fd399865bc85e8c0
