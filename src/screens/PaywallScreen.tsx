@@ -305,6 +305,30 @@ export default function PaywallScreen() {
           <Text style={styles.restoreButtonText}>Restore Purchases</Text>
         </TouchableOpacity>
 
+        {/* Debug Button - Only show in development */}
+        {__DEV__ && (
+          <TouchableOpacity
+            style={styles.debugButton}
+            onPress={async () => {
+              try {
+                console.log('🔍 Debug button pressed - checking RevenueCat status...');
+                await RevenueCatService.debugSubscriptionStatus();
+                Alert.alert(
+                  'Debug Info',
+                  'Check the console logs for detailed RevenueCat subscription information. This will help identify why purchases are failing.',
+                  [{ text: 'OK' }]
+                );
+              } catch (error) {
+                console.error('❌ Debug failed:', error);
+                Alert.alert('Debug Error', 'Failed to get debug information. Check console for details.');
+              }
+            }}
+            disabled={purchasing}
+          >
+            <Text style={styles.debugButtonText}>Debug Subscription Status</Text>
+          </TouchableOpacity>
+        )}
+
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
@@ -554,6 +578,20 @@ const styles = StyleSheet.create({
   },
   restoreButtonText: {
     color: '#DC851F',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  debugButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#FF6B6B',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  debugButtonText: {
+    color: '#FF6B6B',
     fontSize: 14,
     fontWeight: '600',
   },
