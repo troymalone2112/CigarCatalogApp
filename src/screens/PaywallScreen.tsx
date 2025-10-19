@@ -119,11 +119,11 @@ export default function PaywallScreen() {
       // Find the corresponding RevenueCat package
       const revenueCatPackage = revenueCatPackages.find(pkg => {
         if (currentPlan.name === 'Premium Monthly') {
-          // Match by product identifier (0004) or package identifier
-          return pkg.identifier === '$rc_monthly' || pkg.product.identifier === '0004' || pkg.product.identifier === 'premium_monthly';
+          // Match by package identifier or product identifier
+          return pkg.identifier === '$rc_monthly' || pkg.product.identifier === 'premium_monthly';
         } else if (currentPlan.name === 'Premium Yearly') {
-          // Match by product identifier (0005) or package identifier  
-          return pkg.identifier === '$rc_annual' || pkg.product.identifier === '0005' || pkg.product.identifier === 'premium_yearly';
+          // Match by package identifier or product identifier  
+          return pkg.identifier === '$rc_annual' || pkg.product.identifier === 'premium_yearly';
         }
         return false;
       });
