@@ -1,12 +1,15 @@
 // RevenueCat Webhook for Netlify Functions
 const { createClient } = require('@supabase/supabase-js');
 
-// Supabase configuration - use environment variables
-const supabaseUrl = process.env.SUPABASE_URL || 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
+// Supabase configuration - use ONLY environment variables
+const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseServiceKey) {
-  console.error('❌ Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing Supabase environment variables:', {
+    SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
+    SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET'
+  });
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -42,12 +45,11 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({
           status: 'ok',
           timestamp: new Date().toISOString(),
-          supabase_url: supabaseUrl,
           service_key_configured: !!supabaseServiceKey,
           supabase_connection: !error,
           environment_variables: {
             SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
-            SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET'
+            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
           }
         })
       };
@@ -59,7 +61,7 @@ exports.handler = async (event, context) => {
           error: error.message,
           environment_variables: {
             SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
-            SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET'
+            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
           }
         })
       };
@@ -87,8 +89,7 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           success: true,
-          message: 'Supabase connection working',
-          supabase_url: supabaseUrl
+          message: 'Supabase connection working'
         })
       };
     } catch (error) {

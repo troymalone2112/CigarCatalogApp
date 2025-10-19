@@ -1,16 +1,19 @@
 // RevenueCat Webhook for Netlify Functions - Fixed Version
 const { createClient } = require('@supabase/supabase-js');
 
-// Supabase configuration - use environment variables
-const supabaseUrl = process.env.SUPABASE_URL || 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
+// Supabase configuration - use ONLY environment variables
+const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Create Supabase client only if key exists
+// Create Supabase client only if both variables exist
 let supabase = null;
-if (supabaseServiceKey) {
+if (supabaseUrl && supabaseServiceKey) {
   supabase = createClient(supabaseUrl, supabaseServiceKey);
 } else {
-  console.error('❌ SUPABASE_SERVICE_ROLE_KEY not found in environment variables');
+  console.error('❌ Missing Supabase environment variables:', {
+    SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
+    SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET'
+  });
 }
 
 exports.handler = async (event, context) => {
@@ -38,10 +41,10 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           error: 'Supabase not configured',
-          message: 'SUPABASE_SERVICE_ROLE_KEY environment variable is missing',
+          message: 'Missing environment variables',
           envVars: {
-            SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SET' : 'NOT SET',
-            SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET'
+            SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
+            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
           }
         })
       };
@@ -59,12 +62,11 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({
           status: 'ok',
           timestamp: new Date().toISOString(),
-          supabase_url: supabaseUrl,
           service_key_configured: !!supabaseServiceKey,
           supabase_connection: !error,
           environment_variables: {
             SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
-            SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET',
+            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
             NODE_ENV: process.env.NODE_ENV
           }
         })
@@ -77,7 +79,7 @@ exports.handler = async (event, context) => {
           error: error.message,
           environment_variables: {
             SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
-            SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET'
+            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
           }
         })
       };
@@ -92,7 +94,7 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           error: 'Supabase not configured',
-          message: 'SUPABASE_SERVICE_ROLE_KEY environment variable is missing'
+          message: 'Missing environment variables'
         })
       };
     }
@@ -116,8 +118,7 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           success: true,
-          message: 'Supabase connection working',
-          supabase_url: supabaseUrl
+          message: 'Supabase connection working'
         })
       };
     } catch (error) {
@@ -137,7 +138,7 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           error: 'Supabase not configured',
-          message: 'SUPABASE_SERVICE_ROLE_KEY environment variable is missing'
+          message: 'Missing environment variables'
         })
       };
     }
