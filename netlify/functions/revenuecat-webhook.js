@@ -57,7 +57,9 @@ exports.handler = async (event, context) => {
             SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
             SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
           },
-          error_details: error ? error.message : null
+          error_details: error ? error.message : null,
+          data_returned: data ? 'YES' : 'NO',
+          query_test: 'subscription_plans table'
         })
       };
     } catch (error) {
