@@ -51,14 +51,27 @@ exports.handler = async (event, context) => {
           timestamp: new Date().toISOString(),
           supabase_url: supabaseUrl,
           service_key_configured: !!supabaseServiceKey,
-          supabase_connection: !error
+          supabase_connection: !error,
+          environment_variables: {
+            SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
+            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
+          },
+          error_details: error ? error.message : null
         })
       };
     } catch (error) {
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: error.message })
+        body: JSON.stringify({ 
+          error: error.message,
+          supabase_url: supabaseUrl,
+          service_key_configured: !!supabaseServiceKey,
+          environment_variables: {
+            SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
+            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
+          }
+        })
       };
     }
   }
