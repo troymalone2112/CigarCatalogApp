@@ -38,9 +38,10 @@ exports.handler = async (event, context) => {
   // Health check endpoint
   if (event.httpMethod === 'GET' && event.path === '/.netlify/functions/revenuecat-webhook/health') {
     try {
+      // Test with a simpler query that doesn't require RLS
       const { data, error } = await supabase
-        .from('profiles')
-        .select('count')
+        .from('subscription_plans')
+        .select('id')
         .limit(1);
       
       return {
