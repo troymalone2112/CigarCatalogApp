@@ -1,10 +1,8 @@
 // RevenueCat Webhook for Netlify Functions
-// This is a Netlify serverless function that RevenueCat can call
-
 const { createClient } = require('@supabase/supabase-js');
 
-// Supabase configuration with proper keys
-const supabaseUrl = 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
+// Supabase configuration - use environment variables
+const supabaseUrl = process.env.SUPABASE_URL || 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseServiceKey) {
@@ -13,9 +11,7 @@ if (!supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-// Netlify function handler
 exports.handler = async (event, context) => {
-  // Set CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -33,7 +29,7 @@ exports.handler = async (event, context) => {
   }
 
   // Health check endpoint
-  if (event.httpMethod === 'GET' && event.path === '/.netlify/functions/revenuecat-webhook/health') {
+  if (event.httpMethod === 'GET' && event.path.includes('/health')) {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -48,20 +44,30 @@ exports.handler = async (event, context) => {
           timestamp: new Date().toISOString(),
           supabase_url: supabaseUrl,
           service_key_configured: !!supabaseServiceKey,
-          supabase_connection: !error
+          supabase_connection: !error,
+          environment_variables: {
+            SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
+            SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET'
+          }
         })
       };
     } catch (error) {
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: error.message })
+        body: JSON.stringify({ 
+          error: error.message,
+          environment_variables: {
+            SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
+            SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET'
+          }
+        })
       };
     }
   }
 
   // Test endpoint
-  if (event.httpMethod === 'GET' && event.path === '/.netlify/functions/revenuecat-webhook/test') {
+  if (event.httpMethod === 'GET' && event.path.includes('/test')) {
     try {
       const { data, error } = await supabase
         .from('profiles')

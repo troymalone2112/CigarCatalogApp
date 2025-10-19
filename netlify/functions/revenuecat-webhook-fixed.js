@@ -1,8 +1,8 @@
 // RevenueCat Webhook for Netlify Functions - Fixed Version
 const { createClient } = require('@supabase/supabase-js');
 
-// Supabase configuration
-const supabaseUrl = 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
+// Supabase configuration - use environment variables
+const supabaseUrl = process.env.SUPABASE_URL || 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Create Supabase client only if key exists
@@ -64,6 +64,7 @@ exports.handler = async (event, context) => {
           supabase_connection: !error,
           environment_variables: {
             SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
+            SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET',
             NODE_ENV: process.env.NODE_ENV
           }
         })
@@ -75,7 +76,8 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({ 
           error: error.message,
           environment_variables: {
-            SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET'
+            SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
+            SUPABASE_URL: process.env.SUPABASE_URL ? 'SET' : 'NOT SET'
           }
         })
       };
