@@ -130,9 +130,10 @@ exports.handler = async (event, context) => {
   // Main webhook handler
   if (event.httpMethod === 'POST') {
     try {
-      console.log('📨 RevenueCat webhook received:', JSON.stringify(JSON.parse(event.body), null, 2));
+      const webhookData = JSON.parse(event.body);
+      console.log('📨 RevenueCat webhook received:', JSON.stringify(webhookData, null, 2));
       
-      const { api_version, event: eventData } = JSON.parse(event.body);
+      const { api_version, event: eventData } = webhookData;
       
       if (!eventData) {
         console.error('❌ No event data in webhook payload');
@@ -159,7 +160,30 @@ exports.handler = async (event, context) => {
         environment
       } = eventData;
       
+      console.log('🔍 Event details:', {
+        event_type,
+        app_user_id,
+        original_app_user_id,
+        product_id,
+        store,
+        environment
+      });
+      
       console.log(`🔄 Processing ${event_type} for user ${app_user_id}`);
+      
+      // Handle test events
+      if (event_type === 'TEST') {
+        console.log('✅ Test webhook received - returning success');
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ 
+            success: true, 
+            message: 'Test webhook received successfully',
+            event_type: 'TEST'
+          })
+        };
+      }
       
       // Try the database function first
       try {
