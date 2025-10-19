@@ -12,6 +12,8 @@ export default function App() {
     // Initialize RevenueCat when app starts (non-blocking)
     const initializeRevenueCat = async () => {
       try {
+        console.log('🚀 Starting RevenueCat initialization in App.tsx...');
+        
         // Add timeout to prevent hanging
         const timeoutPromise = new Promise((_, reject) => 
           setTimeout(() => reject(new Error('RevenueCat initialization timeout')), 10000)
@@ -22,9 +24,19 @@ export default function App() {
           timeoutPromise
         ]);
         
-        console.log('✅ RevenueCat initialized in App.tsx');
+        console.log('✅ RevenueCat initialized successfully in App.tsx');
+        
+        // Test getting offerings to verify everything is working
+        try {
+          const offerings = await RevenueCatService.getOfferings();
+          console.log('📦 RevenueCat offerings loaded:', offerings ? 'SUCCESS' : 'FAILED');
+        } catch (offeringsError) {
+          console.error('❌ Failed to load offerings:', offeringsError);
+        }
+        
       } catch (error) {
         console.error('❌ Failed to initialize RevenueCat in App.tsx:', error);
+        console.error('❌ Error details:', JSON.stringify(error, null, 2));
         // Don't block app startup if RevenueCat fails
         console.log('⚠️ Continuing without RevenueCat...');
       }
