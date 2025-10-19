@@ -2,15 +2,15 @@
 const { createClient } = require('@supabase/supabase-js');
 
 // Supabase configuration
-const supabaseUrl = 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
+const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Create Supabase client only if key exists
+// Create Supabase client only if both URL and key exist
 let supabase = null;
-if (supabaseServiceKey) {
+if (supabaseUrl && supabaseServiceKey) {
   supabase = createClient(supabaseUrl, supabaseServiceKey);
 } else {
-  console.error('❌ SUPABASE_SERVICE_ROLE_KEY not found in environment variables');
+  console.error('❌ Missing Supabase environment variables. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
 }
 
 exports.handler = async (event, context) => {
@@ -64,6 +64,7 @@ exports.handler = async (event, context) => {
           supabase_connection: !error,
           environment_variables: {
             SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
+            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
             NODE_ENV: process.env.NODE_ENV
           }
         })
