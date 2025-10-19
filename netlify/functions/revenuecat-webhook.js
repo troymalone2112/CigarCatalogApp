@@ -1,7 +1,9 @@
 // RevenueCat Webhook for Netlify Functions
+// This is a Netlify serverless function that RevenueCat can call
+
 const { createClient } = require('@supabase/supabase-js');
 
-// Supabase configuration - use ONLY environment variables
+// Supabase configuration with proper keys
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -14,7 +16,9 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+// Netlify function handler
 exports.handler = async (event, context) => {
+  // Set CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -32,12 +36,20 @@ exports.handler = async (event, context) => {
   }
 
   // Health check endpoint
-  if (event.httpMethod === 'GET' && event.path.includes('/health')) {
+  if (event.httpMethod === 'GET' && event.path === '/.netlify/functions/revenuecat-webhook/health') {
     try {
+      // First, let's test if we can create the client at all
+      console.log('Testing Supabase connection...');
+      console.log('URL:', supabaseUrl);
+      console.log('Key exists:', !!supabaseServiceKey);
+      
+      // Test with a very basic query
       const { data, error } = await supabase
-        .from('profiles')
-        .select('count')
+        .from('subscription_plans')
+        .select('id')
         .limit(1);
+      
+      console.log('Query result:', { data, error });
       
       return {
         statusCode: 200,
@@ -45,20 +57,33 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({
           status: 'ok',
           timestamp: new Date().toISOString(),
+          supabase_url: supabaseUrl,
           service_key_configured: !!supabaseServiceKey,
           supabase_connection: !error,
           environment_variables: {
             SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
             SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
+          },
+          error_details: error ? error.message : null,
+          error_code: error ? error.code : null,
+          data_returned: data ? 'YES' : 'NO',
+          query_test: 'subscription_plans table',
+          debug_info: {
+            url_length: supabaseUrl ? supabaseUrl.length : 0,
+            key_length: supabaseServiceKey ? supabaseServiceKey.length : 0
           }
         })
       };
     } catch (error) {
+      console.error('Health check error:', error);
       return {
         statusCode: 500,
         headers,
         body: JSON.stringify({ 
           error: error.message,
+          error_stack: error.stack,
+          supabase_url: supabaseUrl,
+          service_key_configured: !!supabaseServiceKey,
           environment_variables: {
             SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
             SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
@@ -69,7 +94,7 @@ exports.handler = async (event, context) => {
   }
 
   // Test endpoint
-  if (event.httpMethod === 'GET' && event.path.includes('/test')) {
+  if (event.httpMethod === 'GET' && event.path === '/.netlify/functions/revenuecat-webhook/test') {
     try {
       const { data, error } = await supabase
         .from('profiles')
@@ -89,7 +114,8 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           success: true,
-          message: 'Supabase connection working'
+          message: 'Supabase connection working',
+          supabase_url: supabaseUrl
         })
       };
     } catch (error) {
