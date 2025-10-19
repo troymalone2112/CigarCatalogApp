@@ -102,6 +102,24 @@ export default function PaywallScreen() {
     try {
       setPurchasing(true);
       
+      // Force RevenueCat initialization before purchase
+      console.log('🔧 Force initializing RevenueCat before purchase...');
+      try {
+        await RevenueCatService.initialize();
+        console.log('✅ RevenueCat initialized for purchase');
+      } catch (initError) {
+        console.error('❌ RevenueCat initialization failed:', initError);
+        Alert.alert('Error', 'Failed to initialize payment system. Please try again.');
+        return;
+      }
+      
+      // Check if RevenueCat packages are available
+      if (!revenueCatPackages || revenueCatPackages.length === 0) {
+        console.error('❌ No RevenueCat packages available');
+        Alert.alert('Error', 'Subscription packages not available. Please try again later.');
+        return;
+      }
+      
       // Debug: Log available packages
       console.log('🔍 Available RevenueCat packages:', revenueCatPackages.map(pkg => ({
         identifier: pkg.identifier,
@@ -110,11 +128,6 @@ export default function PaywallScreen() {
       })));
       
       console.log('🔍 Looking for plan:', currentPlan.name);
-      console.log('🔍 Available RevenueCat packages:', revenueCatPackages.map(pkg => ({
-        identifier: pkg.identifier,
-        title: pkg.product.title,
-        price: pkg.product.priceString
-      })));
       
       // Find the corresponding RevenueCat package
       const revenueCatPackage = revenueCatPackages.find(pkg => {
