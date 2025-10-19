@@ -107,6 +107,11 @@ export default function PaywallScreen() {
       try {
         await RevenueCatService.initialize();
         console.log('✅ RevenueCat initialized for purchase');
+        
+        // Show alert for debugging in TestFlight
+        if (__DEV__) {
+          alert('RevenueCat initialized for purchase!');
+        }
       } catch (initError) {
         console.error('❌ RevenueCat initialization failed:', initError);
         Alert.alert('Error', 'Failed to initialize payment system. Please try again.');

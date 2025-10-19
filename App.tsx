@@ -30,8 +30,18 @@ export default function App() {
         try {
           const offerings = await RevenueCatService.getOfferings();
           console.log('📦 RevenueCat offerings loaded:', offerings ? 'SUCCESS' : 'FAILED');
+          
+          // Show alert for debugging in TestFlight
+          if (__DEV__) {
+            alert('RevenueCat initialized successfully!');
+          }
         } catch (offeringsError) {
           console.error('❌ Failed to load offerings:', offeringsError);
+          
+          // Show alert for debugging in TestFlight
+          if (__DEV__) {
+            alert('RevenueCat initialization failed: ' + offeringsError.message);
+          }
         }
         
       } catch (error) {
