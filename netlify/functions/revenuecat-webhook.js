@@ -38,11 +38,18 @@ exports.handler = async (event, context) => {
   // Health check endpoint
   if (event.httpMethod === 'GET' && event.path === '/.netlify/functions/revenuecat-webhook/health') {
     try {
-      // Test with a simpler query that doesn't require RLS
+      // First, let's test if we can create the client at all
+      console.log('Testing Supabase connection...');
+      console.log('URL:', supabaseUrl);
+      console.log('Key exists:', !!supabaseServiceKey);
+      
+      // Test with a very basic query
       const { data, error } = await supabase
         .from('subscription_plans')
         .select('id')
         .limit(1);
+      
+      console.log('Query result:', { data, error });
       
       return {
         statusCode: 200,
@@ -58,16 +65,23 @@ exports.handler = async (event, context) => {
             SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
           },
           error_details: error ? error.message : null,
+          error_code: error ? error.code : null,
           data_returned: data ? 'YES' : 'NO',
-          query_test: 'subscription_plans table'
+          query_test: 'subscription_plans table',
+          debug_info: {
+            url_length: supabaseUrl ? supabaseUrl.length : 0,
+            key_length: supabaseServiceKey ? supabaseServiceKey.length : 0
+          }
         })
       };
     } catch (error) {
+      console.error('Health check error:', error);
       return {
         statusCode: 500,
         headers,
         body: JSON.stringify({ 
           error: error.message,
+          error_stack: error.stack,
           supabase_url: supabaseUrl,
           service_key_configured: !!supabaseServiceKey,
           environment_variables: {
