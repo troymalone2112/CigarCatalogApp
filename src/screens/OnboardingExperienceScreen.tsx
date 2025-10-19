@@ -15,12 +15,10 @@ import { Ionicons } from '@expo/vector-icons';
 type OnboardingExperienceNavigationProp = StackNavigationProp<RootStackParamList, 'OnboardingExperience'>;
 
 const experienceOptions = [
-  { key: 'none', label: 'I don\'t smoke cigars yet', description: 'Just getting started' },
-  { key: 'less-than-1', label: 'Less than 1 year', description: 'New to the world of cigars' },
-  { key: '1-2', label: '1-2 years', description: 'Starting to explore different brands' },
-  { key: '3-5', label: '3-5 years', description: 'Developing preferences' },
-  { key: '6-10', label: '6-10 years', description: 'Experienced with various types' },
-  { key: 'more-than-10', label: 'More than 10 years', description: 'Long-time cigar enthusiast' },
+  { key: 'newbie', label: 'Newbie', description: 'Just getting started' },
+  { key: 'casual', label: 'Casual Smoker', description: 'Starting to explore' },
+  { key: 'enthusiast', label: 'Enthusiast', description: 'Experienced with various brands' },
+  { key: 'aficionado', label: 'Aficionado', description: 'Long time cigar enthusiast' },
 ];
 
 export default function OnboardingExperienceScreen() {
@@ -29,8 +27,11 @@ export default function OnboardingExperienceScreen() {
 
   const handleContinue = () => {
     if (selectedDuration) {
-      // Store the selection and move to next screen
-      navigation.navigate('OnboardingLevel', { smokingDuration: selectedDuration });
+      // Store the selection and move directly to taste preferences
+      navigation.navigate('OnboardingTastePreferences', { 
+        smokingDuration: selectedDuration,
+        experienceLevel: 'getting-started' // Default experience level
+      });
     }
   };
 
@@ -55,22 +56,22 @@ export default function OnboardingExperienceScreen() {
           </TouchableOpacity>
           
           <View style={styles.progressIndicator}>
-            <Text style={styles.progressText}>2 of 4</Text>
+            <Text style={styles.progressText}>2 of 3</Text>
             <View style={styles.progressBar}>
-              <View style={[styles.progressFill, { width: '50%' }]} />
+              <View style={[styles.progressFill, { width: '67%' }]} />
             </View>
           </View>
         </View>
 
         <View style={styles.content}>
           <View style={styles.iconContainer}>
-            <Ionicons name="time" size={80} color="#7C2D12" />
+            <Ionicons name="star" size={80} color="#DC851F" />
           </View>
           
           <Text style={styles.title}>Smoking Experience</Text>
           
           <Text style={styles.subtitle}>
-            How long have you been smoking cigars?
+            Which category best describes your cigar experience?
           </Text>
 
           <View style={styles.optionsContainer}>

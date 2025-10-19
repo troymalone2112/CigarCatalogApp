@@ -311,7 +311,17 @@ export class APIService {
                 - Add smoking experience and tasting notes
                 - Estimate MSRP and provide any known ratings
 
-                IMPORTANT: Use only your training knowledge. Be honest about confidence levels.
+                DRINK PAIRINGS (REQUIRED):
+                You MUST provide exactly 3 drink pairings for BOTH alcoholic and non-alcoholic categories.
+                Base your recommendations on the cigar's strength and flavor profile:
+                
+                - For mild cigars: Light beer, White wine, Champagne / Iced tea, Lemonade, Sparkling water
+                - For medium cigars: Bourbon, Scotch, Rum / Coffee, Hot chocolate, Cola
+                - For full-bodied cigars: Cognac, Port wine, Single malt / Espresso, Dark roast coffee, Black tea
+                
+                If you cannot identify the specific cigar, still provide drink pairings based on the visible wrapper color and estimated strength.
+
+                IMPORTANT: Use only your training knowledge. Be honest about confidence levels. The drinkPairings field is MANDATORY and must contain 3 items in each array.
 
                 Respond in JSON format:
                 {
@@ -330,6 +340,10 @@ export class APIService {
                     "second": "second third or null",
                     "final": "final third or null"
                   },
+                  "drinkPairings": {
+                    "alcoholic": ["drink1", "drink2", "drink3"],
+                    "nonAlcoholic": ["drink1", "drink2", "drink3"]
+                  },
                   "msrp": "estimated price or null",
                   "professionalRating": "known rating or null",
                   "wrapperColor": "wrapper color",
@@ -346,7 +360,7 @@ export class APIService {
             ],
           },
         ],
-        max_tokens: 1000,
+        max_tokens: 1500,
       });
 
       const content = response.choices[0]?.message?.content;
@@ -372,6 +386,34 @@ export class APIService {
 
       const result = JSON.parse(jsonString);
       
+      console.log(`📋 Full API Response:`, JSON.stringify(result, null, 2));
+      console.log(`🍷 Drink Pairings from API:`, result.drinkPairings);
+      
+      // Provide fallback drink pairings if API didn't return them
+      let drinkPairings = result.drinkPairings;
+      if (!drinkPairings || !drinkPairings.alcoholic || !drinkPairings.nonAlcoholic) {
+        console.log('⚠️ API did not return drink pairings, using fallback based on strength');
+        const strength = result.strength?.toLowerCase() || 'medium';
+        
+        if (strength.includes('mild') || strength.includes('light')) {
+          drinkPairings = {
+            alcoholic: ['Light Beer', 'White Wine', 'Champagne'],
+            nonAlcoholic: ['Iced Tea', 'Lemonade', 'Sparkling Water']
+          };
+        } else if (strength.includes('strong') || strength.includes('full')) {
+          drinkPairings = {
+            alcoholic: ['Cognac', 'Port Wine', 'Single Malt Scotch'],
+            nonAlcoholic: ['Espresso', 'Dark Roast Coffee', 'Black Tea']
+          };
+        } else {
+          drinkPairings = {
+            alcoholic: ['Bourbon', 'Scotch', 'Dark Rum'],
+            nonAlcoholic: ['Coffee', 'Hot Chocolate', 'Cola']
+          };
+        }
+        console.log('✅ Using fallback drink pairings:', drinkPairings);
+      }
+      
       const recognition: ChatGPTRecognitionResponse = {
         brand: result.brand,
         line: result.line,
@@ -385,12 +427,14 @@ export class APIService {
 
       const enrichedCigar: Partial<Cigar> = {
         ...result,
+        drinkPairings, // Explicitly add drink pairings (from API or fallback)
         id: '', // Will be set later
         imageUrl: imageUri,
         recognitionConfidence: result.confidence,
       };
 
       console.log(`💰 Budget mode complete. Confidence: ${result.confidence}%`);
+      console.log(`🍷 Drink Pairings in enrichedCigar:`, enrichedCigar.drinkPairings);
 
       return {
         recognition,

@@ -40,7 +40,7 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = user_uuid) THEN
     RAISE LOG 'User not found: %', app_user_id;
     RETURN json_build_object('success', false, 'error', 'User not found');
-  END;
+  END IF;
   
   -- Determine subscription plan based on product_id
   CASE 
@@ -76,50 +76,38 @@ BEGIN
     user_id,
     plan_id,
     status,
-    is_premium,
-    current_period_start,
-    current_period_end,
+    subscription_start_date,
+    subscription_end_date,
     auto_renew,
-    revenuecat_user_id,
-    last_sync_date,
-    trial_end_date,
-    created_at,
     updated_at
   ) VALUES (
     user_uuid,
-    subscription_plan,
+    (SELECT id FROM subscription_plans WHERE name = CASE WHEN subscription_plan = 'premium_yearly' THEN 'Premium Yearly' ELSE 'Premium Monthly' END LIMIT 1),
     subscription_status,
-    (subscription_status IN ('active', 'cancelled') AND current_period_end > NOW()),
     to_timestamp(purchased_at_ms / 1000.0),
     current_period_end,
     auto_renew_status,
-    app_user_id,
-    NOW(),
-    CASE 
-      WHEN is_trial_period THEN current_period_end 
-      ELSE NOW() + INTERVAL '3 days' -- Default trial if not specified
-    END,
-    NOW(),
     NOW()
   )
   ON CONFLICT (user_id) DO UPDATE SET
     plan_id = EXCLUDED.plan_id,
     status = EXCLUDED.status,
-    is_premium = EXCLUDED.is_premium,
-    current_period_start = EXCLUDED.current_period_start,
-    current_period_end = EXCLUDED.current_period_end,
+    subscription_start_date = EXCLUDED.subscription_start_date,
+    subscription_end_date = EXCLUDED.subscription_end_date,
     auto_renew = EXCLUDED.auto_renew,
-    revenuecat_user_id = EXCLUDED.revenuecat_user_id,
-    last_sync_date = EXCLUDED.last_sync_date,
     updated_at = NOW();
+
+  -- Ensure is_premium reflects active access if the column exists
+  BEGIN
+    UPDATE user_subscriptions
+    SET is_premium = (status IN ('active', 'cancelled') AND subscription_end_date > NOW())
+    WHERE user_id = user_uuid;
+  EXCEPTION WHEN undefined_column THEN
+    -- Some schemas may not include is_premium; skip silently
+    RAISE LOG 'user_subscriptions.is_premium not found; skipping premium flag update';
+  END;
   
-  -- Update user profile with premium status
-  UPDATE profiles 
-  SET 
-    is_premium = (subscription_status IN ('active', 'cancelled') AND current_period_end > NOW()),
-    updated_at = NOW()
-  WHERE id = user_uuid;
-  
+  -- Log update summary
   RAISE LOG 'Updated subscription for user %: plan=%, status=%, premium=%', 
     app_user_id, subscription_plan, subscription_status, 
     (subscription_status IN ('active', 'cancelled') AND current_period_end > NOW());
@@ -205,6 +193,4 @@ GRANT EXECUTE ON FUNCTION public.revenuecat_webhook_handler TO authenticated;
 CREATE INDEX IF NOT EXISTS idx_user_subscriptions_revenuecat_user_id 
 ON user_subscriptions(revenuecat_user_id);
 
--- Create an index for faster user lookups
-CREATE INDEX IF NOT EXISTS idx_profiles_premium_status 
-ON profiles(is_premium) WHERE is_premium = true;
+-- Skipping profiles premium index as profiles.is_premium column does not exist in this schema

@@ -18,14 +18,15 @@ import { PurchasesPackage } from 'react-native-purchases';
 
 export default function PaywallScreen() {
   const navigation = useNavigation();
-  const { subscriptionStatus, subscriptionPlans, createPremiumSubscription, loading } = useSubscription();
-  const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
+  const { subscriptionStatus, subscriptionPlans, createPremiumSubscription, loading, refreshSubscription } = useSubscription();
+  const [selectedTab, setSelectedTab] = useState<'monthly' | 'yearly'>('yearly'); // Default to yearly
   const [purchasing, setPurchasing] = useState(false);
   const [revenueCatPackages, setRevenueCatPackages] = useState<PurchasesPackage[]>([]);
   const [loadingPackages, setLoadingPackages] = useState(true);
 
   const monthlyPlan = subscriptionPlans.find(plan => plan.name === 'Premium Monthly');
   const yearlyPlan = subscriptionPlans.find(plan => plan.name === 'Premium Yearly');
+  const currentPlan = selectedTab === 'monthly' ? monthlyPlan : yearlyPlan;
 
   // Load RevenueCat packages on component mount
   useEffect(() => {
@@ -54,7 +55,50 @@ export default function PaywallScreen() {
     }
   };
 
-  const handlePurchase = async (plan: SubscriptionPlan) => {
+  const handleRestorePurchases = async () => {
+    try {
+      setPurchasing(true);
+      console.log('🔄 Restoring purchases...');
+      
+      const customerInfo = await RevenueCatService.restorePurchases();
+      console.log('✅ Restore result:', customerInfo);
+      
+      // Check if user now has premium access
+      const hasAccess = customerInfo.entitlements.active['premium_features'] !== undefined;
+      
+      if (hasAccess) {
+        // Sync with our database
+        const { supabase } = await import('../services/supabaseService');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          await RevenueCatService.syncSubscriptionStatus(user.id);
+        }
+        
+        Alert.alert(
+          'Purchases Restored!',
+          'Your premium subscription has been restored. Welcome back!',
+          [{ text: 'Continue', onPress: () => navigation.goBack() }]
+        );
+      } else {
+        Alert.alert(
+          'No Purchases Found',
+          'No previous purchases were found for this account.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('❌ Restore failed:', error);
+      Alert.alert('Restore Failed', 'Unable to restore purchases. Please try again.');
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const handlePurchase = async () => {
+    if (!currentPlan) {
+      Alert.alert('Error', 'No plan selected');
+      return;
+    }
     try {
       setPurchasing(true);
       
@@ -65,20 +109,27 @@ export default function PaywallScreen() {
         price: pkg.product.priceString
       })));
       
-      console.log('🔍 Looking for plan:', plan.name);
+      console.log('🔍 Looking for plan:', currentPlan.name);
+      console.log('🔍 Available RevenueCat packages:', revenueCatPackages.map(pkg => ({
+        identifier: pkg.identifier,
+        title: pkg.product.title,
+        price: pkg.product.priceString
+      })));
       
       // Find the corresponding RevenueCat package
       const revenueCatPackage = revenueCatPackages.find(pkg => {
-        if (plan.name === 'Premium Monthly') {
-          return pkg.identifier === '0004';
-        } else if (plan.name === 'Premium Yearly') {
-          return pkg.identifier === '0005';
+        if (currentPlan.name === 'Premium Monthly') {
+          // Match by product identifier (0004) or package identifier
+          return pkg.identifier === '$rc_monthly' || pkg.product.identifier === '0004' || pkg.product.identifier === 'premium_monthly';
+        } else if (currentPlan.name === 'Premium Yearly') {
+          // Match by product identifier (0005) or package identifier  
+          return pkg.identifier === '$rc_annual' || pkg.product.identifier === '0005' || pkg.product.identifier === 'premium_yearly';
         }
         return false;
       });
 
       if (!revenueCatPackage) {
-        console.error('❌ Package not found for plan:', plan.name);
+        console.error('❌ Package not found for plan:', currentPlan.name);
         console.error('❌ Available packages:', revenueCatPackages.map(p => p.identifier));
         Alert.alert('Error', 'Subscription package not available. Please try again later.');
         return;
@@ -92,8 +143,17 @@ export default function PaywallScreen() {
       const purchaseResult = await RevenueCatService.purchasePackage(revenueCatPackage);
       
       if (purchaseResult.success) {
-        // Sync with our database
-        await RevenueCatService.syncSubscriptionStatus();
+        // Sync with our database - we need to get the user ID
+        const { supabase } = await import('../services/supabaseService');
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          console.log('🔄 Syncing subscription status with database...');
+          await RevenueCatService.syncSubscriptionStatus(user.id);
+          
+          // Force refresh the subscription context
+          console.log('🔄 Refreshing subscription context...');
+          await refreshSubscription();
+        }
         
         Alert.alert(
           'Welcome to Premium!',
@@ -111,48 +171,6 @@ export default function PaywallScreen() {
     }
   };
 
-  const PlanCard = ({ plan, isPopular = false }: { plan: SubscriptionPlan; isPopular?: boolean }) => {
-    const price = plan.price_monthly || plan.price_yearly;
-    const period = plan.price_monthly ? 'month' : 'year';
-    const savings = plan.name === 'Premium Yearly' ? '2 months free!' : null;
-
-    return (
-      <TouchableOpacity
-        style={[
-          styles.planCard,
-          isPopular && styles.popularPlan,
-          selectedPlan?.id === plan.id && styles.selectedPlan,
-        ]}
-        onPress={() => setSelectedPlan(plan)}
-      >
-        {isPopular && (
-          <View style={styles.popularBadge}>
-            <Text style={styles.popularBadgeText}>MOST POPULAR</Text>
-          </View>
-        )}
-        
-        <Text style={styles.planName}>{plan.name.replace('Premium ', '')}</Text>
-        
-        <View style={styles.priceContainer}>
-          <Text style={styles.price}>${price}</Text>
-          <Text style={styles.period}>/{period}</Text>
-        </View>
-        
-        {savings && (
-          <Text style={styles.savings}>{savings}</Text>
-        )}
-        
-        <View style={styles.featuresContainer}>
-          {plan.features.slice(0, 4).map((feature, index) => (
-            <View key={index} style={styles.featureRow}>
-              <Ionicons name="checkmark-circle" size={16} color="#DC851F" />
-              <Text style={styles.featureText}>{feature}</Text>
-            </View>
-          ))}
-        </View>
-      </TouchableOpacity>
-    );
-  };
 
   return (
     <ImageBackground 
@@ -161,19 +179,6 @@ export default function PaywallScreen() {
       imageStyle={styles.tobaccoBackgroundImage}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.title}>
-            {subscriptionStatus?.isTrialActive ? 'Trial Ending Soon!' : 'Upgrade to Premium'}
-          </Text>
-          <Text style={styles.subtitle}>
-            {subscriptionStatus?.isTrialActive 
-              ? `${subscriptionStatus.daysRemaining} day${subscriptionStatus.daysRemaining !== 1 ? 's' : ''} remaining in your free trial`
-              : 'Continue enjoying your premium cigar catalog'
-            }
-          </Text>
-        </View>
-
         {/* Benefits Section */}
         <View style={styles.benefitsSection}>
           <Text style={styles.benefitsTitle}>Premium Features</Text>
@@ -184,7 +189,6 @@ export default function PaywallScreen() {
               { icon: 'archive', title: 'Unlimited Inventory', desc: 'Track your entire collection' },
               { icon: 'book', title: 'Detailed Journal', desc: 'Record every smoking experience' },
               { icon: 'star', title: 'Smart Recommendations', desc: 'Discover cigars you\'ll love' },
-              { icon: 'cloud', title: 'Cloud Sync', desc: 'Access anywhere, anytime' },
               { icon: 'analytics', title: 'Advanced Analytics', desc: 'Insights into your preferences' },
             ].map((benefit, index) => (
               <View key={index} style={styles.benefitRow}>
@@ -211,28 +215,77 @@ export default function PaywallScreen() {
             </View>
           ) : (
             <View style={styles.plansContainer}>
-              {monthlyPlan && (
-                <PlanCard plan={monthlyPlan} />
-              )}
-              {yearlyPlan && (
-                <PlanCard plan={yearlyPlan} isPopular={true} />
+              {/* Tab Selector */}
+              <View style={styles.tabContainer}>
+                <TouchableOpacity
+                  style={[styles.tab, selectedTab === 'monthly' && styles.activeTab]}
+                  onPress={() => setSelectedTab('monthly')}
+                >
+                  <Text style={[styles.tabText, selectedTab === 'monthly' && styles.activeTabText]}>
+                    Monthly
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.tab, selectedTab === 'yearly' && styles.activeTab]}
+                  onPress={() => setSelectedTab('yearly')}
+                >
+                  <Text style={[styles.tabText, selectedTab === 'yearly' && styles.activeTabText]}>
+                    Yearly
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Plan Display */}
+              {currentPlan && (
+                <View style={styles.planDisplay}>
+                  <View style={styles.planHeader}>
+                    <Text style={styles.planName}>{currentPlan.name.replace('Premium ', '')}</Text>
+                    <View style={styles.priceContainer}>
+                      <Text style={styles.price}>
+                        ${selectedTab === 'monthly' ? currentPlan.price_monthly : currentPlan.price_yearly}
+                      </Text>
+                      <Text style={styles.period}>/{selectedTab === 'monthly' ? 'month' : 'year'}</Text>
+                    </View>
+                    {selectedTab === 'yearly' && (
+                      <Text style={styles.savings}>Save 1 month!</Text>
+                    )}
+                  </View>
+                  
+                  <View style={styles.featuresContainer}>
+                    {currentPlan.features.slice(0, 4).map((feature, index) => (
+                      <View key={index} style={styles.featureRow}>
+                        <Ionicons name="checkmark-circle" size={16} color="#DC851F" />
+                        <Text style={styles.featureText}>{feature}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
               )}
             </View>
           )}
         </View>
 
         {/* Purchase Button */}
-        {selectedPlan && (
+        {currentPlan && (
           <TouchableOpacity
             style={[styles.purchaseButton, purchasing && styles.purchaseButtonDisabled]}
-            onPress={() => handlePurchase(selectedPlan)}
+            onPress={handlePurchase}
             disabled={purchasing}
           >
             <Text style={styles.purchaseButtonText}>
-              {purchasing ? 'Processing...' : `Start Premium - $${selectedPlan.price_monthly || selectedPlan.price_yearly}`}
+              {purchasing ? 'Processing...' : `Start Premium - $${selectedTab === 'monthly' ? currentPlan.price_monthly : currentPlan.price_yearly}`}
             </Text>
           </TouchableOpacity>
         )}
+
+        {/* Restore Purchases Button */}
+        <TouchableOpacity
+          style={styles.restoreButton}
+          onPress={handleRestorePurchases}
+          disabled={purchasing}
+        >
+          <Text style={styles.restoreButtonText}>Restore Purchases</Text>
+        </TouchableOpacity>
 
         {/* Footer */}
         <View style={styles.footer}>
@@ -335,6 +388,47 @@ const styles = StyleSheet.create({
   plansContainer: {
     gap: 16,
   },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#1a1a1a',
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 16,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  activeTab: {
+    backgroundColor: '#DC851F',
+  },
+  tabText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#CCCCCC',
+  },
+  activeTabText: {
+    color: '#FFFFFF',
+  },
+  planDisplay: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#DC851F',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  planHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   planCard: {
     backgroundColor: '#1a1a1a',
     borderRadius: 12,
@@ -430,6 +524,20 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  restoreButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#DC851F',
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  restoreButtonText: {
+    color: '#DC851F',
+    fontSize: 14,
+    fontWeight: '600',
   },
   footer: {
     alignItems: 'center',

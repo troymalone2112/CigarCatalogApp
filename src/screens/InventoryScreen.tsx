@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
 import {
   View,
   Text,
@@ -21,6 +21,7 @@ import { DatabaseService } from '../services/supabaseService';
 import { useAuth } from '../contexts/AuthContext';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import { useScreenLoading } from '../hooks/useScreenLoading';
+import { useRecognitionFlow } from '../contexts/RecognitionFlowContext';
 
 type InventoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Inventory'>;
 type InventoryScreenRouteProp = RouteProp<RootStackParamList, 'Inventory'>;
@@ -29,6 +30,7 @@ export default function InventoryScreen() {
   const navigation = useNavigation<InventoryScreenNavigationProp>();
   const route = useRoute<InventoryScreenRouteProp>();
   const { user } = useAuth();
+  const { clearRecognitionFlow } = useRecognitionFlow();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([]);
   const { loading, refreshing, setLoading, setRefreshing } = useScreenLoading(true);
@@ -42,10 +44,30 @@ export default function InventoryScreen() {
   const highlightAnimation = useRef(new Animated.Value(0)).current;
   const processedHighlightId = useRef<string | null>(null);
 
+  // Set header title dynamically based on humidor name
+  useLayoutEffect(() => {
+    console.log('🎨 Setting Inventory header style for humidor:', route.params?.humidorName);
+    
+    navigation.setOptions({
+      headerShown: true,
+      title: route.params?.humidorName || 'Humidor',
+      headerStyle: {
+        backgroundColor: '#0a0a0a',
+      },
+      headerTintColor: '#FFFFFF',
+      headerTitleStyle: {
+        fontWeight: '400',
+        fontSize: 14,
+        color: '#FFFFFF',
+      },
+      headerBackTitleVisible: false,
+    });
+  }, [navigation, route.params?.humidorName, route.params?.humidorId]);
+
   useFocusEffect(
     useCallback(() => {
       loadInventory();
-    }, [route.params?.humidorId])
+    }, [route.params?.humidorId, loadInventory])
   );
 
 
@@ -90,9 +112,28 @@ export default function InventoryScreen() {
         processedHighlightId.current = highlightId;
         triggerHighlight(highlightId, items);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading inventory:', error);
-      Alert.alert('Error', 'Failed to load inventory');
+      
+      // Check if it's a network error
+      const isNetworkError = error?.message?.includes('Network request failed') || 
+                            error?.message?.includes('TypeError: Network');
+      
+      if (isNetworkError) {
+        // For network errors, show a more helpful message
+        console.log('⚠️ Network error loading inventory - showing offline message');
+        Alert.alert(
+          'No Connection',
+          'Unable to load inventory. Please check your internet connection and try again.',
+          [
+            { text: 'OK' },
+            { text: 'Retry', onPress: () => loadInventory() }
+          ]
+        );
+      } else {
+        // For other errors, show generic error
+        Alert.alert('Error', 'Failed to load inventory. Please try again.');
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -203,12 +244,50 @@ export default function InventoryScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
+            console.log('🗑️ Starting delete for item:', itemId);
+            const startTime = Date.now();
+            
+            // Optimistic update - remove from UI immediately
+            const previousInventory = inventory;
+            const previousFiltered = filteredInventory;
+            
+            setInventory(prev => prev.filter(item => item.id !== itemId));
+            setFilteredInventory(prev => prev.filter(item => item.id !== itemId));
+            setForceUpdate(prev => prev + 1);
+            
+            console.log('🗑️ UI updated in:', Date.now() - startTime, 'ms');
+            
             try {
+              // Delete from database in background
+              const dbStartTime = Date.now();
               await StorageService.removeInventoryItem(itemId);
-              await loadInventory();
-            } catch (error) {
-              console.error('Error deleting item:', error);
-              Alert.alert('Error', 'Failed to delete item');
+              console.log('🗑️ Database delete completed in:', Date.now() - dbStartTime, 'ms');
+              console.log('🗑️ Total delete time:', Date.now() - startTime, 'ms');
+            } catch (error: any) {
+              console.error('❌ Error deleting item:', error);
+              
+              // Check if it's a network error
+              const isNetworkError = error?.message?.includes('Network request failed') || 
+                                    error?.message?.includes('TypeError: Network');
+              
+              if (isNetworkError) {
+                // For network errors, keep the optimistic update and show a subtle message
+                console.log('⚠️ Network error - keeping optimistic update, will sync when online');
+                // Don't rollback - the item is likely deleted, just couldn't confirm
+                // Show a toast-style message instead of blocking alert
+                Alert.alert(
+                  'Offline',
+                  'Item removed. Changes will sync when you\'re back online.',
+                  [{ text: 'OK' }]
+                );
+              } else {
+                // For other errors, rollback
+                console.log('🔄 Rolling back delete due to error');
+                setInventory(previousInventory);
+                setFilteredInventory(previousFiltered);
+                setForceUpdate(prev => prev + 1);
+                Alert.alert('Error', 'Failed to delete item. Please try again.');
+              }
             }
           },
         },

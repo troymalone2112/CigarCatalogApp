@@ -84,3 +84,4 @@ GRANT ALL ON public.subscription_plans TO postgres;
 
 
 
+

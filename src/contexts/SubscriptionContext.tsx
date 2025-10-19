@@ -44,13 +44,14 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     // Check if we should show paywall
     if (subscriptionStatus) {
-      const shouldShowPaywall = !subscriptionStatus.hasAccess || 
-        (subscriptionStatus.isTrialActive && subscriptionStatus.daysRemaining <= 1);
+      // Show paywall only if user has no access (trial expired or never had subscription)
+      // Don't force paywall during active trial, even on last day - let them use the app
+      const shouldShowPaywall = !subscriptionStatus.hasAccess;
       setShowPaywall(shouldShowPaywall);
     }
   }, [subscriptionStatus]);
 
-  const loadSubscriptionData = async () => {
+  const loadSubscriptionData = async (forceRefresh = false) => {
     if (!user) {
       console.log('🔍 SubscriptionContext - No user, skipping subscription data load');
       return;
@@ -58,23 +59,22 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     try {
       setLoading(true);
-      console.log('🔍 SubscriptionContext - Loading subscription data for user:', user.id);
+      console.log('🔍 SubscriptionContext - Loading subscription data for user:', user.id, forceRefresh ? '(forced refresh)' : '');
       
-      // First, try to get local status (fast)
-      let status = await RevenueCatService.getLocalSubscriptionStatus(user.id);
+      // Use database as source of truth for subscription status
+      console.log('📊 Getting subscription status from database...');
+      const status = await SubscriptionService.checkSubscriptionStatus(user.id);
+      console.log('🔍 SubscriptionContext - Database status result:', status);
       
-      // If user is premium or trial is active, we're good
-      // If trial expired, sync with RevenueCat to check for new purchases
-      if (!status.hasAccess) {
-        console.log('🔄 Trial expired, syncing with RevenueCat...');
-        status = await RevenueCatService.syncSubscriptionStatus(user.id);
-      }
-      
-      // Also sync with RevenueCat periodically (every 5th time or if status is expired)
-      const shouldSync = Math.random() < 0.2 || status.status === 'expired';
-      if (shouldSync) {
-        console.log('🔄 Periodic sync with RevenueCat...');
-        status = await RevenueCatService.syncSubscriptionStatus(user.id);
+      // Only sync with RevenueCat if user is premium (has upgraded)
+      if (status.isPremium && forceRefresh) {
+        console.log('🔄 Premium user - syncing with RevenueCat...');
+        try {
+          const revenueCatStatus = await RevenueCatService.syncSubscriptionStatus(user.id);
+          console.log('✅ RevenueCat sync completed for premium user');
+        } catch (error) {
+          console.log('⚠️ RevenueCat sync failed, using database status:', error.message);
+        }
       }
       
       // Get subscription plans
@@ -92,7 +92,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   const refreshSubscription = async () => {
-    await loadSubscriptionData();
+    await loadSubscriptionData(true); // Force refresh from database
   };
 
   const trackUsage = async (action: string, metadata?: any) => {

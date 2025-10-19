@@ -3,63 +3,128 @@ import { View, Text, StyleSheet, TouchableOpacity, ImageBackground } from 'react
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSubscription } from '../contexts/SubscriptionContext';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SubscriptionBanner() {
   const navigation = useNavigation();
   const { subscriptionStatus } = useSubscription();
   const [isDismissed, setIsDismissed] = useState(false);
+  const [lastDismissedDaysRemaining, setLastDismissedDaysRemaining] = useState<number | null>(null);
+  
+  // FORCE LOG - Banner component is being rendered
+  console.log('🚨 SubscriptionBanner component is rendering!');
 
   // Check if banner was previously dismissed
   useEffect(() => {
     const checkDismissalStatus = async () => {
       try {
+        const dismissedData = await AsyncStorage.getItem('subscription_banner_dismissed');
+        if (dismissedData) {
+          const parsedData = JSON.parse(dismissedData);
+          setIsDismissed(parsedData.dismissed || false);
+          setLastDismissedDaysRemaining(parsedData.daysRemaining || null);
+        }
+      } catch (error) {
+        console.error('Error checking banner dismissal status:', error);
+        // If parsing fails, check old format
         const dismissed = await AsyncStorage.getItem('subscription_banner_dismissed');
         if (dismissed === 'true') {
           setIsDismissed(true);
         }
-      } catch (error) {
-        console.error('Error checking banner dismissal status:', error);
       }
     };
 
     checkDismissalStatus();
   }, []);
 
-  // Reset dismissal status when subscription status changes
+  // Reset dismissal status when days remaining decreases (new day started)
   useEffect(() => {
-    if (subscriptionStatus) {
-      // Reset dismissal if trial status changes (e.g., trial expires)
-      const resetDismissal = async () => {
-        try {
-          await AsyncStorage.removeItem('subscription_banner_dismissed');
-          setIsDismissed(false);
-        } catch (error) {
-          console.error('Error resetting banner dismissal:', error);
-        }
-      };
-
-      // Only reset if we have a meaningful status change
-      if (subscriptionStatus.status === 'trial' || !subscriptionStatus.hasAccess) {
+    if (subscriptionStatus && subscriptionStatus.isTrialActive) {
+      const currentDays = subscriptionStatus.daysRemaining;
+      
+      // If user dismissed when it was 3 days, show again when it's 2 days
+      // If user dismissed when it was 2 days, show again when it's 1 day
+      // Always show when 0 days (expires today)
+      if (lastDismissedDaysRemaining !== null && 
+          currentDays < lastDismissedDaysRemaining) {
+        const resetDismissal = async () => {
+          try {
+            await AsyncStorage.removeItem('subscription_banner_dismissed');
+            setIsDismissed(false);
+            setLastDismissedDaysRemaining(null);
+            console.log('🔍 Banner re-shown: days decreased from', lastDismissedDaysRemaining, 'to', currentDays);
+          } catch (error) {
+            console.error('Error resetting banner dismissal:', error);
+          }
+        };
         resetDismissal();
       }
+      
+      // Always show on last day (0 days remaining)
+      if (currentDays === 0 && isDismissed) {
+        const forceShow = async () => {
+          try {
+            await AsyncStorage.removeItem('subscription_banner_dismissed');
+            setIsDismissed(false);
+            setLastDismissedDaysRemaining(null);
+            console.log('🔍 Banner force shown: trial expires today');
+          } catch (error) {
+            console.error('Error force showing banner:', error);
+          }
+        };
+        forceShow();
+      }
     }
-  }, [subscriptionStatus?.status, subscriptionStatus?.hasAccess]);
+    
+    // If trial expired and no access, always show
+    if (subscriptionStatus && !subscriptionStatus.hasAccess) {
+      if (isDismissed) {
+        const forceShow = async () => {
+          try {
+            await AsyncStorage.removeItem('subscription_banner_dismissed');
+            setIsDismissed(false);
+            setLastDismissedDaysRemaining(null);
+            console.log('🔍 Banner force shown: trial expired');
+          } catch (error) {
+            console.error('Error force showing expired banner:', error);
+          }
+        };
+        forceShow();
+      }
+    }
+  }, [subscriptionStatus?.daysRemaining, subscriptionStatus?.hasAccess, subscriptionStatus?.isTrialActive, lastDismissedDaysRemaining, isDismissed]);
 
   // Debug logging
   console.log('🔍 SubscriptionBanner - subscriptionStatus:', subscriptionStatus);
+  console.log('🔍 SubscriptionBanner - isDismissed:', isDismissed);
+  console.log('🔍 SubscriptionBanner - lastDismissedDaysRemaining:', lastDismissedDaysRemaining);
 
-  if (!subscriptionStatus || isDismissed) {
-    console.log('🔍 SubscriptionBanner - No subscription status or dismissed, returning null');
-    return null;
+  // TEMPORARY: Force show banner for testing
+  if (!subscriptionStatus) {
+    console.log('🔍 SubscriptionBanner - No subscription status, showing fallback banner');
+    // Show a fallback banner for testing
+    return (
+      <View style={styles.bannerContainer}>
+        <Text style={styles.bannerText}>FALLBACK BANNER - NO SUBSCRIPTION STATUS</Text>
+      </View>
+    );
   }
 
   // Don't show banner if user has active premium subscription
-  if (subscriptionStatus.isPremium) return null;
+  if (subscriptionStatus.isPremium) {
+    console.log('🔍 SubscriptionBanner - User is premium, returning null');
+    return null;
+  }
 
-  // Show trial banner
-  if (subscriptionStatus.isTrialActive) {
+  // FORCE SHOW BANNER FOR TESTING - ignore dismissal state
+  console.log('🔍 SubscriptionBanner - isTrialActive:', subscriptionStatus.isTrialActive);
+  console.log('🔍 SubscriptionBanner - hasAccess:', subscriptionStatus.hasAccess);
+  console.log('🔍 SubscriptionBanner - isPremium:', subscriptionStatus.isPremium);
+  
+  // Show banner if trial is active OR if user has access but is not premium
+  if (subscriptionStatus.isTrialActive || (subscriptionStatus.hasAccess && !subscriptionStatus.isPremium)) {
+    console.log('🔍 SubscriptionBanner - FORCE SHOWING trial banner for testing!');
+    console.log('🔍 SubscriptionBanner - daysRemaining:', subscriptionStatus.daysRemaining);
     const isUrgent = subscriptionStatus.daysRemaining <= 1;
     
     return (
@@ -92,24 +157,25 @@ export default function SubscriptionBanner() {
                   </Text>
                 </View>
                 
-                <LinearGradient
-                  colors={['#FF8C42', '#FFD700']}
-                  style={styles.upgradeButton}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                >
+                <View style={styles.upgradeButton}>
                   <Text style={styles.upgradeText}>Upgrade</Text>
-                </LinearGradient>
+                </View>
                 
                 <TouchableOpacity 
                   style={styles.closeButton}
                   onPress={async (e) => {
                     e.stopPropagation();
                     try {
-                      // Store dismissal state in AsyncStorage
-                      await AsyncStorage.setItem('subscription_banner_dismissed', 'true');
+                      // Store dismissal state with current days remaining in AsyncStorage
+                      const dismissalData = JSON.stringify({
+                        dismissed: true,
+                        daysRemaining: subscriptionStatus.daysRemaining,
+                        dismissedAt: new Date().toISOString()
+                      });
+                      await AsyncStorage.setItem('subscription_banner_dismissed', dismissalData);
                       setIsDismissed(true);
-                      console.log('🔍 SubscriptionBanner - Banner dismissed by user');
+                      setLastDismissedDaysRemaining(subscriptionStatus.daysRemaining);
+                      console.log('🔍 SubscriptionBanner - Banner dismissed by user at', subscriptionStatus.daysRemaining, 'days remaining');
                     } catch (error) {
                       console.error('Error dismissing banner:', error);
                     }
@@ -213,6 +279,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     marginRight: 8,
+    backgroundColor: '#DC851F', // Solid signature orange/yellow
   },
   upgradeText: {
     fontSize: 14,

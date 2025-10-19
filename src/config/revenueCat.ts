@@ -18,7 +18,7 @@ export const REVENUECAT_CONFIG = {
 
   // Offering ID (optional, for organizing products)
   OFFERINGS: {
-    DEFAULT: 'default',
+    DEFAULT: 'Default',
   },
 };
 

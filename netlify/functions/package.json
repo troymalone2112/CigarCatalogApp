@@ -1,0 +1,11 @@
+{
+  "name": "revenuecat-webhook-netlify",
+  "version": "1.0.0",
+  "description": "RevenueCat webhook for Netlify Functions",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

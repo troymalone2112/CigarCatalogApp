@@ -1,9 +1,20 @@
 [build]
   functions = "netlify/functions"
 
-[[headers]]
-  for = "/.netlify/functions/*"
-  [headers.values]
-    Access-Control-Allow-Origin = "*"
-    Access-Control-Allow-Headers = "Content-Type"
-    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+[build.environment]
+  NODE_VERSION = "18"
+
+[[redirects]]
+  from = "/webhook/revenuecat"
+  to = "/.netlify/functions/revenuecat-webhook"
+  status = 200
+
+[[redirects]]
+  from = "/webhook/revenuecat/health"
+  to = "/.netlify/functions/revenuecat-webhook/health"
+  status = 200
+
+[[redirects]]
+  from = "/webhook/revenuecat/test"
+  to = "/.netlify/functions/revenuecat-webhook/test"
+  status = 200

@@ -247,18 +247,24 @@ export default function AddToInventoryScreen({ route }: Props) {
           const humidorName = selectedHumidor?.name || 'Humidor';
           
           console.log('🔍 Navigating to Inventory with targetHumidorId:', targetHumidorId, 'humidorName:', humidorName);
+          console.log('📋 Saved cigar ID:', inventoryItem.id);
           
-          // Navigate to the Inventory screen within the HumidorStack
-          navigation.navigate('Inventory', {
+          // Replace AddToInventory with Inventory in the stack
+          // This removes the form completely while preserving proper navigation styling
+          navigation.replace('Inventory', {
             humidorId: targetHumidorId,
             humidorName: humidorName,
             highlightItemId: inventoryItem.id
           });
+          
+          console.log('✅ Navigation replaced AddToInventory with Inventory');
         } catch (error) {
           console.error('🔍 Error fetching humidor name:', error);
           // Fallback to generic name
           console.log('🔍 Fallback navigation to Inventory');
-          navigation.navigate('Inventory', {
+          
+          // Replace AddToInventory with Inventory in the stack
+          navigation.replace('Inventory', {
             humidorId: targetHumidorId,
             humidorName: 'Humidor',
             highlightItemId: inventoryItem.id
@@ -267,7 +273,7 @@ export default function AddToInventoryScreen({ route }: Props) {
       } else {
         // Fallback if no humidorId - go to humidor list
         console.log('🔍 No humidorId, navigating to HumidorList');
-        navigation.navigate('HumidorListMain');
+        navigation.navigate('HumidorListMain' as never);
       }
     } catch (error) {
       console.error('🔍 Error saving to inventory:', error);
@@ -446,7 +452,8 @@ export default function AddToInventoryScreen({ route }: Props) {
             style={styles.cancelButton} 
             onPress={() => {
               console.log('🔍 Cancel button pressed');
-              navigation.goBack();
+              // Navigate to HumidorListMain to clear any recognition params
+              navigation.navigate('HumidorListMain' as never);
             }}
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>

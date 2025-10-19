@@ -20,7 +20,6 @@ import { RootStackParamList, InventoryItem, TabParamList } from '../types';
 import { StorageService } from '../storage/storageService';
 import SubscriptionBanner from '../components/SubscriptionBanner';
 import { useScreenLoading } from '../hooks/useScreenLoading';
-import { RevenueCatService } from '../services/revenueCatService';
 
 type HomeScreenNavigationProp = BottomTabNavigationProp<TabParamList, 'Home'> & {
   navigate: (screen: string, params?: any) => void;
@@ -34,19 +33,48 @@ export default function HomeScreen() {
   const [journalCount, setJournalCount] = useState(0);
   const [latestJournalEntries, setLatestJournalEntries] = useState<any[]>([]);
   const { loading, setLoading } = useScreenLoading(true);
+  const [isLoadingData, setIsLoadingData] = useState(false);
+  
+  // FORCE LOG - HomeScreen component is rendering
+  console.log('🚨 HomeScreen component is rendering!');
 
   useFocusEffect(
     useCallback(() => {
-      loadDashboardData();
-    }, [])
+      if (!isLoadingData) {
+        loadDashboardData();
+      }
+    }, [isLoadingData])
   );
 
   const loadDashboardData = async () => {
+    if (isLoadingData) {
+      console.log('🚨 HomeScreen - Already loading data, skipping...');
+      return;
+    }
+    
     try {
-      const [inventory, journal] = await Promise.all([
-        StorageService.getInventory(),
-        StorageService.getJournalEntries(),
+      setIsLoadingData(true);
+      console.log('🚨 HomeScreen - Starting loadDashboardData');
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Dashboard data load timeout')), 10000)
+      );
+      
+      const dataPromise = Promise.all([
+        StorageService.getInventory().catch(err => {
+          console.log('⚠️ Inventory load failed:', err);
+          return []; // Return empty array on error
+        }),
+        StorageService.getJournalEntries().catch(err => {
+          console.log('⚠️ Journal load failed:', err);
+          return []; // Return empty array on error
+        }),
       ]);
+      
+      const [inventory, journal] = await Promise.race([dataPromise, timeoutPromise]) as any[];
+
+      console.log('🚨 HomeScreen - Got inventory:', inventory.length, 'journal:', journal.length);
 
       setInventoryCount(inventory.reduce((sum, item) => sum + item.quantity, 0));
       setJournalCount(journal.length);
@@ -62,65 +90,18 @@ export default function HomeScreen() {
       });
       setLatestJournalEntries(sortedJournal.slice(0, 3));
     } catch (error) {
-      console.error('Error loading dashboard data:', error);
-      Alert.alert('Error', 'Failed to load dashboard data');
+      console.error('🚨 HomeScreen - Error loading dashboard data:', error);
+      // Set default values on error
+      setInventoryCount(0);
+      setJournalCount(0);
+      setLatestJournalEntries([]);
     } finally {
+      console.log('🚨 HomeScreen - Setting loading to false');
+      setIsLoadingData(false);
       setLoading(false);
     }
   };
 
-  const testRevenueCat = async () => {
-    try {
-      console.log('🧪 Testing RevenueCat connection...');
-      
-      // Step 1: Force re-initialize RevenueCat to ensure clean state
-      console.log('🔧 Force re-initializing RevenueCat...');
-      await RevenueCatService.forceReinitialize();
-      console.log('✅ RevenueCat force re-initialized');
-      
-      // Step 2: Test basic connection
-      console.log('🔍 Testing basic connection...');
-      const customerInfo = await RevenueCatService.getCustomerInfo();
-      console.log('✅ Customer info retrieved:', {
-        userId: customerInfo.originalAppUserId,
-        activeSubscriptions: Object.keys(customerInfo.activeSubscriptions),
-        entitlements: Object.keys(customerInfo.entitlements.active)
-      });
-      
-      // Step 3: Test offerings
-      console.log('📦 Testing offerings...');
-      const offerings = await RevenueCatService.getOfferings();
-      console.log('✅ RevenueCat offerings count:', offerings.length);
-      
-      // Log detailed offering information
-      offerings.forEach((offering, index) => {
-        console.log(`📦 Offering ${index + 1}:`, {
-          identifier: offering.identifier,
-          displayName: offering.serverDescription,
-          packageCount: offering.availablePackages.length
-        });
-        
-        offering.availablePackages.forEach((pkg, pkgIndex) => {
-          console.log(`  📦 Package ${pkgIndex + 1}:`, {
-            identifier: pkg.identifier,
-            title: pkg.product.title,
-            price: pkg.product.priceString
-          });
-        });
-      });
-      
-      Alert.alert(
-        'RevenueCat Test Success', 
-        `✅ Connection successful!\n\nFound ${offerings.length} offerings with ${offerings.reduce((total, offering) => total + offering.availablePackages.length, 0)} packages.\n\nCheck console for full details.`
-      );
-    } catch (error) {
-      console.error('❌ RevenueCat test failed:', error);
-      Alert.alert(
-        'RevenueCat Test Failed', 
-        `Error: ${error.message || 'Unknown error'}\n\nCheck console for details.`
-      );
-    }
-  };
 
   const handleCigarRecognition = () => {
     navigation.navigate('CigarRecognition');
@@ -132,6 +113,7 @@ export default function HomeScreen() {
   };
 
   if (loading) {
+    console.log('🚨 HomeScreen is in loading state!');
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading...</Text>
@@ -160,13 +142,6 @@ export default function HomeScreen() {
         {/* Subscription Banner */}
         <SubscriptionBanner />
 
-        {/* Development Test Button */}
-        <TouchableOpacity 
-          style={styles.testButton} 
-          onPress={testRevenueCat}
-        >
-          <Text style={styles.testButtonText}>Test RevenueCat API</Text>
-        </TouchableOpacity>
 
         {/* Main Actions */}
         <View style={styles.mainActions}>
@@ -362,18 +337,5 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 20,
-  },
-  testButton: {
-    backgroundColor: '#DC851F',
-    marginHorizontal: 16,
-    marginBottom: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  testButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
 });

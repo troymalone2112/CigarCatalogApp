@@ -46,7 +46,14 @@ export default function CigarRecognitionScreen() {
           base64: true,
         });
         setImageUri(photo.uri);
-        await processCigarImage(photo.uri);
+        
+        // Process the image separately to avoid misleading error messages
+        try {
+          await processCigarImage(photo.uri);
+        } catch (processError) {
+          console.error('Error processing image:', processError);
+          Alert.alert('Error', 'Failed to process image for recognition. Please try again.');
+        }
       } catch (error) {
         console.error('Error taking picture:', error);
         Alert.alert('Error', 'Failed to take picture');

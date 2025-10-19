@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ImageBackground } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -27,12 +27,14 @@ import JournalRatingScreen from '../screens/JournalRatingScreen';
 import JournalNotesScreen from '../screens/JournalNotesScreen';
 import NewJournalEntryScreen from '../screens/NewJournalEntryScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import ProfileScreen from '../screens/ProfileScreen';
+import ManageSubscriptionScreen from '../screens/ManageSubscriptionScreen';
+import OpenSourceLicensesScreen from '../screens/OpenSourceLicensesScreen';
 import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
 import PaywallScreen from '../screens/PaywallScreen';
 import OnboardingAgeVerificationScreen from '../screens/OnboardingAgeVerificationScreen';
 import OnboardingExperienceScreen from '../screens/OnboardingExperienceScreen';
-import OnboardingLevelScreen from '../screens/OnboardingLevelScreen';
 import OnboardingTastePreferencesScreen from '../screens/OnboardingTastePreferencesScreen';
 import AdminDashboardScreen from '../screens/AdminDashboardScreen';
 import CreateHumidorScreen from '../screens/CreateHumidorScreen';
@@ -49,6 +51,7 @@ const RecommendationsStack = createStackNavigator<RecommendationsStackParamList>
 // Custom Header Component for Home
 const CustomHeader = ({ title }: { title?: string }) => {
   const { user, profile, signOut } = useAuth();
+  const navigation = useNavigation();
   
   const userName = profile?.full_name || "User";
   const userInitials = userName.split(' ').map(name => name[0]).join('').toUpperCase();
@@ -69,8 +72,8 @@ const CustomHeader = ({ title }: { title?: string }) => {
         </View>
         <Text style={headerStyles.userName}>{userName}</Text>
       </View>
-      <TouchableOpacity onPress={handleLogout} style={headerStyles.logoutButton}>
-        <Ionicons name="log-out-outline" size={24} color="#DC851F" />
+      <TouchableOpacity onPress={() => navigation.navigate('Profile' as never)} style={headerStyles.profileButton}>
+        <Ionicons name="person-outline" size={24} color="#DC851F" />
       </TouchableOpacity>
     </View>
   );
@@ -125,7 +128,7 @@ const headerStyles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '400',
   },
-  logoutButton: {
+  profileButton: {
     padding: 8,
   },
   tabHeaderContainer: {
@@ -170,6 +173,9 @@ function HumidorStackNavigator() {
         },
         headerBackTitleVisible: false,
         headerBackTitle: '',
+        cardStyle: {
+          backgroundColor: '#0a0a0a',
+        },
       }}
     >
       <HumidorStack.Screen 
@@ -189,6 +195,10 @@ function HumidorStackNavigator() {
         component={InventoryScreen}
         options={({ route, navigation }) => ({
           title: route.params?.humidorName || 'Humidor',
+          headerShown: true,
+          headerStyle: {
+            backgroundColor: '#0a0a0a',
+          },
           headerTintColor: '#FFFFFF',
           headerTitleStyle: {
             fontWeight: '400',
@@ -473,7 +483,7 @@ function TabNavigator() {
         component={HumidorStackNavigator} 
         options={{
           title: 'Humidor',
-          headerShown: false,
+          headerShown: false, // Hide tab header, let stack handle headers
         }}
       />
       <Tab.Screen 
@@ -538,7 +548,6 @@ function OnboardingStack({ onComplete }: { onComplete: () => void }) {
         initialParams={{ onComplete }}
       />
       <Stack.Screen name="OnboardingExperience" component={OnboardingExperienceScreen} />
-      <Stack.Screen name="OnboardingLevel" component={OnboardingLevelScreen} />
       <Stack.Screen 
         name="OnboardingTastePreferences" 
         component={OnboardingTastePreferencesScreen}
@@ -564,54 +573,99 @@ export default function AppNavigator() {
           console.log('🔍 Checking onboarding status for user:', user.id);
           console.log('🔍 Profile onboarding_completed:', profile.onboarding_completed);
           
-          // Use the profile data directly from AuthContext instead of making another database call
-          const completed = profile.onboarding_completed || false;
+          // IMPORTANT: Check explicitly for true, don't default to false
+          // If it's null/undefined, it means the user hasn't completed onboarding yet
+          const completed = profile.onboarding_completed === true;
           console.log('✅ Onboarding status from profile:', completed);
           setOnboardingCompleted(completed);
           setOnboardingCheckComplete(true); // Only mark complete when we have both user and profile
         } catch (error) {
           console.error('❌ Error checking onboarding status:', error);
-          setOnboardingCompleted(false); // Default to false on error
+          // On error, check database directly as a fallback
+          if (user) {
+            try {
+              const { DatabaseService } = await import('../services/supabaseService');
+              const profileData = await DatabaseService.getProfile(user.id);
+              const completed = profileData?.onboarding_completed === true;
+              console.log('✅ Onboarding status from database fallback:', completed);
+              setOnboardingCompleted(completed);
+            } catch (dbError) {
+              console.error('❌ Database fallback also failed:', dbError);
+              setOnboardingCompleted(false); // Only default to false if everything fails
+            }
+          }
           setOnboardingCheckComplete(true);
         }
       } else if (user && !profile) {
         // User exists but profile hasn't loaded yet, wait for it
         console.log('⏳ Waiting for profile to load...');
-        setOnboardingCompleted(null);
-        // Don't mark check as complete yet - we're still waiting for profile
+        
+        // Check if profile exists in database
+        try {
+          const { DatabaseService } = await import('../services/supabaseService');
+          const profileData = await DatabaseService.getProfile(user.id);
+          
+          if (profileData) {
+            console.log('✅ Found profile in database, setting onboarding status');
+            const completed = profileData.onboarding_completed === true;
+            setOnboardingCompleted(completed);
+          } else {
+            console.log('🔍 No profile found - user needs onboarding');
+            setOnboardingCompleted(false);
+          }
+          setOnboardingCheckComplete(true);
+        } catch (error) {
+          console.error('❌ Error checking profile in database:', error);
+          console.log('🔧 Defaulting to onboarding required');
+          setOnboardingCompleted(false);
+          setOnboardingCheckComplete(true);
+        }
       } else {
         setOnboardingCompleted(null);
         setOnboardingCheckComplete(false); // Reset when no user
       }
     };
 
-    // Set a timeout to prevent infinite loading on onboarding check
-    const onboardingTimeout = setTimeout(() => {
-      console.log('⏰ Onboarding check timeout - forcing completion');
-      setOnboardingCompleted(false); // Default to false
-      setOnboardingCheckComplete(true);
-    }, 5000); // 5 second timeout for onboarding check
-
-    checkOnboardingStatus().finally(() => {
-      clearTimeout(onboardingTimeout);
-    });
-
-    return () => clearTimeout(onboardingTimeout);
+    checkOnboardingStatus();
   }, [user, profile]); // Watch both user and profile
 
   // Function to mark onboarding as completed
   const handleOnboardingComplete = async () => {
     try {
       console.log('🔍 Completing onboarding...');
+      
+      if (!user) {
+        console.error('❌ No user found when completing onboarding');
+        return;
+      }
+      
+      // Update the database directly to ensure it's persisted
       await StorageService.updateUserProfile({ onboardingCompleted: true });
+      console.log('✅ Onboarding status saved to database');
       
       // Refresh the profile in AuthContext to get updated onboarding status
       await refreshProfile();
+      console.log('✅ Profile refreshed from database');
       
+      // Set local state immediately to show main app
       setOnboardingCompleted(true);
-      console.log('✅ Onboarding marked as completed');
+      console.log('✅ Onboarding marked as completed locally');
+      
+      // Double-check the profile was actually updated
+      const { DatabaseService } = await import('../services/supabaseService');
+      const updatedProfile = await DatabaseService.getProfile(user.id);
+      console.log('🔍 Verification - Profile onboarding_completed:', updatedProfile?.onboarding_completed);
+      
+      if (updatedProfile?.onboarding_completed !== true) {
+        console.error('⚠️ Warning: Profile was not updated correctly in database!');
+        // Try one more time
+        await DatabaseService.updateProfile(user.id, { onboarding_completed: true });
+        console.log('✅ Second attempt to update profile completed');
+      }
     } catch (error) {
       console.error('❌ Error completing onboarding:', error);
+      // Even on error, try to set it locally so user isn't stuck
+      setOnboardingCompleted(true);
     }
   };
 
@@ -670,6 +724,29 @@ export default function AppNavigator() {
           component={SettingsScreen}
           options={{ 
             title: 'Settings',
+            headerTintColor: '#FFFFFF',
+            headerTitleStyle: {
+              fontWeight: '400',
+              fontSize: 14,
+              color: '#FFFFFF',
+            },
+          }}
+        />
+        <Stack.Screen 
+          name="Profile" 
+          component={ProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="ManageSubscription" 
+          component={ManageSubscriptionScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="OpenSourceLicenses" 
+          component={OpenSourceLicensesScreen}
+          options={{ 
+            title: 'Open Source Licenses',
             headerTintColor: '#FFFFFF',
             headerTitleStyle: {
               fontWeight: '400',

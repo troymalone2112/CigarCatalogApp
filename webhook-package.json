@@ -1,0 +1,25 @@
+{
+  "name": "revenuecat-webhook",
+  "version": "1.0.0",
+  "description": "RevenueCat webhook endpoint for Cigar Catalog App",
+  "main": "webhook.js",
+  "scripts": {
+    "start": "node webhook.js",
+    "dev": "node webhook.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "@supabase/supabase-js": "^2.39.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "revenuecat",
+    "webhook",
+    "subscription",
+    "supabase"
+  ],
+  "author": "Cigar Catalog App",
+  "license": "MIT"
+}

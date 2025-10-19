@@ -1,169 +1,209 @@
-# Netlify Deployment Guide for RevenueCat Webhook
+# 🚀 Netlify Deployment Guide for RevenueCat Webhook
 
-This guide walks you through deploying your RevenueCat webhook to Netlify step-by-step.
+## 📁 Files Created for Netlify
 
-## 📋 Prerequisites
+- `netlify/functions/revenuecat-webhook.js` - Main webhook function
+- `netlify/functions/package.json` - Dependencies for Netlify functions
+- `netlify.toml` - Netlify configuration
+- This deployment guide
 
-1. ✅ Netlify account (free tier is fine)
-2. ✅ Git repository (GitHub, GitLab, or Bitbucket)
-3. ✅ Supabase project with webhook functions deployed
-
-## 🚀 Step-by-Step Deployment
+## 🚀 Deployment Steps
 
 ### Step 1: Prepare Your Repository
 
-1. **Create a new directory** for your webhook project:
+1. **Commit all files to your repository:**
    ```bash
-   mkdir cigar-webhook
-   cd cigar-webhook
-   ```
-
-2. **Copy the webhook files** to this directory:
-   ```bash
-   # Copy these files from your main project:
-   cp netlify/functions/revenuecat-webhook.js ./
-   cp netlify/functions/health-check.js ./
-   cp package.json ./
-   cp netlify.toml ./
-   ```
-
-3. **Initialize git repository**:
-   ```bash
-   git init
    git add .
-   git commit -m "Initial webhook setup"
-   ```
-
-4. **Push to GitHub**:
-   ```bash
-   # Create a new repository on GitHub, then:
-   git remote add origin https://github.com/yourusername/cigar-webhook.git
-   git push -u origin main
+   git commit -m "Add RevenueCat webhook for Netlify"
+   git push origin main
    ```
 
 ### Step 2: Deploy to Netlify
 
-1. **Go to [Netlify](https://netlify.com)** and sign in
+#### Option A: Connect GitHub Repository (Recommended)
 
+1. **Go to [Netlify](https://netlify.com)**
 2. **Click "New site from Git"**
-
-3. **Connect your GitHub account** (if not already connected)
-
-4. **Select your webhook repository**: `cigar-webhook`
-
-5. **Configure build settings**:
-   - **Build command**: Leave empty (no build needed)
-   - **Publish directory**: Leave empty
-   - **Functions directory**: `netlify/functions`
-
+3. **Connect your GitHub account**
+4. **Select your CigarCatalogApp repository**
+5. **Configure build settings:**
+   - **Build command:** Leave empty (not needed for functions)
+   - **Publish directory:** Leave empty (not needed for functions)
 6. **Click "Deploy site"**
+
+#### Option B: Deploy from Local Directory
+
+1. **Install Netlify CLI:**
+   ```bash
+   npm install -g netlify-cli
+   ```
+
+2. **Login to Netlify:**
+   ```bash
+   netlify login
+   ```
+
+3. **Deploy:**
+   ```bash
+   netlify deploy --prod
+   ```
 
 ### Step 3: Set Environment Variables
 
-1. **Go to Site Settings** → **Environment Variables**
+1. **Go to your Netlify site dashboard**
+2. **Navigate to:** Site settings → Environment variables
+3. **Add environment variable:**
+   - **Key:** `SUPABASE_SERVICE_ROLE_KEY`
+   - **Value:** Your Supabase service role key
+   - **Get it from:** https://supabase.com/dashboard/project/lkkbstwmzdbmlfsowwgt/settings/api
 
-2. **Add these variables**:
-   ```
-   SUPABASE_URL=https://your-project.supabase.co
-   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-   ```
+### Step 4: Test Your Webhook
 
-3. **Click "Save"**
-
-4. **Redeploy** (go to Deploys → Trigger deploy → Deploy site)
-
-### Step 4: Get Your Webhook URL
-
-After deployment, your webhook URL will be:
+Your webhook will be available at:
 ```
-https://your-site-name.netlify.app/.netlify/functions/revenuecat-webhook
+https://your-site-name.netlify.app/webhook/revenuecat
 ```
 
-**Example**: If your site is called `cigar-webhook-123`, your URL would be:
-```
-https://cigar-webhook-123.netlify.app/.netlify/functions/revenuecat-webhook
-```
+#### Test Endpoints:
 
-### Step 5: Test Your Webhook
-
-1. **Test health check**:
+1. **Health Check:**
    ```bash
-   curl https://your-site-name.netlify.app/.netlify/functions/health-check
+   curl https://your-site-name.netlify.app/webhook/revenuecat/health
    ```
 
-2. **Test webhook endpoint**:
+2. **Test Connection:**
    ```bash
-   curl -X POST https://your-site-name.netlify.app/.netlify/functions/revenuecat-webhook \
+   curl https://your-site-name.netlify.app/webhook/revenuecat/test
+   ```
+
+3. **Test Webhook:**
+   ```bash
+   curl -X POST https://your-site-name.netlify.app/webhook/revenuecat \
      -H "Content-Type: application/json" \
-     -d '{"test": "data"}'
+     -d '{"test": true}'
    ```
 
-### Step 6: Configure RevenueCat
+## ⚙️ Configure RevenueCat Dashboard
 
-1. **Go to RevenueCat Dashboard** → **Project Settings** → **Webhooks**
-
-2. **Add Webhook URL**:
+1. **Go to [RevenueCat Dashboard](https://app.revenuecat.com/)**
+2. **Navigate to:** Project Settings → Webhooks
+3. **Add Webhook URL:**
    ```
-   https://your-site-name.netlify.app/.netlify/functions/revenuecat-webhook
+   https://your-site-name.netlify.app/webhook/revenuecat
    ```
-
-3. **Enable Events**:
+4. **Enable Events:**
    - ✅ INITIAL_PURCHASE
    - ✅ RENEWAL
    - ✅ CANCELLATION
    - ✅ EXPIRATION
    - ✅ BILLING_ISSUE
-   - ✅ TRANSFER
+5. **Save Configuration**
 
-4. **Save Configuration**
+## 🔧 Netlify Function Features
 
-5. **Test Webhook** (click "Test Webhook" button in RevenueCat)
+### Webhook Endpoints
 
-## 🔧 Troubleshooting
+- **`/webhook/revenuecat`** - Main webhook endpoint
+- **`/webhook/revenuecat/health`** - Health check
+- **`/webhook/revenuecat/test`** - Test Supabase connection
 
-### Webhook Not Working
-1. **Check Netlify logs**: Site → Functions → revenuecat-webhook → View logs
-2. **Verify environment variables** are set correctly
-3. **Test with curl** to see error messages
+### Function Features
+
+- ✅ **CORS headers** for cross-origin requests
+- ✅ **Database function fallback** - tries database function first, falls back to direct update
+- ✅ **Comprehensive error handling**
+- ✅ **Detailed logging**
+- ✅ **Health check endpoints**
+
+## 🧪 Testing Your Deployment
+
+### 1. Check Function Logs
+
+1. **Go to Netlify dashboard**
+2. **Navigate to:** Functions → revenuecat-webhook
+3. **Check logs for any errors**
+
+### 2. Test with Real Purchase
+
+1. **Make a test purchase in your app**
+2. **Check Netlify function logs**
+3. **Check your Supabase database for updated subscription**
+
+### 3. Monitor Function Performance
+
+- **Function timeout:** 10 seconds (Netlify default)
+- **Memory limit:** 1024MB
+- **Cold start time:** ~1-2 seconds
+
+## 🚨 Troubleshooting
+
+### Function Not Working
+
+1. **Check environment variables are set**
+2. **Check function logs in Netlify dashboard**
+3. **Verify Supabase service role key is correct**
 
 ### Database Not Updating
-1. **Check Supabase logs** in your dashboard
-2. **Verify webhook function** is deployed in Supabase
-3. **Check user ID format** matches your auth system
 
-### Environment Variables Missing
-1. **Go to Site Settings** → **Environment Variables**
-2. **Add missing variables**
-3. **Redeploy** the site
+1. **Check if database functions exist** (run `fix_revenuecat_database_functions.sql`)
+2. **Check function logs for errors**
+3. **Test direct database connection**
+
+### CORS Issues
+
+The function includes CORS headers, but if you have issues:
+1. **Check Netlify redirects in netlify.toml**
+2. **Verify function is deployed correctly**
 
 ## 📊 Monitoring
 
 ### Netlify Dashboard
-- **Functions tab** shows webhook execution logs
-- **Analytics** shows webhook call frequency
-- **Deploys** shows deployment history
 
-### RevenueCat Dashboard
-- **Webhooks tab** shows delivery status
-- **Events tab** shows subscription events
-- **Test button** for manual testing
+- **Functions tab** - View function logs and performance
+- **Deploys tab** - Check deployment status
+- **Analytics tab** - Monitor function usage
+
+### Key Metrics to Watch
+
+- ✅ Function execution success rate
+- ✅ Function execution time
+- ✅ Error rate
+- ✅ Database update success
+
+## 🎯 Expected Results
+
+After deployment and configuration:
+
+- ✅ **IAP purchases work** (already working)
+- ✅ **Database gets updated** (webhook fixes this)
+- ✅ **App shows premium status** (database sync)
+- ✅ **Cross-device sync** (webhook handles this)
+- ✅ **Automatic renewals** (webhook handles this)
+
+## 🔄 How It Works
+
+### Netlify Function Flow
+
+```
+User Purchase → RevenueCat → Netlify Function → Supabase Database → App Updates
+```
+
+### Function Logic
+
+1. **Receives webhook from RevenueCat**
+2. **Tries database function first** (`handle_revenuecat_webhook`)
+3. **Falls back to direct database update** if function fails
+4. **Returns success/failure response**
 
 ## 🎉 Success!
 
-Once deployed and configured, your webhook will:
+Once deployed and configured, your RevenueCat integration will be fully functional with automatic database synchronization via Netlify Functions!
 
-✅ **Automatically receive** RevenueCat events  
-✅ **Update your database** in real-time  
-✅ **Sync subscription status** across devices  
-✅ **Handle all subscription lifecycle** events  
+### Next Steps
 
-## 📞 Support
+1. **Deploy to Netlify** (5 minutes)
+2. **Set environment variables** (2 minutes)
+3. **Configure RevenueCat dashboard** (3 minutes)
+4. **Test with real purchase** (5 minutes)
 
-If you run into issues:
-1. **Check Netlify function logs** for errors
-2. **Verify Supabase webhook functions** are deployed
-3. **Test with curl** to isolate issues
-4. **Check RevenueCat webhook delivery** status
-
-Your webhook URL will be:
-**`https://your-site-name.netlify.app/.netlify/functions/revenuecat-webhook`**
+**Total time:** ~15 minutes to fully deploy and configure! 🚀

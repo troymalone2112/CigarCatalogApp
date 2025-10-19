@@ -101,6 +101,20 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={20} color="#999999" />
           </TouchableOpacity>
 
+          <TouchableOpacity 
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('Profile' as never)}
+          >
+            <View style={styles.actionContent}>
+              <Ionicons name="person" size={24} color="#999999" />
+              <View style={styles.actionText}>
+                <Text style={styles.actionTitle}>Profile</Text>
+                <Text style={styles.actionSubtitle}>Manage your account and subscription</Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999999" />
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.actionCard}>
             <View style={styles.actionContent}>
               <Ionicons name="help-circle" size={24} color="#999999" />

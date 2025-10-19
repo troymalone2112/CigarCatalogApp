@@ -5,6 +5,16 @@ import { supabase, AuthService, DatabaseService, checkSupabaseConnection } from 
 import { StorageService } from '../storage/storageService';
 import { UserManagementService } from '../services/userManagementService';
 import { UserRole } from '../types';
+import { 
+  DEVELOPMENT_CONFIG, 
+  isExpoGo, 
+  getTimeoutValue, 
+  getRetryCount, 
+  getRetryDelay,
+  shouldUseGracefulDegradation,
+  shouldPreserveExistingData 
+} from '../config/development';
+import { ProfileCacheService, NetworkError } from '../services/profileCacheService';
 
 interface Profile {
   id: string;
@@ -102,16 +112,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     console.log('🚀 AuthContext: Starting initialization...');
     
-    // Set a timeout to prevent infinite loading
+    // Set a timeout to prevent infinite loading (dynamic based on environment)
+    const authTimeout = getTimeoutValue(10000, 'auth');
     const loadingTimeout = setTimeout(() => {
       console.log('⏰ Auth loading timeout - forcing loading to false');
       setLoading(false);
-    }, 10000); // 10 second timeout
+    }, authTimeout);
 
-    // Get initial session with timeout protection
+    // Get initial session with dynamic timeout
+    const sessionTimeout = getTimeoutValue(5000, 'session');
     const sessionPromise = supabase.auth.getSession();
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Session timeout')), 5000)
+      setTimeout(() => reject(new Error('Session timeout')), sessionTimeout)
     );
     
     Promise.race([sessionPromise, timeoutPromise])
@@ -139,7 +151,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       })
       .catch((error) => {
         console.error('❌ Error getting initial session:', error);
-        setLoading(false);
+        
+        if (shouldUseGracefulDegradation()) {
+          console.log('⚠️ Session timeout, but continuing with degraded auth state (Expo Go mode)');
+          setLoading(false);
+        } else {
+          console.log('❌ Session timeout - failing auth initialization');
+          setLoading(false);
+        }
         clearTimeout(loadingTimeout);
       });
 
@@ -174,22 +193,108 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const loadProfile = async (userId: string) => {
+  const loadProfile = async (userId: string, retryCount = 0) => {
     try {
-      console.log('🔍 Loading profile for user:', userId);
+      console.log('🔍 Loading profile for user:', userId, retryCount > 0 ? `(retry ${retryCount})` : '');
       
-      // Add timeout to prevent hanging
+      // First, try to get cached profile if this is a retry or we're in Expo Go
+      if (retryCount > 0 || isExpoGo) {
+        const cachedProfile = await ProfileCacheService.getCachedProfile();
+        if (cachedProfile && cachedProfile.id === userId) {
+          console.log('✅ Using cached profile:', cachedProfile.id);
+          setProfile(cachedProfile);
+          return;
+        }
+      }
+      
+      // Add timeout to prevent hanging (dynamic based on environment)
+      const profileTimeout = getTimeoutValue(15000, 'profile');
       const profilePromise = DatabaseService.getProfile(userId);
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile load timeout')), 8000)
+        setTimeout(() => reject(new Error('Profile load timeout')), profileTimeout)
       );
       
       const profileData = await Promise.race([profilePromise, timeoutPromise]);
       console.log('✅ Profile loaded successfully:', profileData);
+      
+      // Cache the profile for future use
+      await ProfileCacheService.cacheProfile(profileData);
       setProfile(profileData);
     } catch (error) {
       console.error('❌ Error loading profile:', error);
-      // Set a default profile if loading fails
+      
+      // Classify the error for better handling
+      const networkError = ProfileCacheService.classifyNetworkError(error);
+      console.log('🔍 Network error classified:', networkError);
+      
+      // Try to use cached profile for network/timeout errors
+      if (ProfileCacheService.shouldUseCachedProfile(networkError)) {
+        const cachedProfile = await ProfileCacheService.getCachedProfile();
+        if (cachedProfile && cachedProfile.id === userId) {
+          console.log('✅ Using cached profile due to network error:', networkError.type);
+          setProfile(cachedProfile);
+          return;
+        }
+      }
+      
+      // Check if we should retry
+      const maxRetries = getRetryCount();
+      if (ProfileCacheService.shouldRetry(networkError, retryCount, maxRetries)) {
+        const delay = ProfileCacheService.getRetryDelay(networkError, retryCount);
+        console.log(`🔄 Retrying profile load in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries}) - Error: ${networkError.type}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return loadProfile(userId, retryCount + 1);
+      }
+      
+      // If we already have a profile in state, keep it (don't reset to default)
+      if (profile && shouldPreserveExistingData()) {
+        console.log('⚠️ Profile load failed after retries, keeping existing profile (Expo Go mode)');
+        return;
+      }
+      
+      // Final fallback - try to get minimal profile info
+      if (networkError.type === 'timeout' || networkError.type === 'network') {
+        console.log('⚠️ Profile load timeout/network error - checking if user exists in database');
+        
+        // Try to check if user exists in database with a simple query
+        try {
+          const { data: existingProfile, error: checkError } = await supabase
+            .from('profiles')
+            .select('id, onboarding_completed, full_name, created_at, updated_at')
+            .eq('id', userId)
+            .single();
+            
+          if (existingProfile && !checkError) {
+            console.log('✅ User exists in database, using existing profile data');
+            const fallbackProfile = {
+              id: userId,
+              email: user?.email || '',
+              full_name: existingProfile.full_name || user?.email?.split('@')[0] || 'User',
+              onboarding_completed: existingProfile.onboarding_completed,
+              created_at: existingProfile.created_at || new Date().toISOString(),
+              updated_at: existingProfile.updated_at || new Date().toISOString()
+            };
+            
+            // Cache the fallback profile
+            await ProfileCacheService.cacheProfile(fallbackProfile);
+            setProfile(fallbackProfile);
+            return;
+          }
+        } catch (checkError) {
+          console.log('⚠️ Could not verify user existence, using cached profile or default');
+        }
+        
+        // Try cached profile one more time
+        const cachedProfile = await ProfileCacheService.getCachedProfile();
+        if (cachedProfile) {
+          console.log('✅ Using cached profile as final fallback');
+          setProfile(cachedProfile);
+          return;
+        }
+      }
+      
+      // Last resort - create default profile
+      console.log('🔧 Setting default profile for new user (all fallbacks failed)');
       const defaultProfile = {
         id: userId,
         email: user?.email || '',
@@ -198,7 +303,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       };
-      console.log('🔧 Setting default profile:', defaultProfile);
+      
+      // Cache the default profile
+      await ProfileCacheService.cacheProfile(defaultProfile);
       setProfile(defaultProfile);
     }
   };
@@ -206,18 +313,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Function to refresh profile (useful after onboarding completion)
   const refreshProfile = async () => {
     if (user) {
+      // Clear cached profile to force fresh load
+      await ProfileCacheService.clearCachedProfile();
       await loadProfile(user.id);
     }
   };
 
-  const loadUserPermissions = async () => {
+  const loadUserPermissions = async (retryCount = 0) => {
     try {
-      console.log('🔍 Loading user permissions...');
+      console.log('🔍 Loading user permissions...', retryCount > 0 ? `(retry ${retryCount})` : '');
       
-      // Add timeout to prevent hanging
+      // Add timeout to prevent hanging (dynamic based on environment)
+      const permissionsTimeout = getTimeoutValue(10000, 'permissions');
       const permissionsPromise = UserManagementService.getCurrentUserPermissions();
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Permissions load timeout')), 5000)
+        setTimeout(() => reject(new Error('Permissions load timeout')), permissionsTimeout)
       );
       
       const permissions = await Promise.race([permissionsPromise, timeoutPromise]);
@@ -227,7 +337,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCanAccessAdmin(permissions.canAccessAdmin);
     } catch (error) {
       console.error('❌ Error loading user permissions:', error);
-      // Set safe defaults
+      
+      // Retry logic with exponential backoff (dynamic retry count)
+      const maxRetries = getRetryCount();
+      if (retryCount < maxRetries) {
+        const delay = getRetryDelay(retryCount);
+        console.log(`🔄 Retrying permissions load in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return loadUserPermissions(retryCount + 1);
+      }
+      
+      // If we already have permissions in state, keep them
+      if (userRole && shouldPreserveExistingData()) {
+        console.log('⚠️ Permissions load failed after retries, keeping existing permissions (Expo Go mode)');
+        return;
+      }
+      
+      // Set safe defaults only if we don't have existing data
+      console.log('🔧 Setting default permissions (timeout/network error)');
       setUserRole('standard_user');
       setIsSuperUser(false);
       setCanAccessAdmin(false);
@@ -238,6 +365,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setLoading(true);
       await AuthService.signUp(email, password, fullName);
+      
+      // Set RevenueCat user ID after successful signup
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        try {
+          const { RevenueCatService } = await import('../services/revenueCatService');
+          await RevenueCatService.setUserId(user.id);
+          console.log('✅ RevenueCat user ID set for new user:', user.id);
+        } catch (error) {
+          console.error('❌ Failed to set RevenueCat user ID for new user:', error);
+          // Don't throw - RevenueCat setup failure shouldn't break signup
+        }
+      }
+      
       // Note: Profile creation is handled automatically by database trigger
     } catch (error) {
       console.error('Sign up error:', error);
@@ -276,6 +417,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       // Clear user data before signing out
       await StorageService.clearCurrentUserData();
+      
+      // Clear cached profile
+      await ProfileCacheService.clearCachedProfile();
       
       // Log out from RevenueCat
       try {

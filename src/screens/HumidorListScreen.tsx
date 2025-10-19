@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,15 +13,17 @@ import {
 import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { RootStackParamList } from '../types';
+import { HumidorStackParamList } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { useRecognitionFlow } from '../contexts/RecognitionFlowContext';
 import { DatabaseService } from '../services/supabaseService';
 import { StorageService } from '../storage/storageService';
 import { HumidorStats, UserHumidorAggregate, Humidor } from '../types';
+import HumidorCapacitySetupModal from '../components/HumidorCapacitySetupModal';
 import { useScreenLoading } from '../hooks/useScreenLoading';
 
-type HumidorListScreenNavigationProp = StackNavigationProp<RootStackParamList, 'HumidorList'>;
-type HumidorListScreenRouteProp = RouteProp<RootStackParamList, 'HumidorList'>;
+type HumidorListScreenNavigationProp = StackNavigationProp<HumidorStackParamList, 'HumidorListMain'>;
+type HumidorListScreenRouteProp = RouteProp<HumidorStackParamList, 'HumidorListMain'>;
 
 const { width } = Dimensions.get('window');
 
@@ -33,41 +35,88 @@ export default function HumidorListScreen() {
   // Check if we're coming from recognition flow
   const { fromRecognition, cigar, singleStickPrice } = route.params || {};
   console.log('🔍 HumidorList params:', { fromRecognition, cigar: cigar?.brand, singleStickPrice });
+  console.log('🔍 Full route params:', route.params);
   const [humidors, setHumidors] = useState<HumidorStats[]>([]);
   const [aggregateStats, setAggregateStats] = useState<UserHumidorAggregate | null>(null);
+  const [showCapacitySetup, setShowCapacitySetup] = useState(false);
+  const [pendingHumidorData, setPendingHumidorData] = useState<{name: string, description: string} | null>(null);
   const { loading, refreshing, setLoading, setRefreshing } = useScreenLoading(true);
+  const hasNavigatedAwayRef = useRef(false);
 
   const loadHumidorData = useCallback(async () => {
     if (!user) return;
 
     try {
       setLoading(true);
+      console.log('🚀 HumidorListScreen - Starting optimized data load');
+      const startTime = Date.now();
       
-      // Load humidors from database
-      const humidorsList = await DatabaseService.getHumidors(user.id);
+      // Add timeout wrapper for the database call
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database request timeout')), 10000) // 10 second timeout
+      );
       
-      // If no humidors exist, create a default one
+      const dataPromise = DatabaseService.getHumidorDataOptimized(user.id);
+      
+      // Race between data loading and timeout
+      const { humidors: humidorsList, humidorStats: humidorsWithStats, aggregate: aggregateData, loadTime } = await Promise.race([
+        dataPromise,
+        timeoutPromise
+      ]) as any;
+      
+      console.log(`⚡ HumidorListScreen - Database queries completed in ${loadTime}ms`);
+      
+      // If no humidors exist, show capacity setup modal
       if (humidorsList.length === 0) {
-        const defaultHumidor = await DatabaseService.createHumidor(
-          user.id,
-          'Main Humidor',
-          'Your default humidor'
-        );
-        humidorsList.push(defaultHumidor);
+        console.log('🔧 No humidors found, showing capacity setup for new user');
+        setPendingHumidorData({
+          name: 'Main Humidor',
+          description: 'Your default humidor'
+        });
+        setShowCapacitySetup(true);
+        setHumidors([]);
+        setAggregateStats({
+          userId: user.id,
+          totalHumidors: 0,
+          totalCigars: 0,
+          totalCollectionValue: 0,
+          avgCigarValue: 0,
+          uniqueBrands: 0,
+        });
+      } else {
+          console.log('🔍 Loaded humidor stats:', humidorsWithStats.map(h => ({ 
+            name: h.humidorName, 
+            description: h.description
+          })));
+          setHumidors(humidorsWithStats);
+          setAggregateStats(aggregateData);
       }
       
-      // Get humidor statistics from database
-      const humidorsWithStats = await DatabaseService.getHumidorStats(user.id);
-      
-      // Get aggregate statistics from database
-      const aggregateData = await DatabaseService.getUserHumidorAggregate(user.id);
-
-      console.log('🔍 Loaded humidor stats:', humidorsWithStats.map(h => ({ name: h.humidorName, description: h.description })));
-      setHumidors(humidorsWithStats);
-      setAggregateStats(aggregateData);
+      const totalTime = Date.now() - startTime;
+      console.log(`✅ HumidorListScreen - Total load time: ${totalTime}ms`);
     } catch (error) {
-      console.error('Error loading humidor data:', error);
-      Alert.alert('Error', 'Failed to load humidor data');
+      console.error('❌ Error loading humidor data:', error);
+      
+      // Check if it's a timeout error
+      if (error?.message?.includes('timeout')) {
+        console.log('⏰ Database request timed out, showing empty state');
+        setHumidors([]);
+        setAggregateStats({
+          userId: user.id,
+          totalHumidors: 0,
+          totalCigars: 0,
+          totalCollectionValue: 0,
+          avgCigarValue: 0,
+          uniqueBrands: 0,
+        });
+        Alert.alert(
+          'Connection Timeout', 
+          'Loading is taking longer than expected. Please check your internet connection and try again.',
+          [{ text: 'OK' }]
+        );
+      } else {
+        Alert.alert('Error', 'Failed to load humidor data. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -76,7 +125,18 @@ export default function HumidorListScreen() {
   useFocusEffect(
     useCallback(() => {
       loadHumidorData();
-    }, [loadHumidorData])
+      
+      // If we had completed the add flow and are coming back, clear params
+      if (hasNavigatedAwayRef.current && fromRecognition) {
+        console.log('🧹 Returning from completed add flow - clearing recognition params');
+        navigation.setParams({
+          fromRecognition: undefined,
+          cigar: undefined,
+          singleStickPrice: undefined,
+        } as any);
+        hasNavigatedAwayRef.current = false;
+      }
+    }, [loadHumidorData, fromRecognition, navigation])
   );
 
   const onRefresh = useCallback(async () => {
@@ -89,11 +149,52 @@ export default function HumidorListScreen() {
     navigation.navigate('CreateHumidor');
   };
 
+  const handleCapacitySetup = async (capacity: number | null) => {
+    if (!user || !pendingHumidorData) return;
+
+    try {
+      console.log('🔧 Creating default humidor with capacity:', capacity);
+      const defaultHumidor = await DatabaseService.createHumidor(
+        user.id,
+        pendingHumidorData.name,
+        pendingHumidorData.description,
+        capacity
+      );
+      
+      // Refresh stats after creating default humidor
+      const updatedStats = await DatabaseService.getHumidorStats(user.id);
+      const updatedAggregate = await DatabaseService.getUserHumidorAggregate(user.id);
+      
+      console.log('🔍 Loaded humidor stats after default creation:', updatedStats.map(h => ({ name: h.humidorName, description: h.description })));
+      setHumidors(updatedStats);
+      setAggregateStats(updatedAggregate);
+    } catch (createError) {
+      console.error('❌ Error creating default humidor:', createError);
+      Alert.alert('Error', 'Failed to create default humidor. Please try again.');
+    } finally {
+      setShowCapacitySetup(false);
+      setPendingHumidorData(null);
+    }
+  };
+
   const handleHumidorPress = (humidor: HumidorStats) => {
     console.log('🔍 Humidor pressed:', humidor.humidorName, 'fromRecognition:', fromRecognition);
+    console.log('🔍 Recognition flow check:', { fromRecognition, hasCigar: !!cigar, singleStickPrice });
     if (fromRecognition && cigar && singleStickPrice !== undefined) {
       // Coming from recognition flow - go to AddToInventory with selected humidor
       console.log('🔍 Navigating to AddToInventory with humidor:', humidor.humidorId);
+      
+      // Mark that we're entering the add flow - this will trigger cleanup when we return
+      hasNavigatedAwayRef.current = true;
+      
+      // Clear params immediately
+      navigation.setParams({
+        fromRecognition: undefined,
+        cigar: undefined,
+        singleStickPrice: undefined,
+      } as any);
+      
+      // Navigate with the cigar data
       navigation.navigate('AddToInventory', {
         cigar,
         singleStickPrice,
@@ -207,14 +308,36 @@ export default function HumidorListScreen() {
     </TouchableOpacity>
   );
 
+  const renderLoadingSkeleton = () => (
+    <View style={styles.skeletonContainer}>
+      {/* Header skeleton */}
+      <View style={styles.skeletonHeader}>
+        <View style={styles.skeletonStat} />
+        <View style={styles.skeletonStat} />
+        <View style={styles.skeletonStat} />
+      </View>
+      
+      {/* Card skeletons */}
+      {[1, 2, 3].map((index) => (
+        <View key={index} style={styles.skeletonCard}>
+          <View style={styles.skeletonCardHeader}>
+            <View style={styles.skeletonTitle} />
+            <View style={styles.skeletonEditButton} />
+          </View>
+          <View style={styles.skeletonCardStats}>
+            <View style={styles.skeletonStatItem} />
+            <View style={styles.skeletonStatItem} />
+            <View style={styles.skeletonStatItem} />
+          </View>
+          <View style={styles.skeletonCapacityBar} />
+        </View>
+      ))}
+    </View>
+  );
+
   const renderEmptyState = () => {
     if (loading) {
-      return (
-        <View style={styles.emptyState}>
-          <Ionicons name="archive-outline" size={80} color="#DC851F" />
-          <Text style={styles.emptyTitle}>Loading...</Text>
-        </View>
-      );
+      return renderLoadingSkeleton();
     }
     
     return (
@@ -292,6 +415,17 @@ export default function HumidorListScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Capacity Setup Modal */}
+      <HumidorCapacitySetupModal
+        visible={showCapacitySetup}
+        onClose={() => {
+          setShowCapacitySetup(false);
+          setPendingHumidorData(null);
+        }}
+        onSave={handleCapacitySetup}
+        humidorName={pendingHumidorData?.name || 'Main Humidor'}
+      />
     </ImageBackground>
   );
 }
@@ -475,5 +609,68 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#CCCCCC',
     textAlign: 'center',
+  },
+  // Skeleton loading styles
+  skeletonContainer: {
+    padding: 16,
+  },
+  skeletonHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#1a1a1a',
+  },
+  skeletonStat: {
+    flex: 1,
+    alignItems: 'center',
+    height: 40,
+    backgroundColor: '#333333',
+    borderRadius: 8,
+    marginHorizontal: 4,
+  },
+  skeletonCard: {
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  skeletonCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  skeletonTitle: {
+    height: 20,
+    width: '60%',
+    backgroundColor: '#333333',
+    borderRadius: 4,
+  },
+  skeletonEditButton: {
+    height: 20,
+    width: 20,
+    backgroundColor: '#333333',
+    borderRadius: 10,
+  },
+  skeletonCardStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  skeletonStatItem: {
+    flex: 1,
+    height: 30,
+    backgroundColor: '#333333',
+    borderRadius: 4,
+    marginHorizontal: 4,
+  },
+  skeletonCapacityBar: {
+    height: 6,
+    backgroundColor: '#333333',
+    borderRadius: 3,
   },
 });

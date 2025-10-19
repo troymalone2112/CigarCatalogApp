@@ -45,6 +45,32 @@ export default function JournalCigarRecognitionScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [recognitionResult, setRecognitionResult] = useState<RecognitionResult | null>(null);
   const [recognitionMode, setRecognitionMode] = useState<RecognitionMode>(RecognitionMode.HYBRID);
+  const [currentProcessingMessage, setCurrentProcessingMessage] = useState(0);
+
+  // Processing messages to display during cigar identification
+  const processingMessages = [
+    "Identifying brand, tobacco, aging, and origin...",
+    "Analyzing cigar band details...",
+    "Pulling flavor profiles and tasting notes...",
+    "Fetching ratings from Cigar Aficionado...",
+    "Compiling manufacturer info...",
+    "Gathering user reviews...",
+    "Finalizing your cigar profile..."
+  ];
+
+  // Cycle through processing messages when processing
+  useEffect(() => {
+    if (isProcessing) {
+      setCurrentProcessingMessage(0);
+      const interval = setInterval(() => {
+        setCurrentProcessingMessage(prev => 
+          prev < processingMessages.length - 1 ? prev + 1 : 0
+        );
+      }, 3000); // Change message every 3 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [isProcessing, processingMessages.length]);
   
   const [showCamera, setShowCamera] = useState(false);
 
@@ -72,9 +98,16 @@ export default function JournalCigarRecognitionScreen() {
         });
         setImageUri(photo.uri);
         setShowCamera(false);
-        // Use base64 data for API calls instead of file URI
-        const base64Image = `data:image/jpeg;base64,${photo.base64}`;
-        await processImage(base64Image);
+        
+        // Process the image separately to avoid misleading error messages
+        try {
+          // Use base64 data for API calls instead of file URI
+          const base64Image = `data:image/jpeg;base64,${photo.base64}`;
+          await processImage(base64Image);
+        } catch (processError) {
+          console.error('Error processing image:', processError);
+          Alert.alert('Error', 'Failed to process image for recognition. Please try again.');
+        }
       } catch (error) {
         console.error('Error taking picture:', error);
         Alert.alert('Error', 'Failed to take picture');
@@ -167,8 +200,9 @@ export default function JournalCigarRecognitionScreen() {
         <View style={styles.container}>
           <View style={styles.processingContainer}>
             <ActivityIndicator size="large" color="#7C2D12" />
-            <Text style={styles.processingText}>Analyzing your cigar...</Text>
-            <Text style={styles.processingSubtext}>This may take a few moments</Text>
+            <Text style={styles.processingText}>
+              {processingMessages[currentProcessingMessage]}
+            </Text>
           </View>
         </View>
       </ImageBackground>
@@ -471,12 +505,7 @@ const styles = StyleSheet.create({
     color: '#CCCCCC',
     marginTop: 20,
     textAlign: 'center',
-  },
-  processingSubtext: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 8,
-    textAlign: 'center',
+    fontWeight: '500',
   },
   cameraContainer: {
     flex: 1,

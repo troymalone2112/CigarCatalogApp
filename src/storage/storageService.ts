@@ -262,22 +262,21 @@ export class StorageService {
       // Delete from database
       await JournalService.deleteJournalEntry(entryId);
       
-      // Log removal activity
+      // Log removal activity in the background (non-blocking)
       if (entryToRemove) {
-        try {
-          await UserManagementService.logUserActivity(
-            'remove_journal_entry',
-            'journal_entry',
-            entryId,
-            { 
-              cigarBrand: entryToRemove.cigar.brand,
-              cigarName: entryToRemove.cigar.name,
-              rating: entryToRemove.rating?.overall
-            }
-          );
-        } catch (logError) {
+        // Don't await this - let it run in the background
+        UserManagementService.logUserActivity(
+          'remove_journal_entry',
+          'journal_entry',
+          entryId,
+          { 
+            cigarBrand: entryToRemove.cigar.brand,
+            cigarName: entryToRemove.cigar.name,
+            rating: entryToRemove.rating?.overall
+          }
+        ).catch(logError => {
           console.log('User activity logging failed (non-critical):', logError);
-        }
+        });
       }
     } catch (error) {
       console.error('Error removing journal entry:', error);

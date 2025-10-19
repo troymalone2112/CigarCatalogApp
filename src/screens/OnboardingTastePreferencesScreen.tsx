@@ -66,7 +66,7 @@ export default function OnboardingTastePreferencesScreen() {
       const userProfile: UserProfile = {
         userId: user.id, // Use actual user ID from auth
         ageVerified: true,
-        smokingDuration: route.params?.smokingDuration || 'none',
+        smokingDuration: route.params?.smokingDuration || 'newbie',
         experienceLevel: route.params?.experienceLevel || 'getting-started',
         preferredFlavors: selectedFlavors,
         onboardingCompleted: true,
@@ -115,7 +115,7 @@ export default function OnboardingTastePreferencesScreen() {
           </TouchableOpacity>
           
           <View style={styles.progressIndicator}>
-            <Text style={styles.progressText}>4 of 4</Text>
+            <Text style={styles.progressText}>3 of 3</Text>
             <View style={styles.progressBar}>
               <View style={[styles.progressFill, { width: '100%' }]} />
             </View>

@@ -20,6 +20,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList, JournalEntry, Cigar } from '../types';
 import { StorageService } from '../storage/storageService';
 import { getStrengthInfo } from '../utils/strengthUtils';
+import { useJournalDraft } from '../contexts/JournalDraftContext';
 
 type NewJournalEntryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'NewJournalEntry'>;
 type NewJournalEntryScreenRouteProp = RouteProp<RootStackParamList, 'NewJournalEntry'>;
@@ -35,6 +36,7 @@ export default function NewJournalEntryScreen() {
   const navigation = useNavigation<NewJournalEntryScreenNavigationProp>();
   const route = useRoute<NewJournalEntryScreenRouteProp>();
   const { cigar, recognitionImageUrl } = route.params;
+  const { currentDraft, saveDraft, loadDraft, clearDraft, isDraftActive, hasUnsavedChanges } = useJournalDraft();
 
   // Form state
   const [notes, setNotes] = useState('');
@@ -44,10 +46,44 @@ export default function NewJournalEntryScreen() {
   const [location, setLocation] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [isLoadingDraft, setIsLoadingDraft] = useState(false);
 
   useEffect(() => {
-    getCurrentLocation();
+    initializeScreen();
   }, []);
+
+  const initializeScreen = async () => {
+    try {
+      setIsLoadingDraft(true);
+      
+      // Try to load existing draft for this cigar
+      const existingDraft = await loadDraft(cigar.id);
+      
+      if (existingDraft) {
+        console.log('📝 Restoring draft for cigar:', cigar.brand, cigar.line);
+        setNotes(existingDraft.notes);
+        setRating(existingDraft.rating);
+        setSelectedFlavors(existingDraft.selectedFlavors);
+        setPhotos(existingDraft.photos);
+        setLocation(existingDraft.location);
+        
+        // Show restoration message
+        Alert.alert(
+          'Draft Restored',
+          'We found your previous journal entry for this cigar. Your progress has been restored.',
+          [{ text: 'Continue', style: 'default' }]
+        );
+      } else {
+        console.log('📝 No existing draft found, starting fresh');
+        getCurrentLocation();
+      }
+    } catch (error) {
+      console.error('❌ Error initializing screen:', error);
+      getCurrentLocation();
+    } finally {
+      setIsLoadingDraft(false);
+    }
+  };
 
   const getCurrentLocation = async () => {
     try {
@@ -90,7 +126,9 @@ export default function NewJournalEntryScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setPhotos(prev => [...prev, result.assets[0].uri]);
+        const newPhotos = [...photos, result.assets[0].uri];
+        setPhotos(newPhotos);
+        saveDraft({ photos: newPhotos });
       }
     } catch (error) {
       console.error('Error taking picture:', error);
@@ -99,15 +137,36 @@ export default function NewJournalEntryScreen() {
   };
 
   const removePhoto = (index: number) => {
-    setPhotos(prev => prev.filter((_, i) => i !== index));
+    const newPhotos = photos.filter((_, i) => i !== index);
+    setPhotos(newPhotos);
+    saveDraft({ photos: newPhotos });
   };
 
   const toggleFlavor = (flavor: string) => {
-    setSelectedFlavors(prev => 
-      prev.includes(flavor) 
-        ? prev.filter(f => f !== flavor)
-        : [...prev, flavor]
-    );
+    const newFlavors = selectedFlavors.includes(flavor) 
+      ? selectedFlavors.filter(f => f !== flavor)
+      : [...selectedFlavors, flavor];
+    
+    setSelectedFlavors(newFlavors);
+    
+    // Auto-save draft
+    saveDraft({ selectedFlavors: newFlavors });
+  };
+
+  // Auto-save functions for form fields
+  const handleNotesChange = (text: string) => {
+    setNotes(text);
+    saveDraft({ notes: text });
+  };
+
+  const handleRatingChange = (newRating: number) => {
+    setRating(newRating);
+    saveDraft({ rating: newRating });
+  };
+
+  const handleLocationChange = (text: string) => {
+    setLocation(text);
+    saveDraft({ location: text });
   };
 
   const renderStars = () => {
@@ -116,7 +175,7 @@ export default function NewJournalEntryScreen() {
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
           <TouchableOpacity
             key={star}
-            onPress={() => setRating(star)}
+            onPress={() => handleRatingChange(star)}
             style={styles.starButton}
           >
             <Ionicons
@@ -190,7 +249,6 @@ export default function NewJournalEntryScreen() {
   };
 
   const handleSave = async () => {
-
     try {
       setIsSaving(true);
 
@@ -223,6 +281,9 @@ export default function NewJournalEntryScreen() {
 
       await StorageService.saveJournalEntry(journalEntry);
       
+      // Clear the draft after successful save
+      await clearDraft();
+      
       // Navigate back to journal list
       navigation.navigate('MainTabs', { screen: 'Journal' });
     } catch (error) {
@@ -234,7 +295,25 @@ export default function NewJournalEntryScreen() {
   };
 
   const handleCancel = () => {
-    navigation.goBack();
+    if (hasUnsavedChanges) {
+      Alert.alert(
+        'Unsaved Changes',
+        'You have unsaved changes. Are you sure you want to leave?',
+        [
+          { text: 'Stay', style: 'cancel' },
+          { 
+            text: 'Leave', 
+            style: 'destructive',
+            onPress: () => {
+              // Draft will be preserved for when they return
+              navigation.goBack();
+            }
+          }
+        ]
+      );
+    } else {
+      navigation.goBack();
+    }
   };
 
   return (
@@ -251,7 +330,15 @@ export default function NewJournalEntryScreen() {
           <TouchableOpacity onPress={handleCancel} style={styles.cancelButton}>
             <Ionicons name="close" size={24} color="#DC851F" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>New Journal Entry</Text>
+          <View style={styles.headerCenter}>
+            <Text style={styles.headerTitle}>New Journal Entry</Text>
+            {isLoadingDraft && (
+              <Text style={styles.draftStatus}>Loading draft...</Text>
+            )}
+            {hasUnsavedChanges && !isLoadingDraft && (
+              <Text style={styles.draftStatus}>Draft saved</Text>
+            )}
+          </View>
           <TouchableOpacity 
             onPress={handleSave} 
             style={[styles.saveButton, isSaving && styles.disabledButton]}
@@ -294,7 +381,7 @@ export default function NewJournalEntryScreen() {
             <TextInput
               style={styles.notesInput}
               value={notes}
-              onChangeText={setNotes}
+              onChangeText={handleNotesChange}
               placeholder="Share your thoughts about this cigar... (Optional)"
               placeholderTextColor="#666"
               multiline
@@ -332,7 +419,7 @@ export default function NewJournalEntryScreen() {
             <TextInput
               style={styles.locationInput}
               value={location}
-              onChangeText={setLocation}
+              onChangeText={handleLocationChange}
               placeholder={locationLoading ? "Getting location..." : "Where did you enjoy this cigar?"}
               placeholderTextColor="#666"
             />
@@ -366,10 +453,19 @@ const styles = StyleSheet.create({
   cancelButton: {
     padding: 8,
   },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  draftStatus: {
+    fontSize: 12,
+    color: '#DC851F',
+    marginTop: 2,
   },
   saveButton: {
     backgroundColor: '#DC851F',

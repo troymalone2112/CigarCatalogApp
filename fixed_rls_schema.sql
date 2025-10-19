@@ -118,3 +118,4 @@ ALTER TABLE user_preferences ENABLE ROW LEVEL SECURITY;
 
 
 
+

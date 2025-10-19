@@ -98,24 +98,10 @@ export const DatabaseService = {
       .single();
 
     if (error) {
-      // If no profile exists, create one
+      // If no profile exists, return null instead of trying to create one
       if (error.code === 'PGRST116') {
-        console.log('🔍 No profile found for user, creating one...');
-        try {
-          return await this.createProfile(userId, '', 'New User');
-        } catch (createError: any) {
-          // If creation fails due to duplicate key, try to fetch the existing profile
-          if (createError.code === '23505') {
-            console.log('🔍 Profile already exists, fetching it...');
-            const { data: existingProfile } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', userId)
-              .single();
-            return existingProfile;
-          }
-          throw createError;
-        }
+        console.log('🔍 No profile found for user');
+        return null;
       }
       throw error;
     }
@@ -153,6 +139,13 @@ export const DatabaseService = {
 
     if (error) {
       console.error('Error creating profile:', error);
+      
+      // If it's a duplicate key error, try to fetch the existing profile
+      if (error.code === '23505') {
+        console.log('🔍 Profile already exists, fetching it...');
+        return await this.getProfile(userId);
+      }
+      
       throw error;
     }
     
@@ -267,6 +260,99 @@ export const DatabaseService = {
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
     };
+  },
+
+  // Optimized method to get all humidor data in a single call
+  async getHumidorDataOptimized(userId: string) {
+    console.log('🚀 DatabaseService - Starting optimized humidor data load for user:', userId);
+    const startTime = Date.now();
+    
+    try {
+      // Get all humidor data in parallel
+      const [humidorsResult, statsResult, aggregateResult] = await Promise.all([
+        supabase
+          .from('humidors')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false }),
+        
+        supabase
+          .from('humidor_stats')
+          .select('*')
+          .eq('user_id', userId)
+          .order('cigar_count', { ascending: false }),
+        
+        supabase
+          .from('user_humidor_aggregate')
+          .select('*')
+          .eq('user_id', userId)
+          .single()
+      ]);
+
+      const loadTime = Date.now() - startTime;
+      console.log(`⚡ DatabaseService - Optimized humidor data loaded in ${loadTime}ms`);
+
+      // Handle humidors
+      const humidors = humidorsResult.data?.map(h => ({
+        id: h.id,
+        userId: h.user_id,
+        name: h.name,
+        description: h.description,
+        capacity: h.capacity,
+        createdAt: new Date(h.created_at),
+        updatedAt: new Date(h.updated_at),
+      })) || [];
+
+      // Handle stats
+      const humidorStats = statsResult.data?.map(h => ({
+        humidorId: h.humidor_id,
+        userId: h.user_id,
+        humidorName: h.humidor_name,
+        description: h.description,
+        capacity: h.capacity,
+        cigarCount: h.total_cigars,
+        totalValue: h.total_value,
+        avgCigarPrice: h.avg_cigar_price,
+        createdAt: new Date(h.created_at),
+        updatedAt: new Date(h.updated_at),
+      })) || [];
+
+      // Handle aggregate
+      const aggregate = aggregateResult.data ? {
+        userId: aggregateResult.data.user_id,
+        totalHumidors: aggregateResult.data.total_humidors,
+        totalCigars: aggregateResult.data.total_cigars,
+        totalCollectionValue: aggregateResult.data.total_collection_value,
+        avgCigarValue: aggregateResult.data.avg_cigar_value,
+        uniqueBrands: aggregateResult.data.unique_brands,
+      } : {
+        userId,
+        totalHumidors: 0,
+        totalCigars: 0,
+        totalCollectionValue: 0,
+        avgCigarValue: 0,
+        uniqueBrands: 0,
+      };
+
+      // Check for errors
+      if (humidorsResult.error) throw humidorsResult.error;
+      if (statsResult.error) throw statsResult.error;
+      if (aggregateResult.error && aggregateResult.error.code !== 'PGRST116') {
+        // PGRST116 is "not found" which is OK for new users
+        throw aggregateResult.error;
+      }
+
+      return {
+        humidors,
+        humidorStats,
+        aggregate,
+        loadTime
+      };
+    } catch (error) {
+      const loadTime = Date.now() - startTime;
+      console.error(`❌ DatabaseService - Optimized humidor data load failed after ${loadTime}ms:`, error);
+      throw error;
+    }
   },
 
   async updateHumidor(humidorId: string, updates: { name?: string; description?: string; capacity?: number }) {

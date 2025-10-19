@@ -27,6 +27,10 @@ export interface Cigar {
     second: string;
     final: string;
   };
+  drinkPairings?: {
+    alcoholic: string[];
+    nonAlcoholic: string[];
+  };
   imageUrl?: string;
   recognitionConfidence?: number;
   // Enhanced fields for comprehensive data
@@ -156,7 +160,7 @@ export interface UserPreferences {
 export interface UserProfile {
   userId: string;
   ageVerified: boolean;
-  smokingDuration: 'less-than-1' | '1-2' | '3-5' | '6-10' | 'more-than-10' | 'none';
+  smokingDuration: 'newbie' | 'casual' | 'enthusiast' | 'aficionado';
   experienceLevel: 'getting-started' | 'casual' | 'regular' | 'experienced' | 'connoisseur';
   preferredFlavors: string[];
   onboardingCompleted: boolean;
@@ -230,6 +234,9 @@ export type RootStackParamList = {
   CigarRecognition: { openSearch?: boolean; humidorId?: string } | undefined;
   NewJournalEntry: { cigar: Cigar; recognitionImageUrl?: string };
   Settings: undefined;
+  Profile: undefined;
+  ManageSubscription: undefined;
+  OpenSourceLicenses: undefined;
   Login: undefined;
   SignUp: undefined;
   ForgotPassword: undefined;
@@ -237,7 +244,6 @@ export type RootStackParamList = {
   Onboarding: undefined;
   OnboardingAgeVerification: undefined;
   OnboardingExperience: undefined;
-  OnboardingLevel: undefined;
   OnboardingTastePreferences: { onComplete?: () => void } | undefined;
   AdminDashboard: undefined;
 };

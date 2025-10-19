@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
+import { RecognitionFlowProvider } from './src/contexts/RecognitionFlowContext';
+import { JournalDraftProvider } from './src/contexts/JournalDraftContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import { RevenueCatService } from './src/services/revenueCatService';
 
@@ -35,8 +37,12 @@ export default function App() {
   return (
     <AuthProvider>
       <SubscriptionProvider>
-        <AppNavigator />
-        <StatusBar style="light" />
+        <RecognitionFlowProvider>
+          <JournalDraftProvider>
+            <AppNavigator />
+            <StatusBar style="light" />
+          </JournalDraftProvider>
+        </RecognitionFlowProvider>
       </SubscriptionProvider>
     </AuthProvider>
   );

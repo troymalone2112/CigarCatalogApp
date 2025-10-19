@@ -24,6 +24,7 @@ import { RootStackParamList, Cigar, RecognitionMode } from '../types';
 import { APIService } from '../services/apiService';
 import { DatabaseService } from '../services/supabaseService';
 import { useAuth } from '../contexts/AuthContext';
+import { useRecognitionFlow } from '../contexts/RecognitionFlowContext';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import StrengthButton from '../components/StrengthButton';
 import { StorageService } from '../storage/storageService';
@@ -44,6 +45,7 @@ interface RecognitionResult {
 export default function EnhancedCigarRecognitionScreen({ route }: { route?: any }) {
   const navigation = useNavigation<CigarRecognitionNavigationProp>();
   const { user } = useAuth();
+  const { startRecognitionFlow } = useRecognitionFlow();
   const humidorId = route?.params?.humidorId;
 
   
@@ -57,6 +59,32 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
   const [isProcessing, setIsProcessing] = useState(false);
   const [recognitionResult, setRecognitionResult] = useState<RecognitionResult | null>(null);
   const [recognitionMode, setRecognitionMode] = useState<RecognitionMode>(RecognitionMode.HYBRID);
+  const [currentProcessingMessage, setCurrentProcessingMessage] = useState(0);
+
+  // Processing messages to display during cigar identification
+  const processingMessages = [
+    "Identifying brand, tobacco, aging, and origin...",
+    "Analyzing cigar band details...",
+    "Pulling flavor profiles and tasting notes...",
+    "Fetching ratings from Cigar Aficionado...",
+    "Compiling manufacturer info...",
+    "Gathering user reviews...",
+    "Finalizing your cigar profile..."
+  ];
+
+  // Cycle through processing messages when processing
+  useEffect(() => {
+    if (isProcessing) {
+      setCurrentProcessingMessage(0);
+      const interval = setInterval(() => {
+        setCurrentProcessingMessage(prev => 
+          prev < processingMessages.length - 1 ? prev + 1 : 0
+        );
+      }, 3000); // Change message every 3 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [isProcessing, processingMessages.length]);
 
   // Check if we should open search modal on mount
   useEffect(() => {
@@ -211,9 +239,15 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         
         setImageUri(croppedPhoto.uri);
         
-        // Use base64 data for API calls
-        const base64Image = `data:image/jpeg;base64,${croppedPhoto.base64}`;
-        await processCigarImage(base64Image);
+        // Process the image separately to avoid misleading error messages
+        try {
+          // Use base64 data for API calls
+          const base64Image = `data:image/jpeg;base64,${croppedPhoto.base64}`;
+          await processCigarImage(base64Image);
+        } catch (processError) {
+          console.error('Error processing image:', processError);
+          Alert.alert('Error', 'Failed to process image for recognition. Please try again.');
+        }
       } catch (error) {
         console.error('Error taking picture:', error);
         Alert.alert('Error', 'Failed to take picture');
@@ -257,6 +291,9 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       setRecognitionResult(result);
       console.log('🎯 Recognition result:', result);
       console.log('💰 MSRP data:', result.enrichedCigar.msrp);
+      console.log('🍷 Drink Pairings in recognition result:', result.enrichedCigar.drinkPairings);
+      console.log('🍷 Alcoholic pairings:', result.enrichedCigar.drinkPairings?.alcoholic);
+      console.log('🍷 Non-alcoholic pairings:', result.enrichedCigar.drinkPairings?.nonAlcoholic);
       console.log('💰 Single stick price data:', result.enrichedCigar.singleStickPrice);
     } catch (error) {
       console.error('Error processing cigar image:', error);
@@ -349,6 +386,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         second: 'Unknown',
         final: 'Unknown',
       },
+      drinkPairings: recognitionResult?.enrichedCigar.drinkPairings,
       imageUrl: recognitionResult?.enrichedCigar.imageUrl,
       singleStickPrice: recognitionResult?.enrichedCigar.singleStickPrice,
       overview: recognitionResult?.enrichedCigar.overview,
@@ -357,10 +395,17 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       cigarAficionadoRating: recognitionResult?.enrichedCigar.cigarAficionadoRating,
     };
     
-    navigation.navigate('AddToInventory', { 
-      cigar, 
-      singleStickPrice: recognitionResult?.enrichedCigar.singleStickPrice,
-      humidorId
+    // Navigate through MainTabs to ensure proper stack context
+    navigation.navigate('MainTabs', {
+      screen: 'HumidorList',
+      params: {
+        screen: 'AddToInventory',
+        params: {
+          cigar,
+          singleStickPrice: recognitionResult?.enrichedCigar.singleStickPrice,
+          humidorId
+        }
+      }
     });
   };
 
@@ -426,6 +471,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
           second: 'Unknown',
           final: 'Unknown',
         },
+        drinkPairings: result.enrichedCigar.drinkPairings,
         imageUrl: result.enrichedCigar.imageUrl || null,
         priceRange: result.enrichedCigar.priceRange,
         singleStickPrice: result.enrichedCigar.singleStickPrice,
@@ -457,6 +503,9 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
 
   const addToInventory = async () => {
     console.log('🔍 Add to Humidor button pressed!');
+    console.log('🔍 Current humidorId:', humidorId);
+    console.log('🔍 Recognition result:', recognitionResult);
+    
     if (!recognitionResult) {
       console.error('No recognition result available');
       return;
@@ -485,6 +534,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
           second: 'Unknown',
           final: 'Unknown',
         },
+        drinkPairings: recognitionResult.enrichedCigar.drinkPairings,
         imageUrl: recognitionResult.enrichedCigar.imageUrl || 'placeholder',
         recognitionConfidence: recognitionResult.confidence,
         msrp: recognitionResult.enrichedCigar.msrp,
@@ -513,49 +563,53 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         // No duplicate found, proceed normally
         if (humidorId) {
           // If we have a specific humidor, go directly to AddToInventory
-          navigation.navigate('AddToInventory', { 
-            cigar, 
-            singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
-            humidorId
+          navigation.navigate('MainTabs', {
+            screen: 'HumidorList',
+            params: {
+              screen: 'AddToInventory',
+              params: {
+                cigar,
+                singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
+                humidorId
+              }
+            }
           });
         } else {
-          // If no humidor specified, check how many humidors user has
+          // If no humidor specified, navigate to HumidorList with recognition flow parameters
           try {
-            const humidors = await DatabaseService.getHumidors(user?.id || '');
-            console.log('🔍 Found humidors:', humidors.length, humidors.map(h => h.name));
-            
-            if (humidors.length === 1) {
-              // User has only one humidor, go directly to AddToInventory
-              navigation.navigate('AddToInventory', { 
-                cigar, 
-                singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
-                humidorId: humidors[0].id
-              });
-            } else if (humidors.length > 1) {
-              // User has multiple humidors, show selection modal
-              setAvailableHumidors(humidors);
-              setShowHumidorSelection(true);
-            } else {
-              // User has no humidors, create one first
-              Alert.alert(
-                'No Humidor Found',
-                'You need to create a humidor first before adding cigars.',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  { 
-                    text: 'Create Humidor', 
-                    onPress: () => navigation.navigate('CreateHumidor')
-                  }
-                ]
-              );
-            }
-          } catch (error) {
-            console.error('Error checking humidors:', error);
-            // Fallback to humidor selection
-            navigation.navigate('HumidorListMain', { 
+            console.log('🚀 Fast navigation: Going to HumidorList with recognition flow');
+            console.log('🚀 Navigation params:', {
               fromRecognition: true,
-              cigar, 
-              singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice
+              cigar: cigar.brand,
+              singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0'
+            });
+            startRecognitionFlow(cigar, recognitionResult.enrichedCigar.singleStickPrice || '0');
+            navigation.navigate('MainTabs', {
+              screen: 'HumidorList',
+              params: {
+                screen: 'HumidorListMain',
+                params: {
+                  fromRecognition: true,
+                  cigar,
+                  singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0'
+                }
+              }
+            });
+          } catch (error) {
+            console.error('Error in add to inventory flow:', error);
+            // Fallback - still go to HumidorList with recognition flow
+            startRecognitionFlow(cigar, recognitionResult.enrichedCigar.singleStickPrice || '0');
+            
+            navigation.navigate('MainTabs', {
+              screen: 'HumidorList',
+              params: {
+                screen: 'HumidorListMain',
+                params: {
+                  fromRecognition: true,
+                  cigar,
+                  singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0'
+                }
+              }
             });
           }
         }
@@ -564,6 +618,26 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       console.error('Error preparing cigar data:', error);
       Alert.alert('Error', 'Failed to prepare cigar data');
     }
+  };
+
+  const buyOnline = () => {
+    if (!recognitionResult) return;
+
+    const brand = recognitionResult.enrichedCigar.brand || '';
+    const line = recognitionResult.enrichedCigar.line || '';
+
+    // Create search query for Famous Smoke Shop (brand + line only)
+    const searchQuery = `${brand} ${line}`.trim();
+    const encodedQuery = encodeURIComponent(searchQuery);
+    const searchUrl = `https://www.famous-smoke.com/catalogsearch/result/?q=${encodedQuery}`;
+
+    console.log('🔍 Opening Famous Smoke Shop search:', searchUrl);
+
+    // Open in browser
+    Linking.openURL(searchUrl).catch(error => {
+      console.error('Failed to open URL:', error);
+      Alert.alert('Error', 'Failed to open browser. Please try again.');
+    });
   };
 
   const startJournaling = () => {
@@ -587,6 +661,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         second: recognitionResult.enrichedCigar.smokingExperience?.second || 'Develops complexity',
         final: recognitionResult.enrichedCigar.smokingExperience?.final || 'Satisfying finish'
       },
+      drinkPairings: recognitionResult.enrichedCigar.drinkPairings,
       imageUrl: imageUri,
       recognitionConfidence: recognitionResult.confidence,
       msrp: recognitionResult.enrichedCigar.msrp,
@@ -644,6 +719,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         second: 'Unknown',
         final: 'Unknown',
       },
+      drinkPairings: recognitionResult.enrichedCigar.drinkPairings,
       imageUrl: recognitionResult.enrichedCigar.imageUrl,
       recognitionConfidence: recognitionResult.confidence,
       msrp: recognitionResult.enrichedCigar.msrp,
@@ -660,12 +736,19 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       cigarAficionadoRating: recognitionResult.enrichedCigar.cigarAficionadoRating,
     };
 
-    navigation.navigate('AddToInventory', {
-      cigar,
-      singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
-      existingItem: duplicateItem,
-      mode: 'addMore',
-      humidorId
+    // Navigate through MainTabs to ensure proper stack context
+    navigation.navigate('MainTabs', {
+      screen: 'HumidorList',
+      params: {
+        screen: 'AddToInventory',
+        params: {
+          cigar,
+          singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
+          existingItem: duplicateItem,
+          mode: 'addMore',
+          humidorId
+        }
+      }
     });
     
     setShowDuplicateDialog(false);
@@ -693,6 +776,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         second: 'Unknown',
         final: 'Unknown',
       },
+      drinkPairings: recognitionResult.enrichedCigar.drinkPairings,
       imageUrl: recognitionResult.enrichedCigar.imageUrl,
       recognitionConfidence: recognitionResult.confidence,
       msrp: recognitionResult.enrichedCigar.msrp,
@@ -709,10 +793,17 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       cigarAficionadoRating: recognitionResult.enrichedCigar.cigarAficionadoRating,
     };
 
-    navigation.navigate('AddToInventory', {
-      cigar,
-      singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
-      humidorId
+    // Navigate through MainTabs to ensure proper stack context
+    navigation.navigate('MainTabs', {
+      screen: 'HumidorList',
+      params: {
+        screen: 'AddToInventory',
+        params: {
+          cigar,
+          singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
+          humidorId
+        }
+      }
     });
     
     setShowDuplicateDialog(false);
@@ -837,7 +928,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
             <View style={styles.processingContainer}>
               <ActivityIndicator size="large" color="#7C2D12" />
               <Text style={styles.processingText}>
-                Identifying and enriching data...
+                {processingMessages[currentProcessingMessage]}
               </Text>
             </View>
           ) : recognitionResult ? (
@@ -889,6 +980,44 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
                   </View>
                 </View>
               )}
+
+              {/* Drink Pairings Section */}
+              {recognitionResult.enrichedCigar.drinkPairings && (
+                (recognitionResult.enrichedCigar.drinkPairings.alcoholic?.length > 0) || 
+                (recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic?.length > 0)
+              ) ? (
+                <View style={styles.drinkPairingsSection}>
+                  <Text style={styles.sectionTitle}>Drink Pairings</Text>
+                  
+                  {recognitionResult.enrichedCigar.drinkPairings.alcoholic && recognitionResult.enrichedCigar.drinkPairings.alcoholic.length > 0 && (
+                    <View style={styles.pairingCategory}>
+                      <Text style={styles.pairingCategoryTitle}>Alcoholic</Text>
+                      <View style={styles.flavorTags}>
+                        {recognitionResult.enrichedCigar.drinkPairings.alcoholic.map((drink, index) => (
+                          <View key={`alc-${index}`} style={styles.pairingTag}>
+                            <Ionicons name="wine" size={14} color="#DC851F" />
+                            <Text style={styles.pairingText}>{drink}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                  
+                  {recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic && recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic.length > 0 && (
+                    <View style={styles.pairingCategory}>
+                      <Text style={styles.pairingCategoryTitle}>Non-Alcoholic</Text>
+                      <View style={styles.flavorTags}>
+                        {recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic.map((drink, index) => (
+                          <View key={`non-${index}`} style={styles.pairingTag}>
+                            <Ionicons name="cafe" size={14} color="#DC851F" />
+                            <Text style={styles.pairingText}>{drink}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+                </View>
+              ) : null}
 
               {/* Tobacco Section */}
               {(recognitionResult.enrichedCigar.tobacco || recognitionResult.enrichedCigar.wrapper) && (
@@ -948,6 +1077,12 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
                   <Text style={styles.smokeButtonText}>Let's Journal!</Text>
                 </TouchableOpacity>
               </View>
+
+              {/* Buy Online Button */}
+              <TouchableOpacity style={styles.buyOnlineButton} onPress={buyOnline}>
+                <Ionicons name="cart" size={20} color="#DC851F" />
+                <Text style={styles.buyOnlineButtonText}>Buy Online</Text>
+              </TouchableOpacity>
 
               <View style={styles.modeIndicator}>
                 <Text style={styles.modeText}>
@@ -1456,6 +1591,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 16,
     textAlign: 'center',
+    fontWeight: '500',
   },
   resultCard: {
     margin: 16,
@@ -1506,6 +1642,34 @@ const styles = StyleSheet.create({
   },
   strengthSection: {
     marginBottom: 24,
+  },
+  drinkPairingsSection: {
+    marginBottom: 24,
+  },
+  pairingCategory: {
+    marginBottom: 12,
+  },
+  pairingCategoryTitle: {
+    color: '#999999',
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  pairingTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#1a1a1a',
+    borderWidth: 1,
+    borderColor: '#DC851F',
+    gap: 6,
+  },
+  pairingText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
   sectionTitle: {
     color: '#CCCCCC',
@@ -1579,6 +1743,23 @@ const styles = StyleSheet.create({
     borderColor: '#DC851F',
   },
   smokeButtonText: {
+    color: '#DC851F',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  buyOnlineButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 6,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#DC851F',
+    marginTop: 8,
+  },
+  buyOnlineButtonText: {
     color: '#DC851F',
     fontSize: 14,
     fontWeight: '500',
