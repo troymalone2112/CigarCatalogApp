@@ -305,22 +305,37 @@ export default function PaywallScreen() {
           <Text style={styles.restoreButtonText}>Restore Purchases</Text>
         </TouchableOpacity>
 
-        {/* Debug Button - Only show in development */}
-        {__DEV__ && (
+        {/* Debug Button - Show in development and TestFlight builds */}
+        {(__DEV__ || true) && (
           <TouchableOpacity
             style={styles.debugButton}
             onPress={async () => {
               try {
                 console.log('🔍 Debug button pressed - checking RevenueCat status...');
+                
+                // Get customer info for display in alert
+                const customerInfo = await RevenueCatService.getCustomerInfo();
+                const hasPremiumAccess = await RevenueCatService.hasPremiumAccess();
+                
+                // Create debug summary for TestFlight
+                const debugSummary = `
+RevenueCat Debug Info:
+• User ID: ${customerInfo.originalAppUserId}
+• Active Entitlements: ${Object.keys(customerInfo.entitlements.active).join(', ') || 'None'}
+• Active Subscriptions: ${Object.keys(customerInfo.activeSubscriptions).join(', ') || 'None'}
+• Has Premium Access: ${hasPremiumAccess ? 'Yes' : 'No'}
+• All Entitlements: ${Object.keys(customerInfo.entitlements.all).join(', ') || 'None'}
+
+${Object.keys(customerInfo.entitlements.all).length === 0 ? 
+  '✅ No existing subscriptions - purchases should work!' : 
+  '⚠️ Existing subscriptions found - this may block new purchases'}
+                `;
+                
                 await RevenueCatService.debugSubscriptionStatus();
-                Alert.alert(
-                  'Debug Info',
-                  'Check the console logs for detailed RevenueCat subscription information. This will help identify why purchases are failing.',
-                  [{ text: 'OK' }]
-                );
+                Alert.alert('RevenueCat Debug Info', debugSummary, [{ text: 'OK' }]);
               } catch (error) {
                 console.error('❌ Debug failed:', error);
-                Alert.alert('Debug Error', 'Failed to get debug information. Check console for details.');
+                Alert.alert('Debug Error', `Failed to get debug information: ${error.message}`);
               }
             }}
             disabled={purchasing}
