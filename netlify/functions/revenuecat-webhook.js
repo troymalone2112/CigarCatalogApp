@@ -4,11 +4,14 @@
 const { createClient } = require('@supabase/supabase-js');
 
 // Supabase configuration with proper keys
-const supabaseUrl = 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
+const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseServiceKey) {
-  console.error('❌ Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing Supabase environment variables:', {
+    SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
+    SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET'
+  });
 }
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
