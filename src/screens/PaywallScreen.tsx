@@ -120,10 +120,10 @@ export default function PaywallScreen() {
       const revenueCatPackage = revenueCatPackages.find(pkg => {
         if (currentPlan.name === 'Premium Monthly') {
           // Match by package identifier or product identifier
-          return pkg.identifier === '$rc_monthly' || pkg.product.identifier === 'premium_monthly';
+          return pkg.identifier === '$rc_monthly' || pkg.product.identifier === '0004';
         } else if (currentPlan.name === 'Premium Yearly') {
           // Match by package identifier or product identifier  
-          return pkg.identifier === '$rc_annual' || pkg.product.identifier === 'premium_yearly';
+          return pkg.identifier === '$rc_annual' || pkg.product.identifier === '0005';
         }
         return false;
       });
