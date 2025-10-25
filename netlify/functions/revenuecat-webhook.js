@@ -1,5 +1,6 @@
-// RevenueCat Webhook for Netlify Functions
+// RevenueCat Webhook for Netlify Functions - FIXED VERSION
 // This is a Netlify serverless function that RevenueCat can call
+// Based on the current webhook with date validation fixes
 
 const { createClient } = require('@supabase/supabase-js');
 
@@ -38,104 +39,59 @@ exports.handler = async (event, context) => {
   // Health check endpoint
   if (event.httpMethod === 'GET' && event.path === '/.netlify/functions/revenuecat-webhook/health') {
     try {
-      // First, let's test if we can create the client at all
       console.log('Testing Supabase connection...');
       console.log('URL:', supabaseUrl);
       console.log('Key exists:', !!supabaseServiceKey);
       
-      // Test with a very basic query
       const { data, error } = await supabase
         .from('subscription_plans')
         .select('id')
         .limit(1);
       
-      console.log('Query result:', { data, error });
+      if (error) {
+        console.error('❌ Supabase connection test failed:', error);
+        return {
+          statusCode: 500,
+          headers,
+          body: JSON.stringify({ 
+            error: 'Database connection failed',
+            details: error.message 
+          })
+        };
+      }
       
+      console.log('✅ Supabase connection test successful');
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({
-          status: 'ok',
-          timestamp: new Date().toISOString(),
-          supabase_url: supabaseUrl,
-          service_key_configured: !!supabaseServiceKey,
-          supabase_connection: !error,
-          environment_variables: {
-            SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
-            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
-          },
-          error_details: error ? error.message : null,
-          error_code: error ? error.code : null,
-          data_returned: data ? 'YES' : 'NO',
-          query_test: 'subscription_plans table',
-          debug_info: {
-            url_length: supabaseUrl ? supabaseUrl.length : 0,
-            key_length: supabaseServiceKey ? supabaseServiceKey.length : 0
-          }
+        body: JSON.stringify({ 
+          status: 'healthy',
+          database: 'connected',
+          timestamp: new Date().toISOString()
         })
       };
     } catch (error) {
-      console.error('Health check error:', error);
+      console.error('❌ Health check error:', error);
       return {
         statusCode: 500,
         headers,
         body: JSON.stringify({ 
-          error: error.message,
-          error_stack: error.stack,
-          supabase_url: supabaseUrl,
-          service_key_configured: !!supabaseServiceKey,
-          environment_variables: {
-            SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
-            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
-          }
+          error: 'Health check failed',
+          details: error.message 
         })
       };
     }
   }
 
-  // Test endpoint
-  if (event.httpMethod === 'GET' && event.path === '/.netlify/functions/revenuecat-webhook/test') {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('count')
-        .limit(1);
-      
-      if (error) {
-        return {
-          statusCode: 500,
-          headers,
-          body: JSON.stringify({ error: error.message })
-        };
-      }
-      
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          success: true,
-          message: 'Supabase connection working',
-          supabase_url: supabaseUrl
-        })
-      };
-    } catch (error) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: error.message })
-      };
-    }
-  }
-
-  // Main webhook handler
+  // Handle POST requests (webhook events)
   if (event.httpMethod === 'POST') {
     try {
-      const webhookData = JSON.parse(event.body);
-      console.log('📨 RevenueCat webhook received:', JSON.stringify(webhookData, null, 2));
+      console.log('📨 RevenueCat webhook received:', JSON.stringify(event, null, 2));
       
-      const { api_version, event: eventData } = webhookData;
+      const body = JSON.parse(event.body);
+      const { api_version, event: webhookEvent } = body;
       
-      if (!eventData) {
+      if (!webhookEvent) {
         console.error('❌ No event data in webhook payload');
         return {
           statusCode: 400,
@@ -158,46 +114,89 @@ exports.handler = async (event, context) => {
         original_transaction_id,
         transaction_id,
         environment
-      } = eventData;
+      } = webhookEvent;
       
-      console.log('🔍 Event details:', {
-        event_type,
-        app_user_id,
-        original_app_user_id,
+      console.log(`🔄 Processing ${event_type} for user ${app_user_id}`);
+      console.log('📊 Event details:', {
         product_id,
+        period_type,
+        purchased_at_ms,
+        expiration_at_ms,
         store,
+        is_trial_period,
+        auto_renew_status,
         environment
       });
       
-      console.log(`🔄 Processing ${event_type} for user ${app_user_id}`);
+      // FIXED: Convert timestamps with validation and correction
+      let purchased_at, expiration_at;
       
-      // Handle test events
-      if (event_type === 'TEST') {
-        console.log('✅ Test webhook received - returning success');
+      try {
+        purchased_at = new Date(parseInt(purchased_at_ms));
+        expiration_at = new Date(parseInt(expiration_at_ms));
+        
+        console.log('📅 Converted dates:');
+        console.log('Purchased at:', purchased_at.toISOString());
+        console.log('Expiration at:', expiration_at.toISOString());
+        
+        // Calculate and log the difference
+        const diffMs = expiration_at.getTime() - purchased_at.getTime();
+        const diffMinutes = Math.round(diffMs / (1000 * 60));
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        
+        console.log('⏰ Time difference:');
+        console.log('Minutes:', diffMinutes);
+        console.log('Days:', diffDays);
+        
+        // FIXED: Validate and correct dates if they're too close together
+        if (diffMinutes < 5) {
+          console.error('🚨 CRITICAL: Subscription dates are too close together!');
+          console.error('This indicates a problem with the timestamps from RevenueCat');
+          console.error('Purchased:', purchased_at.toISOString());
+          console.error('Expiration:', expiration_at.toISOString());
+          console.error('Difference:', diffMinutes, 'minutes');
+          
+          // Determine expected duration based on product
+          const expectedDays = product_id.includes('yearly') || product_id.includes('annual') ? 365 : 30;
+          const expectedMs = expectedDays * 24 * 60 * 60 * 1000;
+          
+          console.log('🔧 Attempting to fix dates...');
+          console.log('Expected duration:', expectedDays, 'days');
+          
+          // Recalculate expiration based on purchase date + expected duration
+          expiration_at = new Date(purchased_at.getTime() + expectedMs);
+          console.log('🔧 Corrected expiration:', expiration_at.toISOString());
+          
+          // Log the correction
+          const correctedDiffMs = expiration_at.getTime() - purchased_at.getTime();
+          const correctedDiffDays = Math.round(correctedDiffMs / (1000 * 60 * 60 * 24));
+          console.log('✅ Corrected difference:', correctedDiffDays, 'days');
+        }
+        
+      } catch (dateError) {
+        console.error('❌ Error parsing dates:', dateError);
         return {
-          statusCode: 200,
+          statusCode: 400,
           headers,
-          body: JSON.stringify({ 
-            success: true, 
-            message: 'Test webhook received successfully',
-            event_type: 'TEST'
-          })
+          body: JSON.stringify({ error: 'Invalid date format' })
         };
       }
       
-      // Try the database function first
+      // Try database function first (same as original)
       try {
+        console.log('🔄 Attempting to process via database function...');
+        
         const { data, error } = await supabase.rpc('handle_revenuecat_webhook', {
           event_type,
           app_user_id,
           original_app_user_id,
           product_id,
           period_type,
-          purchased_at_ms: parseInt(purchased_at_ms),
-          expiration_at_ms: parseInt(expiration_at_ms),
+          purchased_at_ms,
+          expiration_at_ms,
           store,
-          is_trial_period: Boolean(is_trial_period),
-          auto_renew_status: Boolean(auto_renew_status),
+          is_trial_period,
+          auto_renew_status,
           original_transaction_id,
           transaction_id,
           environment
@@ -218,9 +217,9 @@ exports.handler = async (event, context) => {
       } catch (dbError) {
         console.log('⚠️ Database function failed, trying direct update:', dbError.message);
         
-        // Fallback: Direct database update
-        const purchased_at = new Date(parseInt(purchased_at_ms));
-        const expiration_at = new Date(parseInt(expiration_at_ms));
+        // FIXED: Use corrected dates in fallback
+        const purchased_at_iso = purchased_at.toISOString();
+        const expiration_at_iso = expiration_at.toISOString();
         
         // Determine subscription status
         let subscription_status = 'active';
@@ -232,11 +231,21 @@ exports.handler = async (event, context) => {
           subscription_status = 'past_due';
         }
         
+        // FIXED: Determine correct plan based on product_id
+        let planName = 'Premium Monthly'; // Default
+        if (product_id.includes('yearly') || product_id.includes('annual')) {
+          planName = 'Premium Yearly';
+        } else if (product_id.includes('monthly')) {
+          planName = 'Premium Monthly';
+        }
+        
+        console.log('📋 Plan determined:', planName);
+        
         // Get the premium plan ID
         const { data: planData, error: planError } = await supabase
           .from('subscription_plans')
-          .select('id')
-          .eq('name', 'Premium Monthly')
+          .select('id, name, price_monthly, price_yearly')
+          .eq('name', planName)
           .single();
         
         if (planError) {
@@ -248,15 +257,17 @@ exports.handler = async (event, context) => {
           };
         }
         
-        // Update or insert subscription
+        console.log('📋 Plan found:', planData);
+        
+        // Update or insert subscription with corrected dates
         const { data: subscriptionData, error: subscriptionError } = await supabase
           .from('user_subscriptions')
           .upsert({
             user_id: app_user_id,
             plan_id: planData.id,
             status: subscription_status,
-            subscription_start_date: purchased_at.toISOString(),
-            subscription_end_date: expiration_at.toISOString(),
+            subscription_start_date: purchased_at_iso,
+            subscription_end_date: expiration_at_iso,
             auto_renew: Boolean(auto_renew_status),
             updated_at: new Date().toISOString()
           }, {
@@ -275,10 +286,32 @@ exports.handler = async (event, context) => {
         }
         
         console.log('✅ Direct webhook processed successfully:', subscriptionData);
+        
+        // Log the webhook event for debugging
+        const { error: logError } = await supabase
+          .from('revenuecat_webhook_logs')
+          .insert({
+            user_id: app_user_id,
+            event_type: event_type,
+            product_id: product_id,
+            purchased_at: purchased_at_iso,
+            expiration_at: expiration_at_iso,
+            status: subscription_status,
+            created_at: new Date().toISOString()
+          });
+        
+        if (logError) {
+          console.warn('⚠️ Failed to log webhook event:', logError);
+        }
+        
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ success: true, data: subscriptionData })
+          body: JSON.stringify({ 
+            success: true, 
+            data: subscriptionData,
+            corrected_dates: diffMinutes < 5 ? true : false
+          })
         };
       }
       
