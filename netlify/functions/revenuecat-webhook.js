@@ -1,6 +1,6 @@
-// RevenueCat Webhook for Netlify Functions - FIXED VERSION
+// RevenueCat Webhook for Netlify Functions - CORRECTED VERSION
 // This is a Netlify serverless function that RevenueCat can call
-// Based on the current webhook with date validation fixes
+// Fixed: Date validation and RevenueCat user ID syncing
 
 const { createClient } = require('@supabase/supabase-js');
 
@@ -83,15 +83,21 @@ exports.handler = async (event, context) => {
     }
   }
 
-  // Handle POST requests (webhook events)
+  // Main webhook handler
   if (event.httpMethod === 'POST') {
     try {
-      console.log('📨 RevenueCat webhook received:', JSON.stringify(event, null, 2));
+      const webhookData = JSON.parse(event.body);
+      console.log('📨 RevenueCat webhook received:', JSON.stringify(webhookData, null, 2));
       
-      const body = JSON.parse(event.body);
-      const { api_version, event: webhookEvent } = body;
+      // Log the full webhook event to a separate table for debugging
+      await supabase.from('revenuecat_webhook_events').insert({
+        event_data: webhookData,
+        received_at: new Date().toISOString()
+      });
+
+      const { api_version, event: eventData } = webhookData;
       
-      if (!webhookEvent) {
+      if (!eventData) {
         console.error('❌ No event data in webhook payload');
         return {
           statusCode: 400,
@@ -114,75 +120,78 @@ exports.handler = async (event, context) => {
         original_transaction_id,
         transaction_id,
         environment
-      } = webhookEvent;
+      } = eventData;
       
-      console.log(`🔄 Processing ${event_type} for user ${app_user_id}`);
-      console.log('📊 Event details:', {
+      console.log('🔍 Event details:', {
+        event_type,
+        app_user_id,
+        original_app_user_id,
         product_id,
-        period_type,
-        purchased_at_ms,
-        expiration_at_ms,
         store,
-        is_trial_period,
-        auto_renew_status,
         environment
       });
       
-      // FIXED: Convert timestamps with validation and correction
-      let purchased_at, expiration_at;
+      console.log(`🔄 Processing ${event_type} for user ${app_user_id}`);
       
-      try {
-        purchased_at = new Date(parseInt(purchased_at_ms));
-        expiration_at = new Date(parseInt(expiration_at_ms));
-        
-        console.log('📅 Converted dates:');
-        console.log('Purchased at:', purchased_at.toISOString());
-        console.log('Expiration at:', expiration_at.toISOString());
-        
-        // Calculate and log the difference
-        const diffMs = expiration_at.getTime() - purchased_at.getTime();
-        const diffMinutes = Math.round(diffMs / (1000 * 60));
-        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-        
-        console.log('⏰ Time difference:');
-        console.log('Minutes:', diffMinutes);
-        console.log('Days:', diffDays);
-        
-        // FIXED: Validate and correct dates if they're too close together
-        if (diffMinutes < 5) {
-          console.error('🚨 CRITICAL: Subscription dates are too close together!');
-          console.error('This indicates a problem with the timestamps from RevenueCat');
-          console.error('Purchased:', purchased_at.toISOString());
-          console.error('Expiration:', expiration_at.toISOString());
-          console.error('Difference:', diffMinutes, 'minutes');
-          
-          // Determine expected duration based on product
-          const expectedDays = product_id.includes('yearly') || product_id.includes('annual') ? 365 : 30;
-          const expectedMs = expectedDays * 24 * 60 * 60 * 1000;
-          
-          console.log('🔧 Attempting to fix dates...');
-          console.log('Expected duration:', expectedDays, 'days');
-          
-          // Recalculate expiration based on purchase date + expected duration
-          expiration_at = new Date(purchased_at.getTime() + expectedMs);
-          console.log('🔧 Corrected expiration:', expiration_at.toISOString());
-          
-          // Log the correction
-          const correctedDiffMs = expiration_at.getTime() - purchased_at.getTime();
-          const correctedDiffDays = Math.round(correctedDiffMs / (1000 * 60 * 60 * 24));
-          console.log('✅ Corrected difference:', correctedDiffDays, 'days');
-        }
-        
-      } catch (dateError) {
-        console.error('❌ Error parsing dates:', dateError);
+      // Handle test events
+      if (event_type === 'TEST') {
+        console.log('✅ Test webhook received - returning success');
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({ success: true, message: 'Test webhook received' })
+        };
+      }
+
+      // Validate timestamps
+      if (!purchased_at_ms || !expiration_at_ms) {
+        console.error('❌ Missing purchased_at_ms or expiration_at_ms');
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Missing purchased_at_ms or expiration_at_ms' })
+        };
+      }
+
+      let final_purchased_at_ms = parseInt(purchased_at_ms);
+      let final_expiration_at_ms = parseInt(expiration_at_ms);
+
+      if (isNaN(final_purchased_at_ms) || isNaN(final_expiration_at_ms)) {
+        console.error('❌ Invalid date format for purchased_at_ms or expiration_at_ms');
         return {
           statusCode: 400,
           headers,
           body: JSON.stringify({ error: 'Invalid date format' })
         };
       }
-      
-      // Try database function first (same as original)
+
+      // Date validation and correction logic
+      const purchasedAtDate = new Date(final_purchased_at_ms);
+      let expirationAtDate = new Date(final_expiration_at_ms);
+      const timeDifferenceMinutes = (expirationAtDate.getTime() - purchasedAtDate.getTime()) / (1000 * 60);
+
+      // Determine expected duration based on product_id
+      let expectedDurationDays = 0;
+      let subscription_plan_name = 'Premium Monthly'; // Default
+
+      if (product_id.includes('monthly') || product_id === '$rc_monthly') {
+        expectedDurationDays = 30;
+        subscription_plan_name = 'Premium Monthly';
+      } else if (product_id.includes('yearly') || product_id.includes('annual') || product_id === '$rc_annual') {
+        expectedDurationDays = 365;
+        subscription_plan_name = 'Premium Yearly';
+      }
+
+      // If the time difference is suspiciously short (e.g., less than 29 days for a monthly plan)
+      // and an expected duration is defined, correct the expiration date.
+      if (expectedDurationDays > 0 && timeDifferenceMinutes < (expectedDurationDays * 24 * 60 - (24 * 60))) { // Less than expected duration minus 1 day
+        console.warn(`⚠️ Detected problematic subscription dates for user ${app_user_id}. Original expiration: ${expirationAtDate.toISOString()}. Recalculating.`);
+        expirationAtDate = new Date(purchasedAtDate.getTime() + (expectedDurationDays * 24 * 60 * 60 * 1000));
+        final_expiration_at_ms = expirationAtDate.getTime();
+        console.log(`✅ Corrected expiration date to: ${expirationAtDate.toISOString()} (based on ${expectedDurationDays} days)`);
+      }
+
+      // Try the database function first
       try {
         console.log('🔄 Attempting to process via database function...');
         
@@ -192,11 +201,11 @@ exports.handler = async (event, context) => {
           original_app_user_id,
           product_id,
           period_type,
-          purchased_at_ms,
-          expiration_at_ms,
+          purchased_at_ms: final_purchased_at_ms, // Use corrected timestamp
+          expiration_at_ms: final_expiration_at_ms, // Use corrected timestamp
           store,
-          is_trial_period,
-          auto_renew_status,
+          is_trial_period: Boolean(is_trial_period),
+          auto_renew_status: Boolean(auto_renew_status),
           original_transaction_id,
           transaction_id,
           environment
@@ -211,15 +220,15 @@ exports.handler = async (event, context) => {
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ success: true, data })
+          body: JSON.stringify({ success: true, data, corrected_dates: expectedDurationDays > 0 && timeDifferenceMinutes < (expectedDurationDays * 24 * 60 - (24 * 60)) })
         };
         
       } catch (dbError) {
         console.log('⚠️ Database function failed, trying direct update:', dbError.message);
         
-        // FIXED: Use corrected dates in fallback
-        const purchased_at_iso = purchased_at.toISOString();
-        const expiration_at_iso = expiration_at.toISOString();
+        // Fallback: Direct database update
+        const purchased_at = new Date(final_purchased_at_ms);
+        const expiration_at = new Date(final_expiration_at_ms);
         
         // Determine subscription status
         let subscription_status = 'active';
@@ -231,21 +240,11 @@ exports.handler = async (event, context) => {
           subscription_status = 'past_due';
         }
         
-        // FIXED: Determine correct plan based on product_id
-        let planName = 'Premium Monthly'; // Default
-        if (product_id.includes('yearly') || product_id.includes('annual')) {
-          planName = 'Premium Yearly';
-        } else if (product_id.includes('monthly')) {
-          planName = 'Premium Monthly';
-        }
-        
-        console.log('📋 Plan determined:', planName);
-        
         // Get the premium plan ID
         const { data: planData, error: planError } = await supabase
           .from('subscription_plans')
-          .select('id, name, price_monthly, price_yearly')
-          .eq('name', planName)
+          .select('id')
+          .eq('name', subscription_plan_name) // Use determined plan name
           .single();
         
         if (planError) {
@@ -257,19 +256,19 @@ exports.handler = async (event, context) => {
           };
         }
         
-        console.log('📋 Plan found:', planData);
-        
-        // Update or insert subscription with corrected dates
+        // Update or insert subscription with RevenueCat user ID
         const { data: subscriptionData, error: subscriptionError } = await supabase
           .from('user_subscriptions')
           .upsert({
             user_id: app_user_id,
             plan_id: planData.id,
             status: subscription_status,
-            subscription_start_date: purchased_at_iso,
-            subscription_end_date: expiration_at_iso,
+            subscription_start_date: purchased_at.toISOString(),
+            subscription_end_date: expiration_at.toISOString(),
             auto_renew: Boolean(auto_renew_status),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            revenuecat_user_id: app_user_id, // FIXED: Store RevenueCat user ID
+            is_premium: (subscription_status === 'active' || subscription_status === 'cancelled') && expiration_at > new Date()
           }, {
             onConflict: 'user_id'
           })
@@ -286,32 +285,10 @@ exports.handler = async (event, context) => {
         }
         
         console.log('✅ Direct webhook processed successfully:', subscriptionData);
-        
-        // Log the webhook event for debugging
-        const { error: logError } = await supabase
-          .from('revenuecat_webhook_logs')
-          .insert({
-            user_id: app_user_id,
-            event_type: event_type,
-            product_id: product_id,
-            purchased_at: purchased_at_iso,
-            expiration_at: expiration_at_iso,
-            status: subscription_status,
-            created_at: new Date().toISOString()
-          });
-        
-        if (logError) {
-          console.warn('⚠️ Failed to log webhook event:', logError);
-        }
-        
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ 
-            success: true, 
-            data: subscriptionData,
-            corrected_dates: diffMinutes < 5 ? true : false
-          })
+          body: JSON.stringify({ success: true, data: subscriptionData, corrected_dates: expectedDurationDays > 0 && timeDifferenceMinutes < (expectedDurationDays * 24 * 60 - (24 * 60)) })
         };
       }
       
