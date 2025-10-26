@@ -128,3 +128,4 @@ The cigar recognition loading screen has been simplified by:
 - ✅ **Consistent experience** - Same simplified design across all recognition screens
 
 The loading screen is now cleaner and easier to read!
+

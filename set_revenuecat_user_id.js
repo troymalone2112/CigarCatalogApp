@@ -58,3 +58,4 @@ async function setRevenueCatUserId() {
 }
 
 setRevenueCatUserId();
+

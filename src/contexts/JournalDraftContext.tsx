@@ -235,3 +235,4 @@ export const JournalDraftProvider: React.FC<{ children: React.ReactNode }> = ({ 
     </JournalDraftContext.Provider>
   );
 };
+

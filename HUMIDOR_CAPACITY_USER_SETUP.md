@@ -173,3 +173,4 @@ if (humidorsList.length === 0) {
 **Result:** Users now have control over their humidor capacity from the start, with a beautiful setup experience that educates them about the feature and gives them the flexibility to skip if they don't want capacity tracking.
 
 This approach is much more user-friendly and gives users the control they need while ensuring they get the expected progress bar functionality!
+

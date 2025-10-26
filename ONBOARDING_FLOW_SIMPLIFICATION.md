@@ -136,3 +136,4 @@ The onboarding flow has been successfully simplified by:
 4. **Maintained functionality** - All core features preserved with sensible defaults
 
 The onboarding process is now more streamlined and user-friendly, reducing friction while maintaining all essential functionality. Users can complete onboarding faster while still providing the necessary information for a personalized experience.
+

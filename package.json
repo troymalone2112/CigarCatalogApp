@@ -1,6 +1,6 @@
 {
   "name": "cigar-catalog-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
@@ -20,7 +20,7 @@
     "@react-navigation/bottom-tabs": "^6.5.11",
     "@react-navigation/native": "^6.1.9",
     "@react-navigation/stack": "^6.3.20",
-    "@supabase/supabase-js": "^2.39.3",
+    "@supabase/supabase-js": "^2.76.1",
     "axios": "^1.12.2",
     "babel-preset-expo": "^54.0.3",
     "csv-parser": "^3.2.0",
@@ -33,6 +33,7 @@
     "expo-linear-gradient": "~15.0.7",
     "expo-location": "~19.0.7",
     "expo-status-bar": "~3.0.8",
+    "express": "^5.1.0",
     "openai": "^6.2.0",
     "react": "19.1.0",
     "react-native": "0.81.4",

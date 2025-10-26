@@ -88,3 +88,4 @@ async function checkSubscriptionStatus() {
 }
 
 checkSubscriptionStatus();
+

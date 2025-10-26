@@ -147,3 +147,4 @@ try {
 **Result:** Users now see appropriate error messages that accurately reflect what actually failed, improving the overall user experience and making debugging easier for developers.
 
 The "Failed to take picture" error should no longer appear when the picture is successfully taken, and users will see more helpful error messages when recognition processing fails.
+

@@ -4,12 +4,12 @@
  */
 
 export const DEVELOPMENT_CONFIG = {
-  // Timeout settings (in milliseconds)
+  // Timeout settings (in milliseconds) - Optimized for database operations
   TIMEOUTS: {
-    SESSION_LOAD: 15000,        // 15 seconds for session loading
-    PROFILE_LOAD: 30000,        // 30 seconds for profile loading (increased for better reliability)
-    PERMISSIONS_LOAD: 20000,    // 20 seconds for permissions loading
-    AUTH_LOADING: 20000,        // 20 seconds for overall auth loading
+    SESSION_LOAD: 20000,        // 20 seconds for session loading
+    PROFILE_LOAD: 25000,        // 25 seconds for profile loading (database operations)
+    PERMISSIONS_LOAD: 15000,    // 15 seconds for permissions loading
+    AUTH_LOADING: 25000,        // 25 seconds for overall auth loading
   },
   
   // Retry settings

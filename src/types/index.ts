@@ -233,6 +233,7 @@ export type RootStackParamList = {
   MainTabs: { screen: keyof TabParamList; params?: any } | undefined;
   CigarRecognition: { openSearch?: boolean; humidorId?: string } | undefined;
   NewJournalEntry: { cigar: Cigar; recognitionImageUrl?: string };
+  JournalEntryDetails: { entry: JournalEntry };
   Settings: undefined;
   Profile: undefined;
   ManageSubscription: undefined;
@@ -257,7 +258,7 @@ export type TabParamList = {
 
 // Nested Stack Navigator Types
 export type HumidorStackParamList = {
-  HumidorListMain: { fromRecognition?: boolean; cigar?: Cigar; singleStickPrice?: string } | undefined;
+  HumidorListMain: { fromRecognition?: boolean; cigar?: Cigar; singleStickPrice?: string; humidorName?: string } | undefined;
   Inventory: { humidorId?: string; humidorName?: string; highlightItemId?: string };
   AddToInventory: { cigar: Cigar; singleStickPrice?: string; existingItem?: InventoryItem; mode?: 'addMore' | 'edit'; humidorId?: string };
   CigarDetails: { cigar: Cigar };

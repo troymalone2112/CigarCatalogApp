@@ -22,6 +22,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import { useScreenLoading } from '../hooks/useScreenLoading';
 import { useRecognitionFlow } from '../contexts/RecognitionFlowContext';
+import HumidorCapacitySetupModal from '../components/HumidorCapacitySetupModal';
 
 type InventoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Inventory'>;
 type InventoryScreenRouteProp = RouteProp<RootStackParamList, 'Inventory'>;
@@ -40,6 +41,8 @@ export default function InventoryScreen() {
   const [currentHumidor, setCurrentHumidor] = useState<Humidor | null>(null);
   const [availableHumidors, setAvailableHumidors] = useState<Humidor[]>([]);
   const [humidorName, setHumidorName] = useState<string>('');
+  const [showCapacitySetup, setShowCapacitySetup] = useState(false);
+  const [hasShownCapacitySetup, setHasShownCapacitySetup] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const highlightAnimation = useRef(new Animated.Value(0)).current;
   const processedHighlightId = useRef<string | null>(null);
@@ -97,6 +100,13 @@ export default function InventoryScreen() {
       setCurrentHumidor(selectedHumidor);
       setHumidorName(route.params?.humidorName || selectedHumidor?.name || '');
       
+      // Check if we should show capacity setup modal
+      if (selectedHumidor && !selectedHumidor.capacity && !hasShownCapacitySetup) {
+        console.log('💎 Humidor has no capacity set, showing capacity setup modal');
+        setShowCapacitySetup(true);
+        setHasShownCapacitySetup(true);
+      }
+      
       // Load inventory for the selected humidor
       const items = await StorageService.getInventory(selectedHumidor?.id);
       console.log('📦 Loaded inventory items:', items.length);
@@ -137,6 +147,32 @@ export default function InventoryScreen() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const handleCapacitySetup = async (capacity: number | null) => {
+    if (!currentHumidor) return;
+
+    try {
+      console.log('💎 Setting humidor capacity:', capacity);
+      
+      // Update the humidor with the new capacity
+      await DatabaseService.updateHumidor(currentHumidor.id, {
+        capacity: capacity
+      });
+      
+      // Update local state
+      setCurrentHumidor({
+        ...currentHumidor,
+        capacity: capacity
+      });
+      
+      console.log('✅ Humidor capacity updated successfully');
+    } catch (error) {
+      console.error('❌ Error updating humidor capacity:', error);
+      Alert.alert('Error', 'Failed to update humidor capacity. Please try again.');
+    } finally {
+      setShowCapacitySetup(false);
     }
   };
 
@@ -363,12 +399,10 @@ export default function InventoryScreen() {
           </View>
 
           <View style={styles.imageContainer}>
-            {item.cigar.imageUrl ? (
+            {item.cigar.imageUrl && item.cigar.imageUrl !== 'placeholder' ? (
               <Image source={{ uri: item.cigar.imageUrl }} style={styles.cigarImage} />
             ) : (
-              <View style={styles.placeholderImage}>
-                <Ionicons name="image-outline" size={40} color="#ccc" />
-              </View>
+              <Image source={require('../../assets/cigar-placeholder.jpg')} style={styles.cigarImage} />
             )}
           </View>
         </View>
@@ -542,6 +576,14 @@ export default function InventoryScreen() {
         </TouchableOpacity>
 
       </View>
+
+      {/* Capacity Setup Modal */}
+      <HumidorCapacitySetupModal
+        visible={showCapacitySetup}
+        onClose={() => setShowCapacitySetup(false)}
+        onSave={handleCapacitySetup}
+        humidorName={currentHumidor?.name || 'Humidor'}
+      />
     </ImageBackground>
   );
 }

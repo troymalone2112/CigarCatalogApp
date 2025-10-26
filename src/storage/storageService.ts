@@ -24,7 +24,35 @@ const getUserStorageKeys = (userId: string) => ({
 
 export class StorageService {
   // Current user ID - should be set by AuthContext
-  private static currentUserId: string | null = null;
+  private static currentUserId: string | null = null
+
+  // Helper method to create a valid date from various possible fields
+  private static createValidDate(entry: any): Date {
+    // Try different date fields in order of preference
+    const dateFields = [
+      entry.smoking_date,
+      entry.date,
+      entry.created_at,
+      entry.updated_at
+    ];
+    
+    for (const dateField of dateFields) {
+      if (dateField) {
+        try {
+          const date = fromLocalDateString(dateField);
+          if (date && date instanceof Date && !isNaN(date.getTime())) {
+            return date;
+          }
+        } catch (error) {
+          console.warn('⚠️ Invalid date field:', dateField, error);
+        }
+      }
+    }
+    
+    // Fallback to current date
+    console.warn('⚠️ No valid date found for entry:', entry.id, 'using current date');
+    return new Date();
+  };
 
   // Set current user ID (called by AuthContext)
   static setCurrentUser(userId: string | null): void {
@@ -121,11 +149,47 @@ export class StorageService {
   }
 
   // Journal Management
-  static async getJournalEntries(): Promise<JournalEntry[]> {
+  static async getJournalEntries(forceRefresh: boolean = false): Promise<JournalEntry[]> {
     try {
+      // Try to get from cache first (unless force refresh)
+      if (!forceRefresh) {
+        try {
+          const { JournalCacheService } = await import('../services/journalCacheService');
+          const cachedEntries = await JournalCacheService.getCachedEntries();
+          if (cachedEntries && cachedEntries.length > 0) {
+            // Validate cached entries before using them
+            const validCachedEntries = cachedEntries.filter(entry => 
+              entry.id && entry.date && entry.date instanceof Date && !isNaN(entry.date.getTime())
+            );
+            
+            if (validCachedEntries.length > 0) {
+              console.log(`📦 Using ${validCachedEntries.length} cached journal entries`);
+              return validCachedEntries;
+            } else {
+              console.log('⚠️ Cached entries are invalid, fetching from database');
+            }
+          }
+        } catch (cacheError) {
+          console.log('⚠️ Cache error, fetching from database:', cacheError);
+        }
+      }
+
+      console.log('🔄 Loading journal entries from database');
       const userId = this.getCurrentUserId();
       const { JournalService } = await import('../services/supabaseService');
       const entries = await JournalService.getJournalEntries(userId);
+      
+      // Debug: Log the raw database entries
+      console.log('🔍 Raw database entries:', entries.length, 'entries');
+      if (entries.length > 0) {
+        console.log('🔍 Sample entry fields:', Object.keys(entries[0]));
+        console.log('🔍 Sample entry date fields:', {
+          smoking_date: entries[0].smoking_date,
+          date: entries[0].date,
+          created_at: entries[0].created_at
+        });
+      }
+      
       const mappedEntries = entries.map((entry: any) => ({
         id: entry.id,
         cigar: entry.cigar_data || {
@@ -148,7 +212,7 @@ export class StorageService {
             final: 'Unknown'
           }
         },
-        date: fromLocalDateString(entry.smoking_date), // Ensure local date interpretation
+        date: this.createValidDate(entry), // Handle all possible date fields with proper validation
         rating: {
           overall: entry.rating_overall || 0,
           draw: entry.rating_draw || 0,
@@ -159,7 +223,8 @@ export class StorageService {
         },
         selectedFlavors: entry.selected_flavors ? JSON.parse(entry.selected_flavors) : [],
         location: entry.setting ? { city: entry.setting } : undefined,
-        photos: entry.image_url ? [entry.image_url] : undefined,
+        imageUrl: entry.image_url || undefined,
+        photos: entry.photos ? JSON.parse(entry.photos) : undefined,
         notes: entry.notes,
       }));
       
@@ -175,7 +240,18 @@ export class StorageService {
         return bCreatedAt.getTime() - aCreatedAt.getTime();
       });
       
+      // Cache the results
+      const { JournalCacheService } = await import('../services/journalCacheService');
+      await JournalCacheService.cacheEntries(sortedEntries);
+      
       console.log('🔍 Journal entries sorted:', sortedEntries.length, 'entries');
+      
+      // Debug: Log any entries with invalid dates
+      const invalidDates = sortedEntries.filter(entry => !entry.date || !(entry.date instanceof Date) || isNaN(entry.date.getTime()));
+      if (invalidDates.length > 0) {
+        console.warn('⚠️ Found entries with invalid dates:', invalidDates.map(e => ({ id: e.id, date: e.date })));
+      }
+      
       return sortedEntries;
     } catch (error) {
       console.error('Error loading journal entries:', error);
@@ -221,13 +297,44 @@ export class StorageService {
         notes: entry.notes,
         setting: entry.location?.city || '',
         pairing: entry.location?.state || '',
-        image_url: entry.imageUrl || entry.photos?.[0] || null,
+        image_url: entry.imageUrl || null,
+        photos: entry.photos ? JSON.stringify(entry.photos) : null,
         selected_flavors: entry.selectedFlavors ? JSON.stringify(entry.selectedFlavors) : null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
       
-      await JournalService.saveJournalEntry(journalData);
+      try {
+        await JournalService.saveJournalEntry(journalData);
+        console.log('✅ Journal entry saved to database successfully');
+      } catch (dbError: any) {
+        console.error('❌ Database save failed:', dbError);
+        
+        // Check if it's a network error
+        if (dbError.message?.includes('Network request failed')) {
+          console.log('📱 Network error detected - saving to local cache for later sync');
+          
+          // Save to local cache as offline fallback
+          const { JournalCacheService } = await import('../services/journalCacheService');
+          await JournalCacheService.addEntryToCache(entry);
+          
+          // Mark entry as pending sync
+          const pendingEntry = { ...entry, _pendingSync: true, _syncError: dbError.message };
+          await JournalCacheService.addEntryToCache(pendingEntry);
+          
+          console.log('✅ Journal entry saved locally for offline sync');
+          
+          // Don't throw error - entry is saved locally
+          return;
+        } else {
+          // For non-network errors, still throw
+          throw dbError;
+        }
+      }
+      
+      // Update cache with new entry (for successful database saves)
+      const { JournalCacheService } = await import('../services/journalCacheService');
+      await JournalCacheService.addEntryToCache(entry);
       
       // Log activity
       try {
@@ -261,6 +368,10 @@ export class StorageService {
       
       // Delete from database
       await JournalService.deleteJournalEntry(entryId);
+      
+      // Remove from cache
+      const { JournalCacheService } = await import('../services/journalCacheService');
+      await JournalCacheService.removeEntryFromCache(entryId);
       
       // Log removal activity in the background (non-blocking)
       if (entryToRemove) {

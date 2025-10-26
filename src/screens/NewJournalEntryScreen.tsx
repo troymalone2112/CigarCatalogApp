@@ -275,7 +275,7 @@ export default function NewJournalEntryScreen() {
           state: location.split(',')[1]?.trim() || undefined,
           country: location.split(',')[2]?.trim() || undefined,
         } : undefined,
-        imageUrl: recognitionImageUrl, // Store the recognition image as the main image
+        imageUrl: recognitionImageUrl || (cigar.imageUrl === 'placeholder' ? 'placeholder' : undefined), // Store the recognition image or placeholder
         photos: photos.length > 0 ? photos : undefined, // Store all photos in the photos array
       };
 
@@ -286,9 +286,22 @@ export default function NewJournalEntryScreen() {
       
       // Navigate back to journal list
       navigation.navigate('MainTabs', { screen: 'Journal' });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving journal entry:', error);
-      Alert.alert('Error', 'Failed to save journal entry');
+      
+      // Check if it's a network error
+      if (error.message?.includes('Network request failed')) {
+        Alert.alert(
+          'Network Error', 
+          'Your journal entry has been saved locally and will sync when your connection is restored.',
+          [{ text: 'OK', style: 'default' }]
+        );
+        
+        // Still navigate to journal since entry is saved locally
+        navigation.navigate('MainTabs', { screen: 'Journal' });
+      } else {
+        Alert.alert('Error', 'Failed to save journal entry. Please try again.');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -354,8 +367,10 @@ export default function NewJournalEntryScreen() {
           {/* Cigar Information */}
           <View style={styles.cigarInfoContainer}>
             <View style={styles.cigarHeader}>
-              {recognitionImageUrl && (
+              {recognitionImageUrl ? (
                 <Image source={{ uri: recognitionImageUrl }} style={styles.cigarImage} />
+              ) : (
+                <Image source={require('../../assets/cigar-placeholder.jpg')} style={styles.cigarImage} />
               )}
               <View style={styles.cigarDetails}>
                 <Text style={styles.cigarBrand}>{cigar.brand}</Text>

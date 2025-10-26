@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ImageBackground } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -7,6 +7,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { TabParamList, RootStackParamList, HumidorStackParamList, JournalStackParamList, RecommendationsStackParamList } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { StorageService } from '../storage/storageService';
+import { preloadBackgroundImage } from '../services/backgroundImageService';
+import CachedBackgroundImage from '../components/CachedBackgroundImage';
 
 // Import screens (we'll create these next)
 import HomeScreen from '../screens/HomeScreen';
@@ -508,8 +510,7 @@ function TabNavigator() {
 
 // Loading Screen Component
 const LoadingScreen = () => (
-  <ImageBackground 
-    source={require('../../assets/tobacco-leaves-bg.jpg')}
+  <CachedBackgroundImage 
     style={styles.loadingContainer}
     imageStyle={styles.loadingBackgroundImage}
   >
@@ -517,7 +518,7 @@ const LoadingScreen = () => (
       <ActivityIndicator size="large" color="#DC851F" />
       <Text style={styles.loadingText}>Loading your cigar collection...</Text>
     </View>
-  </ImageBackground>
+  </CachedBackgroundImage>
 );
 
 // Auth Stack Navigator
@@ -561,9 +562,14 @@ function OnboardingStack({ onComplete }: { onComplete: () => void }) {
 }
 
 export default function AppNavigator() {
-  const { user, loading, profile, refreshProfile } = useAuth();
+  const { user, loading, profile, subscriptionStatus, subscriptionLoading, refreshProfile } = useAuth();
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const [onboardingCheckComplete, setOnboardingCheckComplete] = useState(false);
+
+  // Preload background image on app start
+  useEffect(() => {
+    preloadBackgroundImage();
+  }, []);
 
   // Check onboarding status when user or profile changes
   useEffect(() => {
@@ -669,10 +675,29 @@ export default function AppNavigator() {
     }
   };
 
-  // Show loading screen while auth is loading or while we're determining onboarding status
-  if (loading || (user && !onboardingCheckComplete)) {
-    console.log('🔄 Showing loading screen - loading:', loading, 'user:', !!user, 'onboardingCheckComplete:', onboardingCheckComplete);
+  // Progressive loading - show app UI as soon as we have basic auth info
+  if (loading) {
+    console.log('🔄 Showing loading screen - auth still loading');
     return <LoadingScreen />;
+  }
+
+  // Log subscription status for debugging
+  if (subscriptionStatus) {
+    console.log('💎 Subscription status in AppNavigator:', {
+      hasAccess: subscriptionStatus.hasAccess,
+      isPremium: subscriptionStatus.isPremium,
+      isTrialActive: subscriptionStatus.isTrialActive,
+      status: subscriptionStatus.status,
+      subscriptionLoading
+    });
+  }
+  
+  // If we have a user but onboarding check isn't complete, show the app with a loading state
+  // This prevents the app from being completely blocked while checking onboarding status
+  if (user && !onboardingCheckComplete) {
+    console.log('🔄 User found but onboarding check in progress - showing app with loading state');
+    // We'll let the onboarding check complete in the background
+    // The user will see the main app, and onboarding will be handled by the screens themselves
   }
 
   return (
@@ -718,6 +743,19 @@ export default function AppNavigator() {
           name="NewJournalEntry" 
           component={NewJournalEntryScreen}
           options={{ headerShown: false }}
+        />
+        <Stack.Screen 
+          name="JournalEntryDetails" 
+          component={JournalEntryDetailsScreen}
+          options={{
+            title: 'Journal Entry',
+            headerTintColor: '#FFFFFF',
+            headerTitleStyle: {
+              fontWeight: '400',
+              fontSize: 14,
+              color: '#FFFFFF',
+            },
+          }}
         />
         <Stack.Screen 
           name="Settings" 

@@ -21,6 +21,8 @@ export interface UserSubscription {
   subscription_end_date: string | null;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
+  revenuecat_user_id: string | null;
+  is_premium: boolean | null;
   auto_renew: boolean;
   created_at: string;
   updated_at: string;
@@ -135,6 +137,7 @@ export class SubscriptionService {
       let isPremium = false;
       let daysRemaining = 0;
 
+      // Check trial status first, then premium status
       if (subscription.status === 'trial') {
         const trialEndDate = new Date(subscription.trial_end_date);
         isTrialActive = trialEndDate > now;
@@ -143,6 +146,7 @@ export class SubscriptionService {
         if (isTrialActive) {
           daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         }
+        console.log('🔍 SubscriptionService - Trial status:', { isTrialActive, hasAccess, daysRemaining, trialEndDate });
       } else if (subscription.status === 'active') {
         const subscriptionEndDate = new Date(subscription.subscription_end_date || '');
         isPremium = subscriptionEndDate > now;
@@ -151,7 +155,30 @@ export class SubscriptionService {
         if (isPremium) {
           daysRemaining = Math.ceil((subscriptionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
         }
+        console.log('🔍 SubscriptionService - Premium status:', { isPremium, hasAccess, daysRemaining });
+      } else {
+        // Use the is_premium field from the database if available (set by RevenueCat webhook)
+        if (subscription.is_premium !== undefined) {
+          isPremium = subscription.is_premium;
+          hasAccess = isPremium;
+          console.log('🔍 SubscriptionService - Using is_premium from database:', isPremium);
+        }
       }
+
+      // If user is premium, calculate days remaining from subscription end date
+      if (isPremium && subscription.subscription_end_date) {
+        const subscriptionEndDate = new Date(subscription.subscription_end_date);
+        daysRemaining = Math.ceil((subscriptionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      }
+
+      console.log('🔍 SubscriptionService - Final status:', {
+        hasAccess,
+        isTrialActive,
+        isPremium,
+        daysRemaining,
+        status: subscription.status,
+        is_premium_from_db: subscription.is_premium
+      });
 
       return {
         hasAccess,

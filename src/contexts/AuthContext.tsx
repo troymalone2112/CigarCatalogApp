@@ -15,6 +15,8 @@ import {
   shouldPreserveExistingData 
 } from '../config/development';
 import { ProfileCacheService, NetworkError } from '../services/profileCacheService';
+import { PerformanceMonitor } from '../utils/performanceMonitor';
+import { FastSubscriptionService, FastSubscriptionStatus } from '../services/fastSubscriptionService';
 
 interface Profile {
   id: string;
@@ -34,6 +36,8 @@ interface AuthContextType {
   userRole: UserRole | null;
   isSuperUser: boolean;
   canAccessAdmin: boolean;
+  subscriptionStatus: FastSubscriptionStatus | null;
+  subscriptionLoading: boolean;
   signUp: (email: string, password: string, fullName: string) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -41,6 +45,7 @@ interface AuthContextType {
   updateProfile: (updates: { full_name?: string; avatar_url?: string }) => Promise<void>;
   refreshUserPermissions: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  refreshSubscription: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -61,6 +66,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [userRole, setUserRole] = useState<UserRole | null>(null);
   const [isSuperUser, setIsSuperUser] = useState(false);
   const [canAccessAdmin, setCanAccessAdmin] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<FastSubscriptionStatus | null>(null);
+  const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [appState, setAppState] = useState(AppState.currentState);
 
   // Handle app state changes (background/foreground)
@@ -85,22 +92,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       console.log('🔄 Refreshing auth state...');
       
-      // First check if Supabase connection is healthy
-      const isConnectionHealthy = await checkSupabaseConnection();
-      if (!isConnectionHealthy) {
-        console.log('⚠️ Supabase connection unhealthy, skipping refresh');
-        return;
-      }
-      
+      // Skip connection check on foreground refresh to reduce delays
+      // Only do a quick session check
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        console.log('✅ Session still valid, refreshing profile');
+        console.log('✅ Session still valid, doing lightweight refresh');
         // Ensure StorageService has current user
         StorageService.setCurrentUser(session.user.id);
-        // Refresh profile and permissions
-        await loadProfile(session.user.id);
-        await loadUserPermissions();
+        
+        // Only refresh if profile is missing or stale
+        if (!profile || profile.id !== session.user.id) {
+          console.log('🔄 Profile missing or stale, refreshing...');
+          loadProfile(session.user.id).catch(err => 
+            console.error('❌ Profile refresh failed:', err)
+          );
+        }
+        
+        // Load permissions in background (non-blocking)
+        loadUserPermissions().catch(err => 
+          console.error('❌ Permissions refresh failed:', err)
+        );
       } else {
         console.log('❌ No valid session found');
       }
@@ -110,57 +122,83 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    console.log('🚀 AuthContext: Starting initialization...');
+    console.log('🚀 AuthContext: Starting parallel initialization...');
     
-    // Set a timeout to prevent infinite loading (dynamic based on environment)
-    const authTimeout = getTimeoutValue(10000, 'auth');
+    // Set a shorter timeout to prevent infinite loading
+    const authTimeout = getTimeoutValue(5000, 'auth'); // Reduced from 10s to 5s
     const loadingTimeout = setTimeout(() => {
       console.log('⏰ Auth loading timeout - forcing loading to false');
       setLoading(false);
     }, authTimeout);
 
-    // Get initial session with dynamic timeout
-    const sessionTimeout = getTimeoutValue(5000, 'session');
-    const sessionPromise = supabase.auth.getSession();
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Session timeout')), sessionTimeout)
-    );
-    
-    Promise.race([sessionPromise, timeoutPromise])
-      .then(({ data: { session } }: any) => {
+    // Parallel initialization - run session check and connection check simultaneously
+    const initializeAuth = async () => {
+      try {
+        PerformanceMonitor.startTimer('auth-initialization');
+        console.log('🔄 Starting parallel auth initialization...');
+        
+        // Run session check and connection check in parallel
+        const [sessionResult, connectionResult] = await Promise.allSettled([
+          supabase.auth.getSession(),
+          checkSupabaseConnection()
+        ]);
+        
+        const { data: { session } } = sessionResult.status === 'fulfilled' ? sessionResult.value : { data: { session: null } };
+        const isConnectionHealthy = connectionResult.status === 'fulfilled' && connectionResult.value;
+        
         console.log('🔍 Initial session check:', session?.user?.id || 'no user');
+        console.log('🔍 Connection healthy:', isConnectionHealthy);
+        
         setSession(session);
         setUser(session?.user ?? null);
+        
         if (session?.user) {
-          console.log('👤 User found, loading profile and permissions...');
+          console.log('👤 User found, loading subscription status FIRST, then profile and permissions...');
           // Set current user in StorageService for user-specific data
           StorageService.setCurrentUser(session.user.id);
-          // Load profile and permissions in background, don't block
-          loadProfile(session.user.id).catch(err => 
-            console.error('❌ Profile load failed:', err)
-          );
-          loadUserPermissions().catch(err => 
-            console.error('❌ Permissions load failed:', err)
-          );
+          
+          // Step 1: Load subscription status FIRST (highest priority)
+          console.log('💎 Loading subscription status with PRIORITY...');
+          await loadSubscriptionStatus(session.user.id);
+          
+          // Step 2: Load profile and permissions in parallel (non-blocking)
+          console.log('👤 Loading profile and permissions in background...');
+          Promise.allSettled([
+            loadProfile(session.user.id),
+            loadUserPermissions()
+          ]).then(([profileResult, permissionsResult]) => {
+            if (profileResult.status === 'rejected') {
+              console.error('❌ Profile load failed:', profileResult.reason);
+            }
+            if (permissionsResult.status === 'rejected') {
+              console.error('❌ Permissions load failed:', permissionsResult.reason);
+            }
+          });
         } else {
           console.log('👤 No user found, proceeding to login');
         }
+        
         console.log('✅ Auth initialization complete');
+        PerformanceMonitor.endTimer('auth-initialization');
         setLoading(false);
         clearTimeout(loadingTimeout);
-      })
-      .catch((error) => {
-        console.error('❌ Error getting initial session:', error);
+        
+      } catch (error) {
+        console.error('❌ Error during auth initialization:', error);
+        PerformanceMonitor.endTimer('auth-initialization');
         
         if (shouldUseGracefulDegradation()) {
-          console.log('⚠️ Session timeout, but continuing with degraded auth state (Expo Go mode)');
+          console.log('⚠️ Auth initialization failed, but continuing with degraded state');
           setLoading(false);
         } else {
-          console.log('❌ Session timeout - failing auth initialization');
+          console.log('❌ Auth initialization failed - setting loading to false');
           setLoading(false);
         }
         clearTimeout(loadingTimeout);
-      });
+      }
+    };
+    
+    initializeAuth();
 
     // Listen for auth changes
     const {
@@ -207,8 +245,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       
-      // Add timeout to prevent hanging (dynamic based on environment)
-      const profileTimeout = getTimeoutValue(15000, 'profile');
+      // Reduced timeout for faster failure and better UX
+      const profileTimeout = getTimeoutValue(8000, 'profile'); // Reduced from 15s to 8s
       const profilePromise = DatabaseService.getProfile(userId);
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Profile load timeout')), profileTimeout)
@@ -319,6 +357,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  // Function to refresh subscription status
+  const refreshSubscription = async () => {
+    if (user) {
+      FastSubscriptionService.clearCache(user.id);
+      await loadSubscriptionStatus(user.id, true);
+    }
+  };
+
+  // Load subscription status with priority
+  const loadSubscriptionStatus = async (userId: string, forceRefresh = false) => {
+    try {
+      setSubscriptionLoading(true);
+      console.log('💎 Loading subscription status (PRIORITY) for user:', userId, forceRefresh ? '(forced refresh)' : '');
+      
+      const status = await FastSubscriptionService.getFastSubscriptionStatus(userId);
+      console.log('💎 Subscription status loaded:', {
+        hasAccess: status.hasAccess,
+        isPremium: status.isPremium,
+        isTrialActive: status.isTrialActive,
+        status: status.status
+      });
+      
+      setSubscriptionStatus(status);
+      return status;
+    } catch (error) {
+      console.error('❌ Error loading subscription status:', error);
+      // Provide fallback status
+      const fallbackStatus: FastSubscriptionStatus = {
+        hasAccess: false,
+        isTrialActive: false,
+        isPremium: false,
+        status: 'error'
+      };
+      setSubscriptionStatus(fallbackStatus);
+      return fallbackStatus;
+    } finally {
+      setSubscriptionLoading(false);
+    }
+  };
+
   const loadUserPermissions = async (retryCount = 0) => {
     try {
       console.log('🔍 Loading user permissions...', retryCount > 0 ? `(retry ${retryCount})` : '');
@@ -338,14 +416,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (error) {
       console.error('❌ Error loading user permissions:', error);
       
-      // Retry logic with exponential backoff (dynamic retry count)
-      const maxRetries = getRetryCount();
-      if (retryCount < maxRetries) {
-        const delay = getRetryDelay(retryCount);
-        console.log(`🔄 Retrying permissions load in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return loadUserPermissions(retryCount + 1);
-      }
+      // EMERGENCY FIX: Disable retry logic to prevent infinite loops
+      console.log('🚨 Permissions load failed - setting default permissions to prevent loop');
+      setUserRole('user');
+      setIsSuperUser(false);
+      setCanAccessAdmin(false);
+      return;
       
       // If we already have permissions in state, keep them
       if (userRole && shouldPreserveExistingData()) {
@@ -415,22 +491,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       setLoading(true);
-      // Clear user data before signing out
-      await StorageService.clearCurrentUserData();
+      PerformanceMonitor.startTimer('logout-cleanup');
+      console.log('🔄 Starting parallel logout cleanup...');
       
-      // Clear cached profile
-      await ProfileCacheService.clearCachedProfile();
+      // Run all cleanup operations in parallel for faster logout
+      const cleanupPromises = [
+        StorageService.clearCurrentUserData(),
+        ProfileCacheService.clearCachedProfile(),
+        // RevenueCat logout with error handling
+        (async () => {
+          try {
+            const { RevenueCatService } = await import('../services/revenueCatService');
+            await RevenueCatService.logOut();
+            console.log('✅ RevenueCat user logged out');
+          } catch (error) {
+            console.error('❌ Failed to log out from RevenueCat:', error);
+            // Don't throw - continue with other cleanup
+          }
+        })(),
+        AuthService.signOut()
+      ];
       
-      // Log out from RevenueCat
-      try {
-        const { RevenueCatService } = await import('../services/revenueCatService');
-        await RevenueCatService.logOut();
-        console.log('✅ RevenueCat user logged out');
-      } catch (error) {
-        console.error('❌ Failed to log out from RevenueCat:', error);
-      }
+      // Wait for all cleanup operations to complete (or fail gracefully)
+      await Promise.allSettled(cleanupPromises);
+      PerformanceMonitor.endTimer('logout-cleanup');
+      console.log('✅ Logout cleanup completed');
       
-      await AuthService.signOut();
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;
@@ -480,6 +566,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     userRole,
     isSuperUser,
     canAccessAdmin,
+    subscriptionStatus,
+    subscriptionLoading,
     signUp,
     signIn,
     signOut,
@@ -487,6 +575,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateProfile,
     refreshUserPermissions,
     refreshProfile,
+    refreshSubscription,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

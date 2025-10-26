@@ -14,8 +14,9 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList, InventoryItem, HumidorStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { StorageService } from '../storage/storageService';
-import { DatabaseService } from '../services/supabaseService';
+import { DatabaseService, supabase } from '../services/supabaseService';
 import { useAuth } from '../contexts/AuthContext';
+// Removed ReliableDataService - using direct database calls
 import CigarSpecificationForm from '../components/CigarSpecificationForm';
 
 type AddToInventoryScreenRouteProp = RouteProp<HumidorStackParamList, 'AddToInventory'>;
@@ -86,6 +87,67 @@ export default function AddToInventoryScreen({ route }: Props) {
   const handleSave = async () => {
     console.log('🔍 handleSave called - mode:', mode, 'existingItem:', !!existingItem);
     try {
+
+      // Check for duplicates if this is a new item (not editing existing or adding more)
+      if (!mode && !existingItem) {
+        console.log('🔍 Checking for duplicates...');
+        const existingItems = await StorageService.getInventoryItems();
+        const duplicateItem = existingItems.find(item => 
+          item.humidorId === humidorId && 
+          item.cigar.brand === cigar.brand && 
+          item.cigar.line === cigar.line &&
+          item.cigar.name === cigar.name
+        );
+        
+        if (duplicateItem) {
+          console.log('🔍 Duplicate found:', duplicateItem);
+          // Show choice dialog
+          Alert.alert(
+            'Duplicate Cigar Found',
+            `You already have "${cigar.brand} ${cigar.line}" in this humidor. What would you like to do?`,
+            [
+              {
+                text: 'Create New Entry',
+                onPress: () => {
+                  console.log('🔍 User chose to create new entry');
+                  // Continue with normal save flow
+                  saveInventoryItem();
+                }
+              },
+              {
+                text: 'Add to Existing',
+                onPress: () => {
+                  console.log('🔍 User chose to add to existing entry');
+                  // Navigate to AddToInventory with existing item in "addMore" mode
+                  navigation.navigate('AddToInventory', {
+                    cigar,
+                    singleStickPrice: pricePaid,
+                    existingItem: duplicateItem,
+                    mode: 'addMore',
+                    humidorId: humidorId
+                  });
+                }
+              },
+              {
+                text: 'Cancel',
+                style: 'cancel'
+              }
+            ]
+          );
+          return; // Exit early, don't save yet
+        }
+      }
+
+      // Save the inventory item
+      await saveInventoryItem();
+    } catch (error) {
+      console.error('🔍 Error in handleSave:', error);
+      Alert.alert('Error', error instanceof Error ? error.message : 'An error occurred while saving');
+    }
+  };
+
+  const saveInventoryItem = async () => {
+    try {
       // Calculate quantity and per-stick price based on price type
       let totalQuantity: number;
       let perStickPrice: number | undefined;
@@ -118,17 +180,11 @@ export default function AddToInventoryScreen({ route }: Props) {
             throw new Error('Please enter a valid number of boxes');
           }
           
-          // Calculate per-stick price: box price ÷ sticks per box
-          perStickPrice = Math.round((priceValue / sticksPerBox) * 100) / 100;
-          
-          // Calculate total quantity: number of boxes × sticks per box
           totalQuantity = numberOfBoxes * sticksPerBox;
+          perStickPrice = Math.round((priceValue / sticksPerBox) * 100) / 100;
         }
-      } else if (existingItem?.pricePaid) {
-        perStickPrice = existingItem.pricePaid;
-        totalQuantity = existingItem.quantity;
       } else {
-        // Allow adding without price - set to 0 for new items
+        // No price provided
         if (priceType === 'stick') {
           if (inventoryQuantity <= 0) {
             throw new Error('Please enter a valid quantity (at least 1)');
@@ -241,39 +297,64 @@ export default function AddToInventoryScreen({ route }: Props) {
       
       if (targetHumidorId) {
         try {
-          // Get humidor name from database
-          const humidors = await DatabaseService.getHumidors(user?.id || '');
-          const selectedHumidor = humidors.find(h => h.id === targetHumidorId);
-          const humidorName = selectedHumidor?.name || 'Humidor';
+          // Get humidor name using optimized service
+          // Get humidor name directly from database
+          const { data: humidor, error } = await supabase
+            .from('humidors')
+            .select('name')
+            .eq('id', targetHumidorId)
+            .eq('user_id', user?.id || '')
+            .single();
+          
+          const humidorName = humidor?.name || 'Unknown Humidor';
           
           console.log('🔍 Navigating to Inventory with targetHumidorId:', targetHumidorId, 'humidorName:', humidorName);
           console.log('📋 Saved cigar ID:', inventoryItem.id);
           
-          // Replace AddToInventory with Inventory in the stack
-          // This removes the form completely while preserving proper navigation styling
-          navigation.replace('Inventory', {
-            humidorId: targetHumidorId,
-            humidorName: humidorName,
-            highlightItemId: inventoryItem.id
+          // Navigate directly to the main humidor screen with cleared recognition flow
+          // Pass cigar info and humidor name for success message but clear recognition flow
+          (navigation as any).getParent()?.getParent()?.navigate('HumidorList', {
+            screen: 'HumidorListMain',
+            params: {
+              fromRecognition: false,
+              cigar: cigar, // Keep cigar info for success message
+              humidorName: humidorName, // Pass humidor name for success message
+              singleStickPrice: undefined
+            }
           });
           
-          console.log('✅ Navigation replaced AddToInventory with Inventory');
+          console.log('✅ Navigated to main humidor screen with cleared parameters');
         } catch (error) {
           console.error('🔍 Error fetching humidor name:', error);
           // Fallback to generic name
           console.log('🔍 Fallback navigation to Inventory');
           
-          // Replace AddToInventory with Inventory in the stack
-          navigation.replace('Inventory', {
-            humidorId: targetHumidorId,
-            humidorName: 'Humidor',
-            highlightItemId: inventoryItem.id
+          // Navigate directly to the main humidor screen with cleared recognition flow
+          // Pass cigar info and humidor name for success message but clear recognition flow
+          (navigation as any).getParent()?.getParent()?.navigate('HumidorList', {
+            screen: 'HumidorListMain',
+            params: {
+              fromRecognition: false,
+              cigar: cigar, // Keep cigar info for success message
+              humidorName: 'Humidor', // Fallback humidor name
+              singleStickPrice: undefined
+            }
           });
+          
+          console.log('✅ Navigated to main humidor screen with cleared parameters');
         }
       } else {
-        // Fallback if no humidorId - go to humidor list
+        // Fallback if no humidorId - go to humidor list with cleared parameters
         console.log('🔍 No humidorId, navigating to HumidorList');
-        navigation.navigate('HumidorListMain' as never);
+        // Go to the main tab navigator and reset the HumidorList tab with cleared parameters
+        (navigation as any).getParent()?.getParent()?.navigate('HumidorList', {
+          screen: 'HumidorListMain',
+          params: {
+            fromRecognition: false,
+            cigar: undefined,
+            singleStickPrice: undefined
+          }
+        });
       }
     } catch (error) {
       console.error('🔍 Error saving to inventory:', error);

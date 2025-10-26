@@ -77,3 +77,4 @@ async function checkDatabaseSchema() {
 }
 
 checkDatabaseSchema();
+

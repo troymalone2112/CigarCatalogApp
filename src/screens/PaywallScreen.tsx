@@ -171,11 +171,20 @@ export default function PaywallScreen() {
           // Force refresh the subscription context
           console.log('🔄 Refreshing subscription context...');
           await refreshSubscription();
+          
+          // Wait a moment for the webhook to process, then refresh again
+          console.log('⏳ Waiting for webhook to process...');
+          setTimeout(async () => {
+            console.log('🔄 Final refresh after webhook processing...');
+            await refreshSubscription();
+          }, 2000);
         }
         
+        // Show success message and navigate back
+        // Note: iOS may show its own success message, so we keep this brief
         Alert.alert(
           'Welcome to Premium!',
-          'Your subscription has been activated. Enjoy unlimited access to all features!',
+          'Your subscription is now active!',
           [{ text: 'Continue', onPress: () => navigation.goBack() }]
         );
       } else {
@@ -197,31 +206,6 @@ export default function PaywallScreen() {
       imageStyle={styles.tobaccoBackgroundImage}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-        {/* Benefits Section */}
-        <View style={styles.benefitsSection}>
-          <Text style={styles.benefitsTitle}>Premium Features</Text>
-          
-          <View style={styles.benefitsList}>
-            {[
-              { icon: 'camera', title: 'Unlimited AI Recognition', desc: 'Identify any cigar instantly' },
-              { icon: 'archive', title: 'Unlimited Inventory', desc: 'Track your entire collection' },
-              { icon: 'book', title: 'Detailed Journal', desc: 'Record every smoking experience' },
-              { icon: 'star', title: 'Smart Recommendations', desc: 'Discover cigars you\'ll love' },
-              { icon: 'analytics', title: 'Advanced Analytics', desc: 'Insights into your preferences' },
-            ].map((benefit, index) => (
-              <View key={index} style={styles.benefitRow}>
-                <View style={styles.benefitIcon}>
-                  <Ionicons name={benefit.icon as any} size={20} color="#DC851F" />
-                </View>
-                <View style={styles.benefitContent}>
-                  <Text style={styles.benefitTitle}>{benefit.title}</Text>
-                  <Text style={styles.benefitDesc}>{benefit.desc}</Text>
-                </View>
-              </View>
-            ))}
-          </View>
-        </View>
-
         {/* Pricing Plans */}
         <View style={styles.plansSection}>
           <Text style={styles.plansTitle}>Choose Your Plan</Text>
@@ -281,6 +265,31 @@ export default function PaywallScreen() {
               )}
             </View>
           )}
+        </View>
+
+        {/* Benefits Section */}
+        <View style={styles.benefitsSection}>
+          <Text style={styles.benefitsTitle}>Premium Features</Text>
+          
+          <View style={styles.benefitsList}>
+            {[
+              { icon: 'camera', title: 'Unlimited AI Recognition', desc: 'Identify any cigar instantly' },
+              { icon: 'archive', title: 'Unlimited Inventory', desc: 'Track your entire collection' },
+              { icon: 'book', title: 'Detailed Journal', desc: 'Record every smoking experience' },
+              { icon: 'star', title: 'Smart Recommendations', desc: 'Discover cigars you\'ll love' },
+              { icon: 'analytics', title: 'Advanced Analytics', desc: 'Insights into your preferences' },
+            ].map((benefit, index) => (
+              <View key={index} style={styles.benefitRow}>
+                <View style={styles.benefitIcon}>
+                  <Ionicons name={benefit.icon as any} size={20} color="#DC851F" />
+                </View>
+                <View style={styles.benefitContent}>
+                  <Text style={styles.benefitTitle}>{benefit.title}</Text>
+                  <Text style={styles.benefitDesc}>{benefit.desc}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
         </View>
 
         {/* Purchase Button */}

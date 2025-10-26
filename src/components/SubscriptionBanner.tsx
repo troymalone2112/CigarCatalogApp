@@ -11,8 +11,7 @@ export default function SubscriptionBanner() {
   const [isDismissed, setIsDismissed] = useState(false);
   const [lastDismissedDaysRemaining, setLastDismissedDaysRemaining] = useState<number | null>(null);
   
-  // FORCE LOG - Banner component is being rendered
-  console.log('🚨 SubscriptionBanner component is rendering!');
+  // Component rendering (debug removed to reduce console spam)
 
   // Check if banner was previously dismissed
   useEffect(() => {
@@ -92,12 +91,9 @@ export default function SubscriptionBanner() {
         forceShow();
       }
     }
-  }, [subscriptionStatus?.daysRemaining, subscriptionStatus?.hasAccess, subscriptionStatus?.isTrialActive, lastDismissedDaysRemaining, isDismissed]);
+  }, [subscriptionStatus?.daysRemaining, subscriptionStatus?.hasAccess, subscriptionStatus?.isTrialActive]);
 
-  // Debug logging
-  console.log('🔍 SubscriptionBanner - subscriptionStatus:', subscriptionStatus);
-  console.log('🔍 SubscriptionBanner - isDismissed:', isDismissed);
-  console.log('🔍 SubscriptionBanner - lastDismissedDaysRemaining:', lastDismissedDaysRemaining);
+  // Debug logging removed to reduce console spam
 
   // TEMPORARY: Force show banner for testing
   if (!subscriptionStatus) {
@@ -191,19 +187,36 @@ export default function SubscriptionBanner() {
     );
   }
 
-  // Show expired banner
+  // Show expired banner with same styling as normal banner
   if (!subscriptionStatus.hasAccess) {
     return (
-      <TouchableOpacity 
-        style={[styles.banner, styles.expiredBanner]}
-        onPress={() => navigation.navigate('Paywall' as never)}
-      >
-        <View style={styles.bannerContent}>
-          <Ionicons name="lock-closed" size={16} color="#FF6B35" />
-          <Text style={styles.expiredText}>Trial expired - Upgrade to continue</Text>
-          <Ionicons name="chevron-forward" size={16} color="#FF6B35" />
-        </View>
-      </TouchableOpacity>
+      <View style={styles.bannerContainer}>
+        <ImageBackground 
+          source={require('../assets/tobacco-leaves-bg.jpg')}
+          style={styles.bannerBackground}
+          imageStyle={styles.tobaccoBackgroundImage}
+        >
+          <View style={styles.bannerOutline}>
+            <TouchableOpacity 
+              style={styles.banner}
+              onPress={() => navigation.navigate('Paywall' as never)}
+            >
+              <View style={styles.bannerContent}>
+                <View style={styles.leftSection}>
+                  <View style={styles.iconContainer}>
+                    <Ionicons name="time" size={16} color="#FFD700" />
+                  </View>
+                  <Text style={styles.bannerText}>0 days left</Text>
+                </View>
+                <View style={styles.upgradeButton}>
+                  <Text style={styles.upgradeText}>Upgrade to Premium</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </ImageBackground>
+      </View>
     );
   }
 

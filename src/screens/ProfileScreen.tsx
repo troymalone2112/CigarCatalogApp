@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  ImageBackground,
   Alert,
   Linking,
 } from 'react-native';
@@ -13,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
+import CachedBackgroundImage from '../components/CachedBackgroundImage';
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
@@ -31,11 +31,11 @@ export default function ProfileScreen() {
   };
 
   const handlePrivacyPolicy = () => {
-    Linking.openURL('https://your-privacy-policy-url.com');
+    Linking.openURL('https://englishmethod.biz/privacy-policy');
   };
 
   const handleUserLicense = () => {
-    Linking.openURL('https://your-eula-url.com');
+    Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/');
   };
 
   const handleOpenSourceLicenses = () => {
@@ -117,8 +117,7 @@ export default function ProfileScreen() {
   const memberInfo = getMemberStatus();
 
   return (
-    <ImageBackground 
-      source={require('../../assets/tobacco-leaves-bg.jpg')}
+    <CachedBackgroundImage 
       style={styles.backgroundImage}
       imageStyle={styles.tobaccoBackgroundImage}
     >
@@ -241,7 +240,7 @@ export default function ProfileScreen() {
             onPress={handleUserLicense}
           >
             <Ionicons name="document-text" size={20} color="#FFFFFF" />
-            <Text style={styles.actionButtonText}>User License Agreement</Text>
+            <Text style={styles.actionButtonText}>End User License</Text>
             <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
           </TouchableOpacity>
 
@@ -277,7 +276,7 @@ export default function ProfileScreen() {
         </View>
 
       </ScrollView>
-    </ImageBackground>
+    </CachedBackgroundImage>
   );
 }
 

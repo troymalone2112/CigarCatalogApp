@@ -20,6 +20,8 @@ import { RootStackParamList, InventoryItem, TabParamList } from '../types';
 import { StorageService } from '../storage/storageService';
 import SubscriptionBanner from '../components/SubscriptionBanner';
 import { useScreenLoading } from '../hooks/useScreenLoading';
+import { useAuth } from '../contexts/AuthContext';
+import { useAccessControl } from '../hooks/useAccessControl';
 
 type HomeScreenNavigationProp = BottomTabNavigationProp<TabParamList, 'Home'> & {
   navigate: (screen: string, params?: any) => void;
@@ -29,21 +31,20 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
+  const { user } = useAuth();
+  const { canScan } = useAccessControl();
   const [inventoryCount, setInventoryCount] = useState(0);
   const [journalCount, setJournalCount] = useState(0);
   const [latestJournalEntries, setLatestJournalEntries] = useState<any[]>([]);
   const { loading, setLoading } = useScreenLoading(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
-  
-  // FORCE LOG - HomeScreen component is rendering
-  console.log('🚨 HomeScreen component is rendering!');
 
   useFocusEffect(
     useCallback(() => {
       if (!isLoadingData) {
         loadDashboardData();
       }
-    }, [isLoadingData])
+    }, []) // Remove isLoadingData from dependencies to prevent infinite loop
   );
 
   const loadDashboardData = async () => {
@@ -76,11 +77,11 @@ export default function HomeScreen() {
 
       console.log('🚨 HomeScreen - Got inventory:', inventory.length, 'journal:', journal.length);
 
-      setInventoryCount(inventory.reduce((sum, item) => sum + item.quantity, 0));
+      setInventoryCount(inventory.reduce((sum: number, item: any) => sum + item.quantity, 0));
       setJournalCount(journal.length);
       
       // Get latest 3 journal entries (already sorted by getJournalEntries, but ensure proper order)
-      const sortedJournal = journal.sort((a, b) => {
+      const sortedJournal = journal.sort((a: any, b: any) => {
         // Sort by date first (most recent first)
         const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
         if (dateComparison !== 0) return dateComparison;
@@ -102,14 +103,17 @@ export default function HomeScreen() {
     }
   };
 
-
   const handleCigarRecognition = () => {
-    navigation.navigate('CigarRecognition');
+    if (canScan()) {
+      navigation.navigate('CigarRecognition');
+    }
   };
 
   const handleSearch = () => {
     // Navigate to search functionality
-    navigation.navigate('CigarRecognition', { openSearch: true });
+    if (canScan()) {
+      navigation.navigate('CigarRecognition', { openSearch: true });
+    }
   };
 
   if (loading) {
@@ -141,7 +145,6 @@ export default function HomeScreen() {
 
         {/* Subscription Banner */}
         <SubscriptionBanner />
-
 
         {/* Main Actions */}
         <View style={styles.mainActions}>
@@ -175,11 +178,10 @@ export default function HomeScreen() {
           </Pressable>
         </View>
 
-
         {/* Latest Journal Entries */}
         {latestJournalEntries.length > 0 && (
           <View style={styles.latestJournalSection}>
-            <Text style={styles.sectionTitle}>Latest Journal Entries</Text>
+            <Text style={styles.sectionTitle}>Journal Entries</Text>
             {latestJournalEntries.map((entry, index) => (
               <Pressable 
                 key={entry.id || index}
@@ -187,8 +189,11 @@ export default function HomeScreen() {
                 onPress={() => navigation.navigate('JournalEntryDetails', { entry })}
               >
                 <View style={styles.journalEntryContent}>
-                  <Text style={styles.journalEntryTitle}>
-                    {entry.cigar.brand} {entry.cigar.line}
+                  <Text style={styles.journalEntryBrand}>
+                    {entry.cigar.brand}
+                  </Text>
+                  <Text style={styles.journalEntryLine}>
+                    {entry.cigar.line}
                   </Text>
                   <Text style={styles.journalEntryDate}>
                     {new Date(entry.date).toLocaleDateString()}
@@ -201,9 +206,6 @@ export default function HomeScreen() {
             ))}
           </View>
         )}
-
-        {/* Bottom Spacing */}
-        <View style={styles.bottomSpacing} />
       </ScrollView>
     </ImageBackground>
   );
@@ -220,122 +222,124 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
+    backgroundColor: '#0a0a0a',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0a0a0a',
   },
   loadingText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '400',
+    fontSize: 18,
+    fontWeight: '600',
   },
   scrollView: {
     flex: 1,
   },
   logoContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 50,
-    paddingBottom: 40,
-    minHeight: 190,
+    paddingTop: 40, // Reduced space from header
+    paddingBottom: 40, // More space to buttons below
   },
   logo: {
-    width: 190,
-    height: 190,
+    width: 400, // 400 width as requested
+    height: 200, // Proportional height
   },
   mainActions: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    gap: 8,
+    paddingHorizontal: 20,
+    marginTop: 30, // Add spacing from banner above
+    marginBottom: 15, // Reduced spacing to containers below
+    gap: 12,
   },
   actionButton: {
     flex: 1,
-    backgroundColor: '#DC851F',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    borderRadius: 6,
-    gap: 4,
+    backgroundColor: '#DC851F',
+    paddingVertical: 12, // Reduced height
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    gap: 8,
   },
   actionButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16,
+    fontWeight: '600',
   },
   statsContainer: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 20,
+    marginBottom: 30,
     gap: 12,
   },
   statItem: {
     flex: 1,
     backgroundColor: '#1a1a1a',
-    padding: 12,
-    borderRadius: 8,
+    padding: 12, // Reduced padding for smaller height
+    borderRadius: 12,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#555555',
   },
   statNumber: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFA737',
+    fontSize: 18, // Smaller numbers
+    fontWeight: 'bold',
+    color: '#DC851F',
     marginBottom: 2,
   },
   statLabel: {
-    fontSize: 12,
-    color: '#CCCCCC',
-    fontWeight: '400',
+    fontSize: 12, // Smaller labels
+    color: '#CCCCCC', // Match journal entry dates
+    fontWeight: '500',
   },
   latestJournalSection: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: 20,
+    marginBottom: 30,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#CCCCCC',
-    marginBottom: 8,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#CCCCCC', // Darker than white
+    marginBottom: 16,
   },
   journalEntryItem: {
-    backgroundColor: '#1a1a1a',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#555555',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: '#1a1a1a',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#555555',
   },
   journalEntryContent: {
     flex: 1,
   },
-  journalEntryTitle: {
-    fontSize: 14,
-    color: '#CCCCCC',
-    fontWeight: '500',
+  journalEntryBrand: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#CCCCCC', // Match sectionTitle color
     marginBottom: 2,
   },
+  journalEntryLine: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#DC851F', // Orange color
+    marginBottom: 4,
+  },
   journalEntryDate: {
-    fontSize: 12,
-    color: '#999',
+    fontSize: 14,
+    color: '#CCCCCC',
   },
   journalEntryRating: {
     backgroundColor: '#DC851F',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   journalRatingText: {
-    fontSize: 12,
     color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  bottomSpacing: {
-    height: 20,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
 });

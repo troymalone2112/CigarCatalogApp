@@ -33,6 +33,7 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
   const [isEditing, setIsEditing] = useState(false);
   const [editedNotes, setEditedNotes] = useState(entry.notes || '');
   const [editedFlavors, setEditedFlavors] = useState(entry.selectedFlavors || []);
+  const [editedRating, setEditedRating] = useState(entry.rating.overall || 0);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const getStrengthColor = (strength: string) => {
@@ -41,6 +42,9 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
   };
 
   const formatDate = (date: Date) => {
+    if (!date || !(date instanceof Date) || isNaN(date.getTime())) {
+      return 'No date available';
+    }
     return new Intl.DateTimeFormat('en-US', {
       year: 'numeric',
       month: 'long',
@@ -58,6 +62,7 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
     setIsEditing(false);
     setEditedNotes(entry.notes || '');
     setEditedFlavors(entry.selectedFlavors || []);
+    setEditedRating(entry.rating.overall || 0);
   };
 
   const handleSave = async () => {
@@ -66,14 +71,32 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
         ...entry,
         notes: editedNotes,
         selectedFlavors: editedFlavors,
+        rating: {
+          ...entry.rating,
+          overall: editedRating,
+        },
       };
       
       await StorageService.saveJournalEntry(updatedEntry);
       setEntry(updatedEntry);
       setIsEditing(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving journal entry:', error);
-      Alert.alert('Error', 'Failed to save changes');
+      
+      // Check if it's a network error
+      if (error.message?.includes('Network request failed')) {
+        Alert.alert(
+          'Network Error', 
+          'Your changes have been saved locally and will sync when your connection is restored.',
+          [{ text: 'OK', style: 'default' }]
+        );
+        
+        // Still update local state since changes are saved locally
+        setEntry(updatedEntry);
+        setIsEditing(false);
+      } else {
+        Alert.alert('Error', 'Failed to save changes. Please try again.');
+      }
     }
   };
 
@@ -112,6 +135,31 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
         ? prev.filter(f => f !== flavor)
         : [...prev, flavor]
     );
+  };
+
+  const handleRatingChange = (rating: number) => {
+    setEditedRating(rating);
+  };
+
+  const renderStarRating = (rating: number, isEditable: boolean = false) => {
+    const stars = [];
+    for (let i = 1; i <= 10; i++) {
+      stars.push(
+        <TouchableOpacity
+          key={i}
+          onPress={isEditable ? () => handleRatingChange(i) : undefined}
+          disabled={!isEditable}
+          style={styles.starContainer}
+        >
+          <Ionicons
+            name={i <= rating ? "star" : "star-outline"}
+            size={20}
+            color={i <= rating ? "#FFD700" : "#666"}
+          />
+        </TouchableOpacity>
+      );
+    }
+    return stars;
   };
 
   const renderFlavorChips = (flavors: string[]) => {
@@ -196,17 +244,33 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
           {renderFlavorChips(entry.selectedFlavors)}
           
           {/* Rating and Strength */}
-          <View style={styles.ratingStrengthRow}>
-            <View style={styles.ratingContainer}>
-              <Text style={styles.ratingLabel}>Your Rating</Text>
-              <Text style={styles.ratingValue}>{entry.rating.overall}/10</Text>
+          <View style={styles.ratingStrengthContainer}>
+            {/* Strength Section - Above Rating */}
+            <View style={styles.strengthSection}>
+              <Text style={styles.strengthLabel}>Strength</Text>
+              <View style={[styles.strengthPill, { backgroundColor: getStrengthColor(entry.cigar.strength) }]}>
+                <Text style={styles.strengthText}>{getStrengthInfo(entry.cigar.strength).label}</Text>
+              </View>
             </View>
             
-            <View style={styles.strengthContainer}>
-              <Text style={styles.strengthLabel}>Strength</Text>
-            <View style={[styles.strengthPill, { backgroundColor: getStrengthColor(entry.cigar.strength) }]}>
-              <Text style={styles.strengthText}>{getStrengthInfo(entry.cigar.strength).label}</Text>
-            </View>
+            {/* Rating Section - Below Strength */}
+            <View style={styles.ratingSection}>
+              <Text style={styles.ratingLabel}>Your Rating</Text>
+              {isEditing ? (
+                <View style={styles.editableRatingContainer}>
+                  <View style={styles.starRatingContainer}>
+                    {renderStarRating(editedRating, true)}
+                  </View>
+                  <Text style={styles.ratingValue}>{editedRating}/10</Text>
+                </View>
+              ) : (
+                <View style={styles.readOnlyRatingContainer}>
+                  <View style={styles.starRatingContainer}>
+                    {renderStarRating(entry.rating.overall, false)}
+                  </View>
+                  <Text style={styles.ratingValue}>{entry.rating.overall}/10</Text>
+                </View>
+              )}
             </View>
           </View>
         </View>
@@ -378,13 +442,14 @@ const styles = StyleSheet.create({
     color: '#999999',
     marginBottom: 4,
   },
-  ratingStrengthRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  ratingStrengthContainer: {
     marginTop: 16,
   },
-  ratingContainer: {
+  strengthSection: {
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  ratingSection: {
     alignItems: 'center',
   },
   ratingLabel: {
@@ -397,9 +462,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#FFA737',
-  },
-  strengthContainer: {
-    alignItems: 'center',
   },
   strengthLabel: {
     fontSize: 14,
@@ -646,5 +708,23 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
+  },
+  // Star Rating Styles
+  editableRatingContainer: {
+    alignItems: 'center',
+  },
+  readOnlyRatingContainer: {
+    alignItems: 'center',
+  },
+  starRatingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
+  starContainer: {
+    marginHorizontal: 1,
+    padding: 2,
   },
 });

@@ -71,3 +71,4 @@ CREATE INDEX IF NOT EXISTS idx_inventory_cigar_line ON inventory ((cigar_data->>
 
 
 
+

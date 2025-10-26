@@ -118,3 +118,4 @@ FROM user_subscriptions us
 LEFT JOIN profiles p ON us.user_id = p.id
 ORDER BY us.updated_at DESC
 LIMIT 10;
+

@@ -90,3 +90,4 @@ async function clearUserForTesting() {
 }
 
 clearUserForTesting();
+

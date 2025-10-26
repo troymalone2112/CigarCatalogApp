@@ -119,7 +119,7 @@ export default function HumidorCapacitySetupModal({
                 style={styles.skipButton}
                 onPress={handleSkip}
               >
-                <Text style={styles.skipButtonText}>Skip for now</Text>
+                <Text style={styles.skipButtonText}>Skip</Text>
               </TouchableOpacity>
               
               <TouchableOpacity
@@ -132,7 +132,7 @@ export default function HumidorCapacitySetupModal({
               >
                 <Ionicons name="checkmark" size={20} color="#FFFFFF" />
                 <Text style={styles.saveButtonText}>
-                  {capacity.trim() === '' ? 'Continue without capacity' : 'Set Capacity'}
+                  {capacity.trim() === '' ? 'Save' : 'Save'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -269,3 +269,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+

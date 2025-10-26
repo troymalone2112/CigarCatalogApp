@@ -28,8 +28,10 @@ import { useRecognitionFlow } from '../contexts/RecognitionFlowContext';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import StrengthButton from '../components/StrengthButton';
 import { StorageService } from '../storage/storageService';
+import { OptimizedHumidorService } from '../services/optimizedHumidorService';
 import { findDuplicateCigar, getCigarDisplayName } from '../utils/duplicateDetection';
 import { RecognitionErrorHandler } from '../utils/recognitionErrorHandler';
+import LoadingHumidorsScreen from './LoadingHumidorsScreen';
 
 type CigarRecognitionNavigationProp = StackNavigationProp<RootStackParamList, 'CigarRecognition'>;
 
@@ -131,6 +133,54 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [manualDescription, setManualDescription] = useState('');
   
+  // Loading states
+  const [showLoadingHumidors, setShowLoadingHumidors] = useState(false);
+
+  // Hide loading screen when component unmounts or user navigates away
+  useEffect(() => {
+    return () => {
+      setShowLoadingHumidors(false);
+    };
+  }, []);
+
+  // Hide loading screen when focus changes (user navigated away)
+  useFocusEffect(
+    React.useCallback(() => {
+      setShowLoadingHumidors(false);
+    }, [])
+  );
+
+  // Early return for permission loading state
+  if (!permission) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#7C2D12" />
+        <Text style={styles.loadingText}>Requesting camera permission...</Text>
+      </View>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <ImageBackground 
+        source={require('../../assets/tobacco-leaves-bg.jpg')}
+        style={styles.errorContainer}
+        imageStyle={styles.tobaccoBackgroundImage}
+      >
+        <View style={styles.errorContent}>
+          <Ionicons name="camera-outline" size={80} color="#DC851F" />
+          <Text style={styles.errorTitle}>Camera Access Required</Text>
+          <Text style={styles.errorText}>
+            This app needs camera access to identify cigars. Please grant permission to continue.
+          </Text>
+          <TouchableOpacity style={styles.primaryButton} onPress={handleRequestPermission}>
+            <Text style={styles.primaryButtonText}>Grant Camera Permission</Text>
+          </TouchableOpacity>
+        </View>
+      </ImageBackground>
+    );
+  }
+  
   // Quantity input for adding to inventory
   
   // Settings
@@ -154,12 +204,22 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
   };
 
   const takePicture = async () => {
-    if (camera) {
-      try {
-        // Take the full picture first
-        const photo = await camera.takePictureAsync({
-          quality: 0.8,
-        });
+    if (!camera) {
+      console.log('Camera not available');
+      return;
+    }
+    
+    try {
+      // Take the full picture first
+      const photo = await camera.takePictureAsync({
+        quality: 0.8,
+      });
+      
+      // Check if camera is still mounted after taking picture
+      if (!camera) {
+        console.log('Camera unmounted during photo process');
+        return;
+      }
         
         // Get the actual image dimensions
         const imageInfo = await ImageManipulator.manipulateAsync(
@@ -239,6 +299,12 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         
         setImageUri(croppedPhoto.uri);
         
+        // Check if camera is still mounted before processing
+        if (!camera) {
+          console.log('Camera unmounted before image processing');
+          return;
+        }
+        
         // Process the image separately to avoid misleading error messages
         try {
           // Use base64 data for API calls
@@ -248,10 +314,9 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
           console.error('Error processing image:', processError);
           Alert.alert('Error', 'Failed to process image for recognition. Please try again.');
         }
-      } catch (error) {
-        console.error('Error taking picture:', error);
-        Alert.alert('Error', 'Failed to take picture');
-      }
+    } catch (error) {
+      console.error('Error taking picture:', error);
+      Alert.alert('Error', 'Failed to take picture');
     }
   };
 
@@ -511,11 +576,14 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       return;
     }
 
+    // Show loading screen IMMEDIATELY for better UX
+    if (!humidorId) {
+      setShowLoadingHumidors(true);
+    }
+
     console.log('Starting addToInventory with result:', recognitionResult);
     try {
-      // Load current inventory for duplicate detection
-      const currentInventory = await StorageService.getInventory();
-      
+      // Create cigar object first (fast)
       const cigar: Cigar = {
         id: Date.now().toString(),
         brand: recognitionResult.enrichedCigar.brand || 'Unknown Brand',
@@ -535,7 +603,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
           final: 'Unknown',
         },
         drinkPairings: recognitionResult.enrichedCigar.drinkPairings,
-        imageUrl: recognitionResult.enrichedCigar.imageUrl || 'placeholder',
+        imageUrl: imageUri || recognitionResult.enrichedCigar.imageUrl || 'placeholder',
         recognitionConfidence: recognitionResult.confidence,
         msrp: recognitionResult.enrichedCigar.msrp,
         singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
@@ -552,16 +620,9 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         cigarAficionadoRating: recognitionResult.enrichedCigar.cigarAficionadoRating,
       };
 
-      // Check for duplicates
-      const duplicate = findDuplicateCigar(cigar, currentInventory);
-      
-      if (duplicate) {
-        // Show duplicate dialog
-        setDuplicateItem(duplicate);
-        setShowDuplicateDialog(true);
-      } else {
-        // No duplicate found, proceed normally
-        if (humidorId) {
+      // For now, skip duplicate detection to speed up the flow
+      // TODO: Implement background duplicate detection if needed
+      if (humidorId) {
           // If we have a specific humidor, go directly to AddToInventory
           navigation.navigate('MainTabs', {
             screen: 'HumidorList',
@@ -577,13 +638,35 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         } else {
           // If no humidor specified, navigate to HumidorList with recognition flow parameters
           try {
-            console.log('🚀 Fast navigation: Going to HumidorList with recognition flow');
+            console.log('🚀 Navigating to HumidorList with recognition flow');
             console.log('🚀 Navigation params:', {
               fromRecognition: true,
               cigar: cigar.brand,
               singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0'
             });
+            
+            // Start recognition flow
             startRecognitionFlow(cigar, recognitionResult.enrichedCigar.singleStickPrice || '0');
+            
+            // Navigate immediately (loading screen is already shown)
+            console.log('🚀 About to navigate with params:', {
+              fromRecognition: true,
+              cigar: cigar.brand,
+              singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0'
+            });
+            
+            console.log('🚀 Full navigation object:', {
+              screen: 'HumidorList',
+              params: {
+                screen: 'HumidorListMain',
+                params: {
+                  fromRecognition: true,
+                  cigar,
+                  singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0'
+                }
+              }
+            });
+            
             navigation.navigate('MainTabs', {
               screen: 'HumidorList',
               params: {
@@ -597,6 +680,8 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
             });
           } catch (error) {
             console.error('Error in add to inventory flow:', error);
+            // Hide loading screen on error
+            setShowLoadingHumidors(false);
             // Fallback - still go to HumidorList with recognition flow
             startRecognitionFlow(cigar, recognitionResult.enrichedCigar.singleStickPrice || '0');
             
@@ -613,10 +698,10 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
             });
           }
         }
-      }
     } catch (error) {
-      console.error('Error preparing cigar data:', error);
-      Alert.alert('Error', 'Failed to prepare cigar data');
+      console.error('Error in addToInventory:', error);
+      Alert.alert('Error', 'Failed to add cigar to inventory. Please try again.');
+      setShowLoadingHumidors(false); // Ensure loading screen is hidden on any error
     }
   };
 
@@ -662,7 +747,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         final: recognitionResult.enrichedCigar.smokingExperience?.final || 'Satisfying finish'
       },
       drinkPairings: recognitionResult.enrichedCigar.drinkPairings,
-      imageUrl: imageUri,
+      imageUrl: imageUri || 'placeholder',
       recognitionConfidence: recognitionResult.confidence,
       msrp: recognitionResult.enrichedCigar.msrp,
       singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
@@ -810,41 +895,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
     setDuplicateItem(null);
   };
 
-  if (!permission) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#7C2D12" />
-        <Text style={styles.loadingText}>Requesting camera permission...</Text>
-      </View>
-    );
-  }
-
-  if (!permission.granted) {
-    return (
-      <ImageBackground 
-        source={require('../../assets/tobacco-leaves-bg.jpg')}
-        style={styles.errorContainer}
-        imageStyle={styles.tobaccoBackgroundImage}
-      >
-        <View style={styles.errorContent}>
-          <Ionicons name="camera-outline" size={80} color="#DC851F" />
-          <Text style={styles.errorTitle}>Camera Access Required</Text>
-          <Text style={styles.errorText}>
-            This app needs camera access to identify cigars from photos. Please grant permission to continue.
-          </Text>
-          <TouchableOpacity style={styles.primaryButton} onPress={handleRequestPermission}>
-            <Text style={styles.primaryButtonText}>Grant Camera Permission</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.manualButton} onPress={() => setShowManualEntry(true)}>
-            <Text style={styles.manualButtonText}>Search Instead</Text>
-          </TouchableOpacity>
-          <Text style={styles.helpText}>
-            If permission was previously denied, you may need to enable it in your device settings.
-          </Text>
-        </View>
-      </ImageBackground>
-    );
-  }
+  // Don't show loading screen as a replacement, we'll show it as a modal overlay
 
   return (
     <View style={styles.container}>
@@ -1315,6 +1366,18 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
           </ScrollView>
         </View>
       </Modal>
+
+      {/* Loading Humidors Modal */}
+      <Modal
+        visible={showLoadingHumidors}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowLoadingHumidors(false)}
+      >
+        <View style={styles.loadingModalContainer}>
+          <LoadingHumidorsScreen message="Loading your humidors..." />
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1348,6 +1411,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(10, 10, 10, 0.9)',
     borderRadius: 12,
     margin: 20,
+  },
+  loadingModalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tobaccoBackgroundImage: {
     opacity: 0.4,

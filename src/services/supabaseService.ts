@@ -16,6 +16,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     headers: {
       'X-Client-Info': 'cigar-catalog-app',
     },
+    fetch: (url, options = {}) => {
+      return fetch(url, {
+        ...options,
+        timeout: 30000, // 30 second timeout
+      });
+    },
   },
   db: {
     schema: 'public',
@@ -25,6 +31,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // Add connection health check
 export const checkSupabaseConnection = async () => {
   try {
+    console.log('🔍 Checking Supabase connection...');
     const { data, error } = await supabase
       .from('profiles')
       .select('count')
@@ -43,21 +50,122 @@ export const checkSupabaseConnection = async () => {
   }
 };
 
+// Network connectivity check
+export const checkNetworkConnectivity = async () => {
+  try {
+    console.log('🌐 Checking network connectivity...');
+    
+    // Test basic internet connectivity
+    const response = await fetch('https://www.google.com', { 
+      method: 'HEAD',
+      timeout: 5000 
+    });
+    
+    if (response.ok) {
+      console.log('✅ Basic internet connectivity confirmed');
+      return true;
+    } else {
+      console.log('❌ Internet connectivity failed');
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Network connectivity check failed:', error);
+    return false;
+  }
+};
+
 // Auth Service
 export const AuthService = {
   async signUp(email: string, password: string, fullName: string) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-        },
-      },
-    });
+    // Check network connectivity first
+    const networkOk = await checkNetworkConnectivity();
+    if (!networkOk) {
+      throw new Error('No internet connection. Please check your network and try again.');
+    }
+    
+    // Check Supabase connection
+    const supabaseOk = await checkSupabaseConnection();
+    if (!supabaseOk) {
+      throw new Error('Unable to connect to server. Please try again later.');
+    }
+    
+    const maxRetries = 3;
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Get user's timezone for accurate trial tracking
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        console.log(`🔐 Attempting signup (attempt ${attempt}/${maxRetries}):`, { email, fullName, userTimezone });
+        
+        // Get device's current time in local timezone
+        const now = new Date();
+        const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        
+        // Create a date string in the user's local timezone
+        const localDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
+        const localTime = new Date().toLocaleTimeString('en-US', { 
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        });
+        const localDateTimeString = `${localDate}T${localTime}`;
+        
+        console.log('📱 Local date:', localDate);
+        console.log('📱 Local time:', localTime);
+        console.log('📱 Local datetime:', localDateTimeString);
+        console.log('📱 Device timezone:', deviceTimezone);
+        
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: fullName,
+              timezone: deviceTimezone,
+              device_time: localDateTimeString, // Send local date/time
+            },
+          },
+        });
 
-    if (error) throw error;
-    return data;
+        if (error) {
+          console.error(`❌ Supabase signup error (attempt ${attempt}):`, error);
+          console.error('Error type:', error.constructor.name);
+          console.error('Error code:', error.code);
+          console.error('Error message:', error.message);
+          
+          // If it's a network error and we have retries left, continue
+          if (error.message.includes('Network request failed') && attempt < maxRetries) {
+            console.log(`🔄 Network error, retrying in ${attempt * 2} seconds...`);
+            await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+            lastError = error;
+            continue;
+          }
+          
+          throw error;
+        }
+        
+        console.log('✅ Supabase signup successful:', data.user?.id);
+        return data;
+      } catch (error) {
+        console.error(`❌ Signup failed (attempt ${attempt}):`, error);
+        lastError = error;
+        
+        // If it's a network error and we have retries left, continue
+        if (error.message && error.message.includes('Network request failed') && attempt < maxRetries) {
+          console.log(`🔄 Network error, retrying in ${attempt * 2} seconds...`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+          continue;
+        }
+        
+        throw error;
+      }
+    }
+    
+    // If we get here, all retries failed
+    throw lastError;
   },
 
   async signIn(email: string, password: string) {
@@ -161,7 +269,42 @@ export const DatabaseService = {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      // If no profile exists to update, create one
+      if (error.code === 'PGRST116') {
+        console.log('🔍 No profile found to update, creating new profile for user:', userId);
+        return await this.createProfileWithUpdates(userId, updates);
+      }
+      throw error;
+    }
+    return data;
+  },
+
+  async createProfileWithUpdates(userId: string, updates: { full_name?: string; avatar_url?: string; onboarding_completed?: boolean }) {
+    console.log('🔍 Creating profile with updates for user:', userId);
+    
+    const { data, error } = await supabase
+      .from('profiles')
+      .insert([
+        {
+          id: userId,
+          email: '', // Will be updated by trigger
+          full_name: updates.full_name || 'New User',
+          avatar_url: updates.avatar_url || null,
+          onboarding_completed: updates.onboarding_completed || false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        }
+      ])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating profile with updates:', error);
+      throw error;
+    }
+    
+    console.log('✅ Profile created with updates successfully:', data);
     return data;
   },
 
@@ -199,7 +342,7 @@ export const DatabaseService = {
       humidorName: h.humidor_name,
       description: h.description,
       capacity: h.capacity,
-      cigarCount: h.total_cigars,
+      cigarCount: h.cigar_count,
       totalValue: h.total_value,
       avgCigarPrice: h.avg_cigar_price,
       createdAt: new Date(h.created_at),
@@ -268,8 +411,8 @@ export const DatabaseService = {
     const startTime = Date.now();
     
     try {
-      // Get all humidor data in parallel
-      const [humidorsResult, statsResult, aggregateResult] = await Promise.all([
+      // Get all humidor data in parallel (removed problematic user_humidor_aggregate view)
+      const [humidorsResult, statsResult] = await Promise.all([
         supabase
           .from('humidors')
           .select('*')
@@ -280,13 +423,7 @@ export const DatabaseService = {
           .from('humidor_stats')
           .select('*')
           .eq('user_id', userId)
-          .order('cigar_count', { ascending: false }),
-        
-        supabase
-          .from('user_humidor_aggregate')
-          .select('*')
-          .eq('user_id', userId)
-          .single()
+          .order('cigar_count', { ascending: false })
       ]);
 
       const loadTime = Date.now() - startTime;
@@ -310,37 +447,26 @@ export const DatabaseService = {
         humidorName: h.humidor_name,
         description: h.description,
         capacity: h.capacity,
-        cigarCount: h.total_cigars,
+        cigarCount: h.cigar_count, // Fixed: was h.total_cigars
         totalValue: h.total_value,
         avgCigarPrice: h.avg_cigar_price,
         createdAt: new Date(h.created_at),
         updatedAt: new Date(h.updated_at),
       })) || [];
 
-      // Handle aggregate
-      const aggregate = aggregateResult.data ? {
-        userId: aggregateResult.data.user_id,
-        totalHumidors: aggregateResult.data.total_humidors,
-        totalCigars: aggregateResult.data.total_cigars,
-        totalCollectionValue: aggregateResult.data.total_collection_value,
-        avgCigarValue: aggregateResult.data.avg_cigar_value,
-        uniqueBrands: aggregateResult.data.unique_brands,
-      } : {
+      // Calculate aggregate data from humidor stats (since we removed the problematic view)
+      const aggregate = {
         userId,
-        totalHumidors: 0,
-        totalCigars: 0,
-        totalCollectionValue: 0,
-        avgCigarValue: 0,
-        uniqueBrands: 0,
+        totalHumidors: humidors.length,
+        totalCigars: humidorStats.reduce((sum, stat) => sum + (stat.cigarCount || 0), 0),
+        totalCollectionValue: humidorStats.reduce((sum, stat) => sum + (stat.totalValue || 0), 0),
+        avgCigarValue: humidorStats.length > 0 ? humidorStats.reduce((sum, stat) => sum + (stat.avgCigarPrice || 0), 0) / humidorStats.length : 0,
+        uniqueBrands: 0, // This would need to be calculated from inventory data if needed
       };
 
       // Check for errors
       if (humidorsResult.error) throw humidorsResult.error;
       if (statsResult.error) throw statsResult.error;
-      if (aggregateResult.error && aggregateResult.error.code !== 'PGRST116') {
-        // PGRST116 is "not found" which is OK for new users
-        throw aggregateResult.error;
-      }
 
       return {
         humidors,
@@ -386,20 +512,27 @@ export const DatabaseService = {
 
   // Inventory Management Functions
   async getInventory(userId: string, humidorId?: string) {
-    let query = supabase
-      .from('inventory')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
+    try {
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Database request timeout')), 15000) // 15 second timeout
+      );
+      
+      let query = supabase
+        .from('inventory')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
 
-    if (humidorId) {
-      query = query.eq('humidor_id', humidorId);
-    }
+      if (humidorId) {
+        query = query.eq('humidor_id', humidorId);
+      }
 
-    const { data, error } = await query;
+      const dataPromise = query;
+      const { data, error } = await Promise.race([dataPromise, timeoutPromise]) as any;
 
-    if (error) throw error;
-    return data?.map(item => ({
+      if (error) throw error;
+      return data?.map((item: any) => ({
       id: item.id,
       cigar: {
         id: item.cigar_data.id,
@@ -440,6 +573,10 @@ export const DatabaseService = {
       notes: item.notes || undefined,
       humidorId: item.humidor_id,
     })) || [];
+    } catch (error) {
+      console.error('❌ DatabaseService.getInventory error:', error);
+      throw error;
+    }
   },
 
   async saveInventoryItem(inventoryItem: any) {
@@ -496,8 +633,7 @@ export const JournalService = {
       .from('journal_entries')
       .select('*')
       .eq('user_id', userId)
-      .order('smoking_date', { ascending: false })
-      .order('created_at', { ascending: false }); // Secondary sort by creation time
+      .order('created_at', { ascending: false }); // Sort by creation time
 
     if (error) throw error;
     return data || [];
@@ -505,19 +641,55 @@ export const JournalService = {
 
   async saveJournalEntry(journalData: any) {
     console.log('🔍 JournalService.saveJournalEntry called with:', journalData);
-    const { data, error } = await supabase
-      .from('journal_entries')
-      .upsert(journalData, { onConflict: 'id' })
-      .select()
-      .single();
+    
+    const maxRetries = 3;
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔄 Attempt ${attempt}/${maxRetries} to save journal entry`);
+        
+        const { data, error } = await supabase
+          .from('journal_entries')
+          .upsert(journalData, { onConflict: 'id' })
+          .select()
+          .single();
 
-    if (error) {
-      console.error('Error saving journal entry:', error);
-      throw error;
+        if (error) {
+          console.error(`❌ Error on attempt ${attempt}:`, error);
+          lastError = error;
+          
+          // If it's a network error, wait before retrying
+          if (error.message?.includes('Network request failed') && attempt < maxRetries) {
+            console.log(`⏳ Waiting 2 seconds before retry ${attempt + 1}...`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            continue;
+          }
+          
+          throw error;
+        }
+        
+        console.log('✅ Journal entry saved successfully');
+        return data;
+      } catch (error: any) {
+        console.error(`❌ Attempt ${attempt} failed:`, error);
+        lastError = error;
+        
+        // If it's a network error and we have retries left, continue
+        if (error.message?.includes('Network request failed') && attempt < maxRetries) {
+          console.log(`⏳ Waiting 2 seconds before retry ${attempt + 1}...`);
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          continue;
+        }
+        
+        // If it's not a network error or we're out of retries, throw
+        throw error;
+      }
     }
     
-    console.log('✅ Journal entry saved successfully');
-    return data;
+    // If we get here, all retries failed
+    console.error('❌ All retry attempts failed for journal entry save');
+    throw lastError;
   },
 
 

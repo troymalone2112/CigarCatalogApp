@@ -11,6 +11,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
+import { StorageService } from '../storage/storageService';
 
 type OnboardingAgeVerificationNavigationProp = StackNavigationProp<RootStackParamList, 'OnboardingAgeVerification'>;
 type OnboardingAgeVerificationRouteProp = RouteProp<RootStackParamList, 'OnboardingAgeVerification'>;
@@ -31,7 +32,6 @@ export default function OnboardingAgeVerificationScreen() {
   const handleSkip = async () => {
     // Allow users to skip onboarding and mark as completed
     try {
-      const { StorageService } = await import('../../storage/storageService');
       await StorageService.updateUserProfile({ onboardingCompleted: true });
       // Call the onComplete callback to trigger the parent component to show the main app
       if (onComplete) {

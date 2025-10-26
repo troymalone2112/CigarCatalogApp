@@ -152,9 +152,38 @@ export default function JournalNotesScreen() {
           }
         ],
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving journal entry:', error);
-      Alert.alert('Error', 'Failed to save journal entry');
+      
+      // Check if it's a network error
+      if (error.message?.includes('Network request failed')) {
+        Alert.alert(
+          'Network Error', 
+          'Your journal entry has been saved locally and will sync when your connection is restored.',
+          [{ text: 'OK', style: 'default' }]
+        );
+        
+        // Still navigate to journal since entry is saved locally
+        navigation.reset({
+          index: 0,
+          routes: [
+            {
+              name: 'MainTabs',
+              state: {
+                routes: [
+                  { name: 'Home' },
+                  { name: 'HumidorList' },
+                  { name: 'Journal' },
+                  { name: 'Recommendations' }
+                ],
+                index: 2 // Journal is at index 2
+              }
+            }
+          ],
+        });
+      } else {
+        Alert.alert('Error', 'Failed to save journal entry. Please try again.');
+      }
     } finally {
       setIsSaving(false);
     }

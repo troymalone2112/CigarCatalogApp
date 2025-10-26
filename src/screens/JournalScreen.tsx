@@ -19,6 +19,8 @@ import { RootStackParamList, JournalEntry, TabParamList } from '../types';
 import { StorageService } from '../storage/storageService';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import { useScreenLoading } from '../hooks/useScreenLoading';
+import { useAuth } from '../contexts/AuthContext';
+import { useAccessControl } from '../hooks/useAccessControl';
 
 type JournalScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 type JournalScreenRouteProp = RouteProp<TabParamList, 'Journal'>;
@@ -26,6 +28,8 @@ type JournalScreenRouteProp = RouteProp<TabParamList, 'Journal'>;
 export default function JournalScreen() {
   const navigation = useNavigation<JournalScreenNavigationProp>();
   const route = useRoute<JournalScreenRouteProp>();
+  const { user } = useAuth();
+  const { canAddToJournal } = useAccessControl();
   const [entries, setEntries] = useState<JournalEntry[]>([]);
   const { loading, refreshing, setLoading, setRefreshing } = useScreenLoading(true);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
@@ -38,22 +42,71 @@ export default function JournalScreen() {
     }, [])
   );
 
-  const loadEntries = async () => {
+  const loadEntries = async (forceRefresh: boolean = false) => {
     try {
-      const journalEntries = await StorageService.getJournalEntries();
-      setEntries(journalEntries);
+      console.log('🔍 Loading journal entries, forceRefresh:', forceRefresh);
+      
+      const startTime = Date.now();
+      
+      // Clear cache if force refresh
+      if (forceRefresh) {
+        try {
+          const { CacheClear } = await import('../utils/cacheClear');
+          await CacheClear.clearJournalCache();
+          console.log('🧹 Cache cleared for force refresh');
+        } catch (cacheError) {
+          console.log('⚠️ Cache clear failed (non-critical):', cacheError);
+        }
+      }
+      
+      const journalEntries = await StorageService.getJournalEntries(forceRefresh);
+      const loadTime = Date.now() - startTime;
+      
+      // Ensure we have valid data
+      const validEntries = journalEntries || [];
+      
+      // Record analytics
+      try {
+        const { CacheAnalyticsService } = await import('../services/cacheAnalyticsService');
+        await CacheAnalyticsService.recordCacheEvent(
+          'journal',
+          !forceRefresh && validEntries.length > 0,
+          user?.id || 'unknown',
+          JSON.stringify(validEntries).length,
+          loadTime
+        );
+      } catch (analyticsError) {
+        console.log('⚠️ Analytics recording failed (non-critical):', analyticsError);
+      }
+      
+      // Validate entries before setting state
+      const filteredEntries = validEntries.filter(entry => {
+        if (!entry.id) {
+          console.warn('⚠️ Skipping entry with missing ID');
+          return false;
+        }
+        if (!entry.date || !(entry.date instanceof Date) || isNaN(entry.date.getTime())) {
+          console.warn('⚠️ Skipping entry with invalid date:', entry.id, entry.date);
+          return false;
+        }
+        return true;
+      });
+      
+      console.log(`🔍 Loaded ${journalEntries.length} entries, ${filteredEntries.length} valid`);
+      setEntries(filteredEntries);
       
       // Check if we need to highlight a specific entry
       if (route.params?.highlightItemId) {
         const targetId = route.params.highlightItemId;
         console.log('🎯 Highlighting journal entry:', targetId);
-        triggerHighlight(targetId, journalEntries);
+        triggerHighlight(targetId, validEntries);
         // Clear the parameter after highlighting
         navigation.setParams({ highlightItemId: undefined });
       }
     } catch (error) {
       console.error('Error loading journal entries:', error);
       Alert.alert('Error', 'Failed to load journal entries');
+      setEntries([]); // Set empty array on error
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -123,6 +176,12 @@ export default function JournalScreen() {
     );
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadEntries(true); // Force refresh from database
+  };
+
+
   const renderStars = (rating: number) => {
     const stars = [];
     const fullStars = Math.floor(rating / 2);
@@ -178,10 +237,10 @@ export default function JournalScreen() {
             <Text style={styles.cigarBrand}>{item.cigar.brand}</Text>
           </View>
           <Text style={styles.cigarLine}>{item.cigar.line}</Text>
-          <Text style={styles.entryDate}>{item.date.toLocaleDateString()}</Text>
+          <Text style={styles.entryDate}>{item.date ? item.date.toLocaleDateString() : 'No date'}</Text>
         </View>
         <View style={styles.entryImageContainer}>
-          {item.imageUrl ? (
+          {item.imageUrl && item.imageUrl !== 'placeholder' ? (
             <Image source={{ uri: item.imageUrl }} style={styles.entryImage} />
           ) : item.cigar.imageUrl && item.cigar.imageUrl !== 'placeholder' ? (
             <Image source={{ uri: item.cigar.imageUrl }} style={styles.entryImage} />
@@ -268,14 +327,18 @@ export default function JournalScreen() {
           renderItem={renderJournalEntry}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContainer}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
           ListEmptyComponent={EmptyState}
           showsVerticalScrollIndicator={false}
         />
 
         <TouchableOpacity
           style={styles.fab}
-          onPress={() => navigation.navigate('CigarRecognition')}
+          onPress={() => {
+            if (canAddToJournal()) {
+              navigation.navigate('CigarRecognition');
+            }
+          }}
         >
           <Ionicons name="add" size={24} color="#CCCCCC" />
         </TouchableOpacity>
@@ -333,7 +396,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cigarBrand: {
-    fontSize: 14,
+    fontSize: 18, // Match humidor title size
     fontWeight: '500',
     color: '#CCCCCC',
     flex: 1,

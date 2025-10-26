@@ -147,3 +147,4 @@ WHERE capacity = 0;
 **Result:** All humidors now consistently display capacity bars with progress indicators and percentage fill.
 
 The default humidor will now show the same capacity information as user-created humidors, providing a consistent and informative user experience!
+

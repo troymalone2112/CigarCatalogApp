@@ -50,3 +50,4 @@ SELECT
     THEN '✅ Database is completely clean!'
     ELSE '⚠️ Some data still remains'
   END as cleanup_status;
+

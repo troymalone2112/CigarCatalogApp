@@ -125,3 +125,4 @@ RETRIES: {
 - [ ] No timeout errors
 
 The timeout issues should now be resolved! The app will handle Expo Go's slower network performance gracefully while maintaining proper onboarding flow logic.
+

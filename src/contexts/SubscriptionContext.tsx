@@ -34,7 +34,12 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     if (user) {
-      loadSubscriptionData();
+      // Load subscription data in background - don't block app startup
+      console.log('🔄 Loading subscription data in background for user:', user.id);
+      loadSubscriptionData().catch(error => {
+        console.error('❌ Background subscription load failed:', error);
+        // Don't block the app if subscription loading fails
+      });
     } else {
       setSubscriptionStatus(null);
       setLoading(false);

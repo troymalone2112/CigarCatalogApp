@@ -178,3 +178,4 @@ The upgrade button issue has been fixed with:
 - ✅ **Proper navigation** - Button navigates to PaywallScreen correctly
 
 The upgrade button should now always appear for trial users, providing a clear path to upgrade to premium!
+
