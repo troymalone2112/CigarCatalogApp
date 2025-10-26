@@ -1,5 +1,6 @@
-// RevenueCat Webhook for Netlify Functions
+// RevenueCat Webhook for Netlify Functions - CORRECTED VERSION
 // This is a Netlify serverless function that RevenueCat can call
+// Fixed: Date validation and RevenueCat user ID syncing
 
 const { createClient } = require('@supabase/supabase-js');
 
@@ -133,6 +134,12 @@ exports.handler = async (event, context) => {
       const webhookData = JSON.parse(event.body);
       console.log('📨 RevenueCat webhook received:', JSON.stringify(webhookData, null, 2));
       
+      // Log the full webhook event to a separate table for debugging
+      await supabase.from('revenuecat_webhook_events').insert({
+        event_data: webhookData,
+        received_at: new Date().toISOString()
+      });
+
       const { api_version, event: eventData } = webhookData;
       
       if (!eventData) {
@@ -177,24 +184,70 @@ exports.handler = async (event, context) => {
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ 
-            success: true, 
-            message: 'Test webhook received successfully',
-            event_type: 'TEST'
-          })
+          body: JSON.stringify({ success: true, message: 'Test webhook received' })
         };
       }
-      
+
+      // Validate timestamps
+      if (!purchased_at_ms || !expiration_at_ms) {
+        console.error('❌ Missing purchased_at_ms or expiration_at_ms');
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Missing purchased_at_ms or expiration_at_ms' })
+        };
+      }
+
+      let final_purchased_at_ms = parseInt(purchased_at_ms);
+      let final_expiration_at_ms = parseInt(expiration_at_ms);
+
+      if (isNaN(final_purchased_at_ms) || isNaN(final_expiration_at_ms)) {
+        console.error('❌ Invalid date format for purchased_at_ms or expiration_at_ms');
+        return {
+          statusCode: 400,
+          headers,
+          body: JSON.stringify({ error: 'Invalid date format' })
+        };
+      }
+
+      // Date validation and correction logic
+      const purchasedAtDate = new Date(final_purchased_at_ms);
+      let expirationAtDate = new Date(final_expiration_at_ms);
+      const timeDifferenceMinutes = (expirationAtDate.getTime() - purchasedAtDate.getTime()) / (1000 * 60);
+
+      // Determine expected duration based on product_id
+      let expectedDurationDays = 0;
+      let subscription_plan_name = 'Premium Monthly'; // Default
+
+      if (product_id.includes('monthly') || product_id === '$rc_monthly') {
+        expectedDurationDays = 30;
+        subscription_plan_name = 'Premium Monthly';
+      } else if (product_id.includes('yearly') || product_id.includes('annual') || product_id === '$rc_annual') {
+        expectedDurationDays = 365;
+        subscription_plan_name = 'Premium Yearly';
+      }
+
+      // If the time difference is suspiciously short (e.g., less than 29 days for a monthly plan)
+      // and an expected duration is defined, correct the expiration date.
+      if (expectedDurationDays > 0 && timeDifferenceMinutes < (expectedDurationDays * 24 * 60 - (24 * 60))) { // Less than expected duration minus 1 day
+        console.warn(`⚠️ Detected problematic subscription dates for user ${app_user_id}. Original expiration: ${expirationAtDate.toISOString()}. Recalculating.`);
+        expirationAtDate = new Date(purchasedAtDate.getTime() + (expectedDurationDays * 24 * 60 * 60 * 1000));
+        final_expiration_at_ms = expirationAtDate.getTime();
+        console.log(`✅ Corrected expiration date to: ${expirationAtDate.toISOString()} (based on ${expectedDurationDays} days)`);
+      }
+
       // Try the database function first
       try {
+        console.log('🔄 Attempting to process via database function...');
+        
         const { data, error } = await supabase.rpc('handle_revenuecat_webhook', {
           event_type,
           app_user_id,
           original_app_user_id,
           product_id,
           period_type,
-          purchased_at_ms: parseInt(purchased_at_ms),
-          expiration_at_ms: parseInt(expiration_at_ms),
+          purchased_at_ms: final_purchased_at_ms, // Use corrected timestamp
+          expiration_at_ms: final_expiration_at_ms, // Use corrected timestamp
           store,
           is_trial_period: Boolean(is_trial_period),
           auto_renew_status: Boolean(auto_renew_status),
@@ -212,15 +265,15 @@ exports.handler = async (event, context) => {
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ success: true, data })
+          body: JSON.stringify({ success: true, data, corrected_dates: expectedDurationDays > 0 && timeDifferenceMinutes < (expectedDurationDays * 24 * 60 - (24 * 60)) })
         };
         
       } catch (dbError) {
         console.log('⚠️ Database function failed, trying direct update:', dbError.message);
         
         // Fallback: Direct database update
-        const purchased_at = new Date(parseInt(purchased_at_ms));
-        const expiration_at = new Date(parseInt(expiration_at_ms));
+        const purchased_at = new Date(final_purchased_at_ms);
+        const expiration_at = new Date(final_expiration_at_ms);
         
         // Determine subscription status
         let subscription_status = 'active';
@@ -236,7 +289,7 @@ exports.handler = async (event, context) => {
         const { data: planData, error: planError } = await supabase
           .from('subscription_plans')
           .select('id')
-          .eq('name', 'Premium Monthly')
+          .eq('name', subscription_plan_name) // Use determined plan name
           .single();
         
         if (planError) {
@@ -248,7 +301,7 @@ exports.handler = async (event, context) => {
           };
         }
         
-        // Update or insert subscription
+        // Update or insert subscription with RevenueCat user ID
         const { data: subscriptionData, error: subscriptionError } = await supabase
           .from('user_subscriptions')
           .upsert({
@@ -258,7 +311,9 @@ exports.handler = async (event, context) => {
             subscription_start_date: purchased_at.toISOString(),
             subscription_end_date: expiration_at.toISOString(),
             auto_renew: Boolean(auto_renew_status),
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            revenuecat_user_id: app_user_id, // FIXED: Store RevenueCat user ID
+            is_premium: (subscription_status === 'active' || subscription_status === 'cancelled') && expiration_at > new Date()
           }, {
             onConflict: 'user_id'
           })
@@ -278,7 +333,7 @@ exports.handler = async (event, context) => {
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ success: true, data: subscriptionData })
+          body: JSON.stringify({ success: true, data: subscriptionData, corrected_dates: expectedDurationDays > 0 && timeDifferenceMinutes < (expectedDurationDays * 24 * 60 - (24 * 60)) })
         };
       }
       
