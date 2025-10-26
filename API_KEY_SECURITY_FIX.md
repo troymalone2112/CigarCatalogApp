@@ -2,9 +2,9 @@
 
 ## Problem
 GitHub is blocking pushes because API keys were exposed in previous commits:
-- **OpenAI API Key**: `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`
-- **Perplexity API Key**: `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`
-- **Stripe API Key**: `***REMOVED***`
+- **OpenAI API Key**: `sk-proj-***REDACTED***`
+- **Perplexity API Key**: `pplx-***REDACTED***`
+- **Stripe API Key**: `sk_live_***REDACTED***`
 
 ## Solution Applied
 
@@ -94,7 +94,7 @@ const REVENUECAT_API_KEYS = {
   ios: 'appl_OdWJAJMHMYrvZGgQDapUsNfpLmf',
   android: 'goog_xxxxxxxxxxxxxxxxxxxxxxxx',
   test: 'test_gSaOwHULRwmRJyPIJSbmUhOqdGX',
-  web: process.env.EXPO_PUBLIC_STRIPE_API_KEY || '***REMOVED***'
+  web: process.env.EXPO_PUBLIC_STRIPE_API_KEY || 'sk_live_***REDACTED***'
 };
 ```
 

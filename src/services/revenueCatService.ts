@@ -14,7 +14,7 @@ const REVENUECAT_API_KEYS = {
   ios: 'appl_OdWJAJMHMYrvZGgQDapUsNfpLmf', // iOS key for cigar app
   android: 'goog_xxxxxxxxxxxxxxxxxxxxxxxx', // Android key (if you have one)
   test: 'test_gSaOwHULRwmRJyPIJSbmUhOqdGX', // Test Store key
-  web: process.env.EXPO_PUBLIC_STRIPE_API_KEY || '***REMOVED***' // Web Billing key for Expo Go
+  web: process.env.EXPO_PUBLIC_STRIPE_API_KEY || '***REMOVED***_KEY' // Web Billing key for Expo Go
 };
 
 // For TestFlight testing - use production iOS key
