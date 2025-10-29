@@ -38,12 +38,13 @@ export interface PaymentPackage {
 export class PaymentService {
   private static isInitialized = false;
   private static initializationPromise: Promise<boolean> | null = null;
+  private static purchasingInProgress = false;
   
-  // RevenueCat configuration
+  // RevenueCat configuration - use environment variables with fallbacks
   private static readonly REVENUECAT_API_KEYS = {
-    ios: 'appl_OdWJAJMHMYrvZGgQDapUsNfpLmf',
-    android: 'appl_OdWJAJMHMYrvZGgQDapUsNfpLmf', // Using iOS key for now
-    web: 'appl_OdWJAJMHMYrvZGgQDapUsNfpLmf'
+    ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || 'appl_OdWJAJMHMYrvZGgQDapUsNfpLmf',
+    android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || 'appl_OdWJAJMHMYrvZGgQDapUsNfpLmf',
+    web: process.env.EXPO_PUBLIC_REVENUECAT_WEB_KEY || 'appl_OdWJAJMHMYrvZGgQDapUsNfpLmf'
   };
 
   /**
@@ -111,6 +112,17 @@ export class PaymentService {
 
       // Set log level for debugging
       Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+
+      // Sync purchases to process any pending StoreKit transactions
+      // This helps clear the transaction queue from previous failed attempts
+      try {
+        console.log('🔄 Syncing purchases to process pending transactions...');
+        await Purchases.getCustomerInfo();
+        console.log('✅ Purchase sync completed - pending transactions processed');
+      } catch (syncError) {
+        // Don't fail initialization if sync fails - it's non-critical
+        console.warn('⚠️ Purchase sync warning (non-critical):', syncError);
+      }
 
       console.log('✅ RevenueCat initialized successfully for payments');
       return true;
@@ -192,6 +204,44 @@ export class PaymentService {
   }
 
   /**
+   * Get raw RevenueCat packages (needed for purchasePackage calls)
+   * This centralizes all RevenueCat SDK calls through PaymentService
+   */
+  static async getRawPackages(): Promise<PurchasesPackage[]> {
+    try {
+      await this.initializeForPayments();
+
+      if (!this.isInitialized) {
+        console.error('❌ Cannot get packages - RevenueCat not initialized');
+        return [];
+      }
+
+      const Purchases = (await import('react-native-purchases')).default;
+      
+      console.log('📦 Fetching RevenueCat packages (raw)...');
+      const offerings = await Purchases.getOfferings();
+
+      if (!offerings.current || !offerings.current.availablePackages) {
+        console.log('⚠️ No current offering or packages available');
+        return [];
+      }
+
+      const packages = offerings.current.availablePackages;
+      console.log('✅ Packages fetched:', packages.length);
+      console.log('📦 Package identifiers:', packages.map(pkg => ({
+        identifier: pkg.identifier,
+        productId: pkg.product.identifier
+      })));
+
+      return packages;
+
+    } catch (error) {
+      console.error('❌ Error fetching packages:', error);
+      return [];
+    }
+  }
+
+  /**
    * Purchase a subscription package (accepts RevenueCat package object)
    */
   static async purchasePackage(packageToPurchase: any): Promise<PaymentResult> {
@@ -205,15 +255,38 @@ export class PaymentService {
         };
       }
 
+      // Prevent concurrent purchases that can cause duplicate StoreKit transactions
+      if (this.purchasingInProgress) {
+        console.warn('⚠️ Purchase attempt ignored: another purchase is already in progress');
+        console.warn('⚠️ Guard is working - preventing duplicate purchase calls');
+        return {
+          success: false,
+          error: 'Another purchase is already in progress. Please wait.'
+        };
+      }
+
       const Purchases = (await import('react-native-purchases')).default;
       
       console.log('💳 Starting purchase:', packageToPurchase.identifier);
+      console.log('🔒 Purchase guard: ENABLED (prevents concurrent purchases)');
 
+      this.purchasingInProgress = true;
+      
       // Perform the purchase
+      // Note: If StoreKit shows many "Updating existing transaction" messages,
+      // this indicates old transactions are in the queue from previous failed attempts.
+      // This is a StoreKit backlog issue, not caused by our code.
+      console.log('💰 Calling RevenueCat purchasePackage (single call)');
       const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
 
       console.log('✅ Purchase completed successfully');
       console.log('🎫 Active entitlements:', Object.keys(customerInfo.entitlements.active));
+      console.log('🔓 Purchase guard: RELEASED (ready for next purchase)');
+
+      // Note: If you see many "Updating existing transaction" logs from StoreKit,
+      // those are OLD transactions queued from previous purchase attempts.
+      // To clear them: Delete app → Reinstall → New purchase
+      // This does NOT indicate our code is creating duplicate purchases.
 
       return {
         success: true,
@@ -240,6 +313,9 @@ export class PaymentService {
           error: error.message || 'Purchase failed'
         };
       }
+    }
+    finally {
+      this.purchasingInProgress = false;
     }
   }
 

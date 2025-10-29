@@ -27,8 +27,8 @@ const USE_TEST_STORE = false; // TestFlight will use native iOS mode
 
 // Product IDs (must match what you set up in RevenueCat dashboard)
 export const PRODUCT_IDS = {
-  MONTHLY: 'premium_monthly', // Premium Monthly
-  YEARLY: 'premium_yearly',  // Premium Yearly
+  MONTHLY: 'premium_monthly_2025', // Premium Monthly
+  YEARLY: 'premium_yearly_2025',   // Premium Yearly
 };
 
 // Entitlement IDs (what users get access to)
@@ -39,54 +39,9 @@ export const ENTITLEMENTS = {
 // Initialize RevenueCat
 export const initializeRevenueCat = async (): Promise<boolean> => {
   try {
-    console.log('🔄 Initializing RevenueCat...');
-    
-    // Determine platform and get appropriate API key
-    let apiKey: string;
-    let platform: string;
-    
-    if (Platform.OS === 'ios') {
-      apiKey = USE_TEST_STORE ? REVENUECAT_API_KEYS.test : REVENUECAT_API_KEYS.ios;
-      platform = 'iOS';
-    } else if (Platform.OS === 'android') {
-      apiKey = REVENUECAT_API_KEYS.android;
-      platform = 'Android';
-    } else {
-      // Web/Expo Go
-      apiKey = REVENUECAT_API_KEYS.web;
-      platform = 'Web';
-    }
-    
-    console.log(`📱 Platform: ${platform}`);
-    console.log(`🔑 Using API key: ${apiKey.substring(0, 10)}...`);
-    
-    // Validate API key format
-    if (!apiKey || apiKey.length < 10) {
-      throw new Error(`Invalid API key for platform ${platform}: ${apiKey}`);
-    }
-    
-    // Configure RevenueCat
-    console.log('🔄 Configuring RevenueCat...');
-    await Purchases.configure({
-      apiKey,
-      appUserID: undefined, // Let RevenueCat generate anonymous user ID
-    });
-    
-    // Set log level for debugging
-    Purchases.setLogLevel(LOG_LEVEL.DEBUG);
-    
-    console.log('✅ RevenueCat initialized successfully');
-    
-    // Test the connection by getting customer info
-    try {
-      const customerInfo = await Purchases.getCustomerInfo();
-      console.log('✅ RevenueCat connection verified - User ID:', customerInfo.originalAppUserId);
-    } catch (connectionError) {
-      console.warn('⚠️ RevenueCat initialized but connection test failed:', connectionError);
-    }
-    
-    return true;
-    
+    // Delegate to PaymentService to prevent duplicate configuration
+    const { PaymentService } = await import('./paymentService');
+    return await PaymentService.initializeForPayments();
   } catch (error) {
     console.error('❌ RevenueCat initialization failed:', error);
     return false;
@@ -138,31 +93,11 @@ export const getCustomerInfo = async (): Promise<CustomerInfo | null> => {
 // Purchase a package
 export const purchasePackage = async (packageToPurchase: PurchasesPackage): Promise<{ success: boolean; error?: string }> => {
   try {
-    console.log('🔄 Starting purchase...');
-    console.log('📦 Package:', packageToPurchase.identifier);
-    console.log('💰 Price:', packageToPurchase.product.priceString);
-    
-    const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
-    
-    console.log('✅ Purchase successful!');
-    console.log('🎫 Active entitlements:', Object.keys(customerInfo.entitlements.active));
-    
-    return { success: true };
-    
+    const { PaymentService } = await import('./paymentService');
+    const result = await PaymentService.purchasePackage(packageToPurchase as any);
+    return { success: result.success, error: result.error };
   } catch (error: any) {
-    // Check if error has the structure of a PurchasesError
-    if (error && typeof error === 'object' && 'code' in error) {
-      if (error.code === 'PURCHASES_ERROR_PURCHASE_CANCELLED') {
-        console.log('ℹ️ Purchase cancelled by user');
-        return { success: false, error: 'Purchase cancelled by user' };
-      } else {
-        console.error('❌ Purchase error:', error.message || error.code);
-        return { success: false, error: error.message || error.code || 'Purchase failed' };
-      }
-    } else {
-      console.error('❌ Unexpected purchase error:', error);
-      return { success: false, error: (error as Error)?.message || 'Unknown error' };
-    }
+    return { success: false, error: error?.message || 'Purchase failed' };
   }
 };
 
@@ -185,8 +120,23 @@ export const restorePurchases = async (): Promise<boolean> => {
 };
 
 // Check if user has premium access
+// Updated to check for ANY active entitlements (supports both 'premium_features' and 'Premium Access')
 export const hasPremiumAccess = (customerInfo: CustomerInfo): boolean => {
-  return customerInfo.entitlements.active[ENTITLEMENTS.PREMIUM] !== undefined;
+  const activeEntitlements = customerInfo.entitlements.active;
+  
+  // Check for specific entitlement ID first (legacy support)
+  if (activeEntitlements[ENTITLEMENTS.PREMIUM] !== undefined) {
+    return true;
+  }
+  
+  // Check for 'Premium Access' entitlement (current RevenueCat configuration)
+  if (activeEntitlements['Premium Access'] !== undefined) {
+    return true;
+  }
+  
+  // Fallback: check if user has ANY active entitlements (most flexible)
+  // This matches PaymentService logic and will catch any entitlement configuration
+  return Object.keys(activeEntitlements).length > 0;
 };
 
 // Sync subscription status with Supabase
@@ -199,6 +149,7 @@ export const syncSubscriptionWithSupabase = async (customerInfo: CustomerInfo): 
     
     console.log('👤 User ID:', userId);
     console.log('🎫 Has premium access:', hasAccess);
+    console.log('🎫 Active entitlements:', Object.keys(customerInfo.entitlements.active));
     
     // Update user subscription in Supabase
     const { error } = await supabase
@@ -217,7 +168,7 @@ export const syncSubscriptionWithSupabase = async (customerInfo: CustomerInfo): 
       return false;
     }
     
-    console.log('✅ Subscription synced with Supabase');
+    console.log('✅ Subscription synced with Supabase - is_premium set to:', hasAccess);
     return true;
     
   } catch (error) {
@@ -229,7 +180,12 @@ export const syncSubscriptionWithSupabase = async (customerInfo: CustomerInfo): 
 // Get subscription status for display
 export const getSubscriptionStatus = (customerInfo: CustomerInfo) => {
   const hasAccess = hasPremiumAccess(customerInfo);
-  const premiumEntitlement = customerInfo.entitlements.active[ENTITLEMENTS.PREMIUM];
+  
+  // Find the active entitlement (check for both entitlement IDs)
+  const activeEntitlements = customerInfo.entitlements.active;
+  const premiumEntitlement = activeEntitlements[ENTITLEMENTS.PREMIUM] 
+    || activeEntitlements['Premium Access']
+    || Object.values(activeEntitlements)[0]; // Fallback to first active entitlement
   
   return {
     hasAccess,
@@ -253,8 +209,27 @@ export const RevenueCatService = {
   getSubscriptionStatus,
   setUserId: async (userId: string) => {
     try {
-      await Purchases.logIn(userId);
-      console.log('✅ RevenueCat user ID set:', userId);
+      console.log('🔄 Setting RevenueCat user ID to:', userId);
+      
+      // First, get current customer info to see if we need to migrate
+      const currentCustomerInfo = await Purchases.getCustomerInfo();
+      const currentUserId = currentCustomerInfo.originalAppUserId;
+      
+      console.log('🔍 Current RevenueCat user ID:', currentUserId);
+      
+      // If user ID is already set correctly, no need to change
+      if (currentUserId === userId) {
+        console.log('✅ RevenueCat user ID already correct');
+        return true;
+      }
+      
+      // Force login with new user ID (this will migrate existing purchases)
+      console.log('🔄 Migrating RevenueCat user ID from', currentUserId, 'to', userId);
+      const loginResult = await Purchases.logIn(userId);
+      
+      console.log('✅ RevenueCat user ID migrated successfully');
+      console.log('🔍 New user ID:', loginResult.customerInfo.originalAppUserId);
+      
       return true;
     } catch (error) {
       console.error('❌ Error setting RevenueCat user ID:', error);
@@ -290,6 +265,30 @@ export const RevenueCatService = {
         `Product ID: ${status.productIdentifier || 'None'}`;
     } catch (error) {
       return `Error: ${error}`;
+    }
+  },
+  forceUserMigration: async (supabaseUserId: string) => {
+    try {
+      console.log('🔄 Force migrating RevenueCat user ID to Supabase UUID...');
+      
+      // Force the user ID change
+      const success = await RevenueCatService.setUserId(supabaseUserId);
+      
+      if (success) {
+        // Get updated customer info
+        const customerInfo = await Purchases.getCustomerInfo();
+        
+        // Sync with Supabase using the new user ID
+        await syncSubscriptionWithSupabase(customerInfo);
+        
+        console.log('✅ Force migration completed successfully');
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('❌ Error during force migration:', error);
+      return false;
     }
   }
 };

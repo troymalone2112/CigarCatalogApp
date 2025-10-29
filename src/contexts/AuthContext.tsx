@@ -355,6 +355,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.user) {
         // Set current user in StorageService for user-specific data
         StorageService.setCurrentUser(session.user.id);
+        
+        // Sync RevenueCat user ID with Supabase user ID
+        try {
+          const { PaymentService } = await import('../services/paymentService');
+          await PaymentService.setUserId(session.user.id);
+          console.log('✅ RevenueCat user ID synchronized:', session.user.id);
+        } catch (rcError) {
+          console.log('⚠️ Failed to sync RevenueCat user ID:', rcError);
+        }
+        
         await loadProfile(session.user.id);
         await loadUserPermissions();
       } else {
@@ -459,10 +469,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               updated_at: existingProfile.updated_at || new Date().toISOString()
             };
             
-            // Cache the fallback profile
-            await ProfileCacheService.cacheProfile(fallbackProfile);
-            setProfile(fallbackProfile);
-            return;
+      // Cache the fallback profile
+      await ProfileCacheService.cacheProfile(fallbackProfile);
+      setProfile(fallbackProfile);
+      
+      // Set RevenueCat user ID to match Supabase user ID
+      try {
+        const { RevenueCatService } = await import('../services/revenueCatService');
+        await RevenueCatService.setUserId(userId);
+        console.log('✅ RevenueCat user ID synchronized with Supabase');
+      } catch (rcError) {
+        console.log('⚠️ Failed to sync RevenueCat user ID:', rcError);
+      }
+      
+      return;
           }
         } catch (checkError) {
           console.log('⚠️ Could not verify user existence, using cached profile or default');

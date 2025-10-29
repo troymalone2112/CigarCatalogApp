@@ -36,28 +36,21 @@ export default function PaywallScreen() {
   const loadRevenueCatPackages = async () => {
     try {
       setLoadingPackages(true);
-      console.log('🔄 Loading RevenueCat packages...');
+      console.log('🔄 Loading RevenueCat packages via PaymentService...');
       
-      // Initialize RevenueCat on-demand using PaymentService
-      await PaymentService.initializeForPayments();
-      console.log('✅ RevenueCat initialized for PaywallScreen');
+      // Get packages through PaymentService (centralized SDK access)
+      const packages = await PaymentService.getRawPackages();
       
-      // Get offerings directly from RevenueCat (now that it's initialized)
-      const Purchases = (await import('react-native-purchases')).default;
-      const offerings = await Purchases.getOfferings();
-      
-      console.log('📦 RevenueCat offerings loaded:', offerings);
-      
-      // Extract all packages from current offering
-      if (offerings.current && offerings.current.availablePackages) {
-        setRevenueCatPackages(offerings.current.availablePackages);
-        console.log('📦 Available packages:', offerings.current.availablePackages.map(pkg => ({
+      if (packages && packages.length > 0) {
+        setRevenueCatPackages(packages);
+        console.log('📦 Available packages loaded:', packages.map(pkg => ({
           identifier: pkg.identifier,
+          productId: pkg.product.identifier,
           title: pkg.product.title,
           price: pkg.product.priceString
         })));
       } else {
-        console.warn('⚠️ No current offering or packages available');
+        console.warn('⚠️ No packages available from PaymentService');
       }
     } catch (error) {
       console.error('❌ Failed to load RevenueCat packages:', error);
@@ -109,6 +102,12 @@ export default function PaywallScreen() {
   const handlePurchase = async () => {
     console.log('🚀 Purchase button pressed - starting purchase flow...');
     
+    // Double-tap protection at UI level
+    if (purchasing) {
+      console.warn('⚠️ Purchase already in progress - ignoring button tap');
+      return;
+    }
+    
     if (!currentPlan) {
       console.error('❌ No current plan selected');
       Alert.alert('Error', 'No plan selected');
@@ -123,7 +122,7 @@ export default function PaywallScreen() {
     
     try {
       setPurchasing(true);
-      console.log('🔄 Purchase state set to true');
+      console.log('🔄 Purchase state set to true (UI guard enabled)');
       
       // PaymentService handles initialization automatically
       console.log('🔧 PaymentService will initialize RevenueCat on-demand...');
@@ -148,10 +147,10 @@ export default function PaywallScreen() {
       const revenueCatPackage = revenueCatPackages.find(pkg => {
         if (currentPlan.name === 'Premium Monthly') {
           // Match by package identifier or product identifier
-          return pkg.identifier === '$rc_monthly' || pkg.product.identifier === 'premium_monthly';
+          return pkg.identifier === '$rc_monthly' || pkg.product.identifier === 'premium_monthly_2025';
         } else if (currentPlan.name === 'Premium Yearly') {
           // Match by package identifier or product identifier  
-          return pkg.identifier === '$rc_annual' || pkg.product.identifier === 'premium_yearly';
+          return pkg.identifier === '$rc_annual' || pkg.product.identifier === 'premium_yearly_2025';
         }
         return false;
       });
@@ -173,25 +172,56 @@ export default function PaywallScreen() {
         currencyCode: revenueCatPackage.product.currencyCode
       });
       
-      // Make the purchase using RevenueCat (PaymentService handles initialization)
-      const Purchases = (await import('react-native-purchases')).default;
-      const { customerInfo } = await Purchases.purchasePackage(revenueCatPackage);
-      const purchaseResult = { success: true, customerInfo };
+      // Make the purchase through PaymentService to ensure single flow
+      const purchaseResult = await PaymentService.purchasePackage(revenueCatPackage as any);
       
       console.log('📊 Purchase result:', purchaseResult);
       
+      if (!purchaseResult.success || !purchaseResult.customerInfo) {
+        throw new Error(purchaseResult.error || 'Purchase failed');
+      }
+      
       // If we reach here, the purchase was successful
-      // Sync with our database - we need to get the user ID
       const { supabase } = await import('../services/supabaseService');
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // PaymentService handles database sync automatically via webhook
-        console.log('✅ Database sync handled by PaymentService webhook');
-        
-        // Force refresh the subscription context
-        console.log('🔄 Refreshing subscription context...');
-        await refreshSubscription();
+      
+      if (!user) {
+        throw new Error('User not found');
       }
+      
+      console.log('✅ Purchase successful - starting immediate refresh...');
+      
+      // STEP 1: Immediate sync to Supabase from RevenueCat customer info
+      // This writes premium status directly to DB for instant UI update
+      console.log('⚡ Step 1: Immediately syncing RevenueCat customer info to Supabase...');
+      const { RevenueCatService } = await import('../services/revenueCatService');
+      await RevenueCatService.syncSubscriptionWithSupabase(purchaseResult.customerInfo);
+      console.log('✅ Immediate sync complete - premium status written to database');
+      
+      // STEP 2: Clear cache and refresh subscription context
+      // This ensures UI shows premium status immediately
+      console.log('🔄 Step 2: Clearing cache and refreshing subscription context...');
+      const { DatabaseSubscriptionManager } = await import('../services/databaseSubscriptionManager');
+      DatabaseSubscriptionManager.clearUserCache(user.id);
+      await refreshSubscription();
+      console.log('✅ Subscription context refreshed');
+      
+      // STEP 3: Brief polling to verify webhook also processed (redundancy check)
+      // The webhook will also update the DB, but we already wrote it in Step 1
+      // This is just to confirm webhook is working (logs only, doesn't block UI)
+      console.log('⏳ Step 3: Verifying webhook processing (non-blocking)...');
+      setTimeout(async () => {
+        try {
+          const { SubscriptionService } = await import('../services/subscriptionService');
+          const status = await SubscriptionService.checkSubscriptionStatus(user.id);
+          if (status.isPremium) {
+            console.log('✅ Webhook verification: Premium status confirmed in database');
+          }
+        } catch (error) {
+          // Non-critical - we already have premium status from Step 1
+          console.warn('⚠️ Webhook verification warning (non-critical):', error);
+        }
+      }, 2000); // Check after 2 seconds (non-blocking)
       
       // Show success message and navigate back
       // Note: iOS may show its own success message, so we keep this brief
@@ -279,7 +309,7 @@ export default function PaywallScreen() {
 
         {/* Benefits Section */}
         <View style={styles.benefitsSection}>
-          <Text style={styles.benefitsTitle}>Premium Features</Text>
+          <Text style={styles.benefitsTitle}>Premium Access</Text>
           
           <View style={styles.benefitsList}>
             {[
@@ -351,6 +381,17 @@ Debug Info:
             disabled={purchasing}
           >
             <Text style={styles.debugButtonText}>Debug Subscription Status</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* RevenueCat Migration Button (Development Only) */}
+        {__DEV__ && (
+          <TouchableOpacity
+            style={[styles.debugButton, { backgroundColor: '#dc3545' }]}
+            onPress={() => navigation.navigate('Settings' as never)}
+            disabled={purchasing}
+          >
+            <Text style={styles.debugButtonText}>RevenueCat Migration Tool</Text>
           </TouchableOpacity>
         )}
 

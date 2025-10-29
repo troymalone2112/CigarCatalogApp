@@ -7,8 +7,8 @@ export const REVENUECAT_CONFIG = {
 
   // Product IDs (must match what you create in RevenueCat dashboard)
   PRODUCTS: {
-    MONTHLY: 'premium_monthly',
-    YEARLY: 'premium_yearly',
+    MONTHLY: 'premium_monthly_2025',
+    YEARLY: 'premium_yearly_2025',
   },
 
   // Entitlement ID (what users get access to when they subscribe)
@@ -25,7 +25,7 @@ export const REVENUECAT_CONFIG = {
 // Subscription Plans Configuration
 export const SUBSCRIPTION_PLANS = [
   {
-    id: 'premium_monthly',
+    id: 'premium_monthly_2025',
     name: 'Premium Monthly',
     description: 'Full access to all features',
     price: 9.99,
@@ -39,7 +39,7 @@ export const SUBSCRIPTION_PLANS = [
     ],
   },
   {
-    id: 'premium_yearly',
+    id: 'premium_yearly_2025',
     name: 'Premium Yearly',
     description: 'Full access to all features - Save 8%',
     price: 109.99,
