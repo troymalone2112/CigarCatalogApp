@@ -256,6 +256,16 @@ exports.handler = async (event, context) => {
           };
         }
         
+        // Determine auto_renew default based on event type (fallback path)
+        let autoRenewFlag = true; // default to true for active subscriptions
+        if (event_type === 'CANCELLATION' || event_type === 'EXPIRATION' || event_type === 'BILLING_ISSUE') {
+          autoRenewFlag = false;
+        }
+        // If webhook provided a definitive boolean, respect it
+        if (typeof auto_renew_status === 'boolean') {
+          autoRenewFlag = auto_renew_status;
+        }
+
         // Update or insert subscription with RevenueCat user ID
         const { data: subscriptionData, error: subscriptionError } = await supabase
           .from('user_subscriptions')
@@ -265,7 +275,7 @@ exports.handler = async (event, context) => {
             status: subscription_status,
             subscription_start_date: purchased_at.toISOString(),
             subscription_end_date: expiration_at.toISOString(),
-            auto_renew: Boolean(auto_renew_status),
+            auto_renew: autoRenewFlag,
             updated_at: new Date().toISOString(),
             revenuecat_user_id: app_user_id, // FIXED: Store RevenueCat user ID
             is_premium: (subscription_status === 'active' || subscription_status === 'cancelled') && expiration_at > new Date()

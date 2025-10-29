@@ -137,8 +137,17 @@ export class SubscriptionService {
       let isPremium = false;
       let daysRemaining = 0;
 
-      // Check trial status first, then premium status
-      if (subscription.status === 'trial') {
+      // PRIORITY: If is_premium is true (written immediately after purchase), treat as premium now
+      if (subscription.is_premium === true) {
+        isPremium = true;
+        hasAccess = true;
+        // Days remaining if we already have an end date
+        if (subscription.subscription_end_date) {
+          const subscriptionEndDate = new Date(subscription.subscription_end_date);
+          daysRemaining = Math.ceil((subscriptionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        }
+        console.log('🔍 SubscriptionService - Prioritizing is_premium=true for immediate access');
+      } else if (subscription.status === 'trial') {
         const trialEndDate = new Date(subscription.trial_end_date);
         isTrialActive = trialEndDate > now;
         hasAccess = isTrialActive;
@@ -157,11 +166,11 @@ export class SubscriptionService {
         }
         console.log('🔍 SubscriptionService - Premium status:', { isPremium, hasAccess, daysRemaining });
       } else {
-        // Use the is_premium field from the database if available (set by RevenueCat webhook)
-        if (subscription.is_premium !== undefined) {
-          isPremium = subscription.is_premium;
-          hasAccess = isPremium;
-          console.log('🔍 SubscriptionService - Using is_premium from database:', isPremium);
+        // Non-trial, non-active statuses
+        if (subscription.is_premium === true) {
+          isPremium = true;
+          hasAccess = true;
+          console.log('🔍 SubscriptionService - Using is_premium=true for access');
         }
       }
 
