@@ -283,15 +283,17 @@ const styles = StyleSheet.create({
   header: {
     padding: 20,
     paddingTop: 60,
-    flexDirection: 'row',
+    position: 'relative',
     alignItems: 'center',
   },
   backButton: {
+    position: 'absolute',
+    left: 20,
+    top: 68, // paddingTop (60) + padding (20) - button padding adjustment
     padding: 8,
-    marginRight: 16,
+    zIndex: 1,
   },
   progressIndicator: {
-    flex: 1,
     alignItems: 'center',
   },
   progressText: {

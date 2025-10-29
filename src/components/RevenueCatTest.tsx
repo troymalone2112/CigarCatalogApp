@@ -63,6 +63,36 @@ export const RevenueCatTest: React.FC = () => {
     }
   };
 
+  const forceUserMigration = async () => {
+    if (!user) {
+      Alert.alert('Error', 'No user logged in');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      console.log('🔄 Force migrating RevenueCat user ID...');
+      
+      const success = await RevenueCatService.forceUserMigration(user.id);
+      
+      if (success) {
+        Alert.alert('Success', 'User ID migration completed! Your purchases should now sync correctly.');
+        
+        // Refresh the status
+        await testRevenueCat();
+      } else {
+        Alert.alert('Error', 'User ID migration failed. Check logs for details.');
+      }
+      
+    } catch (error) {
+      console.error('❌ Migration failed:', error);
+      Alert.alert('Error', `Migration failed:\n\n${error.message || error}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!user) {
     return (
       <View style={styles.container}>
@@ -82,6 +112,16 @@ export const RevenueCatTest: React.FC = () => {
       >
         <Text style={styles.buttonText}>
           {loading ? 'Testing...' : 'Test RevenueCat Connection'}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={[styles.button, styles.migrationButton]} 
+        onPress={forceUserMigration}
+        disabled={loading}
+      >
+        <Text style={styles.buttonText}>
+          {loading ? 'Migrating...' : 'Force User ID Migration'}
         </Text>
       </TouchableOpacity>
       
@@ -144,6 +184,9 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: 'center',
     marginBottom: 16,
+  },
+  migrationButton: {
+    backgroundColor: '#dc3545',
   },
   buttonText: {
     color: '#FFFFFF',

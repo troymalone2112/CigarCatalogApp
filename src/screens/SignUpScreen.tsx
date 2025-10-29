@@ -91,12 +91,12 @@ export default function SignUpScreen() {
 
             {/* Sign Up Form */}
             <View style={styles.form}>
-              {/* Full Name Input */}
+              {/* Screen Name Input */}
               <View style={styles.inputContainer}>
                 <Ionicons name="person-outline" size={20} color="#DC851F" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="Full Name"
+                  placeholder="Screen Name"
                   placeholderTextColor="#999999"
                   value={fullName}
                   onChangeText={setFullName}

@@ -33,7 +33,7 @@ export class ConnectionHealthManager {
     initialDelay: 1000,
     maxDelay: 8000,
     backoffMultiplier: 2,
-    timeoutMs: 5000
+    timeoutMs: 10000
   };
 
   private constructor() {}
