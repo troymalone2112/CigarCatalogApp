@@ -148,3 +148,6 @@ WHERE capacity = 0;
 
 The default humidor will now show the same capacity information as user-created humidors, providing a consistent and informative user experience!
 
+
+
+

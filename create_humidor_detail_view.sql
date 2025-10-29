@@ -52,3 +52,6 @@ BEGIN
         RAISE WARNING '⚠️ humidor_detail_stats view was not created';
     END IF;
 END $$;
+
+
+

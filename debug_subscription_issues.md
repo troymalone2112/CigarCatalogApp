@@ -89,3 +89,6 @@ After a successful purchase:
 3. Verify the database function is working
 4. Test manual refresh of subscription status
 
+
+
+

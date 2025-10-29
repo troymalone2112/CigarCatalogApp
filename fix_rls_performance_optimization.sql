@@ -285,3 +285,6 @@ BEGIN
   RAISE NOTICE '🚀 Your database should now perform significantly better at scale!';
   RAISE NOTICE '💡 Run SELECT * FROM check_rls_performance(); to verify optimizations';
 END $$;
+
+
+

@@ -1,10 +1,10 @@
 /**
  * Fast Subscription Service
- * Provides immediate subscription status checking with minimal database calls
- * Optimized for app loading performance
+ * NOW DELEGATES TO DatabaseSubscriptionManager for consistency
+ * Maintains backward compatibility while using database-first architecture
  */
 
-import { supabase } from './supabaseService';
+import { DatabaseSubscriptionManager } from './databaseSubscriptionManager';
 
 export interface FastSubscriptionStatus {
   hasAccess: boolean;
@@ -16,160 +16,69 @@ export interface FastSubscriptionStatus {
 }
 
 export class FastSubscriptionService {
-  private static cache: Map<string, { status: FastSubscriptionStatus; timestamp: number }> = new Map();
-  private static readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
   /**
    * Get subscription status quickly with caching
+   * Now delegates to DatabaseSubscriptionManager for single source of truth
    */
   static async getFastSubscriptionStatus(userId: string): Promise<FastSubscriptionStatus> {
     try {
-      // Check cache first
-      const cached = this.cache.get(userId);
-      if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
-        console.log('💎 Using cached subscription status');
-        return cached.status;
-      }
-
-      console.log('💎 Fetching fresh subscription status for user:', userId);
+      console.log('💎 Getting fast subscription status via DatabaseSubscriptionManager...');
       
-      // Single optimized query to get subscription status
-      const { data, error } = await supabase
-        .from('user_subscriptions')
-        .select('status, is_premium, trial_end_date, subscription_end_date, plan_id')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .or('status.eq.trial,status.eq.active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error) {
-        console.log('💎 No active subscription found, checking for trial...');
-        
-        // Check for trial status
-        const { data: trialData } = await supabase
-          .from('user_subscriptions')
-          .select('status, trial_end_date, plan_id')
-          .eq('user_id', userId)
-          .eq('status', 'trial')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
-
-        if (trialData) {
-          const now = new Date();
-          const trialEndDate = new Date(trialData.trial_end_date);
-          const isTrialActive = trialEndDate > now;
-          const daysRemaining = isTrialActive ? Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-
-          const status: FastSubscriptionStatus = {
-            hasAccess: isTrialActive,
-            isPremium: false,
-            isTrialActive,
-            status: isTrialActive ? 'trial' : 'expired',
-            planId: trialData.plan_id,
-            daysRemaining
-          };
-
-          // Cache the result
-          this.cache.set(userId, { status, timestamp: Date.now() });
-          return status;
-        }
-
-        // No subscription found - provide default trial
-        const defaultStatus: FastSubscriptionStatus = {
-          hasAccess: true,
-          isPremium: false,
-          isTrialActive: true,
-          status: 'trial',
-          planId: 'free',
-          daysRemaining: 3
-        };
-
-        this.cache.set(userId, { status: defaultStatus, timestamp: Date.now() });
-        return defaultStatus;
-      }
-
-      // Process active subscription
-      const now = new Date();
-      let hasAccess = false;
-      let isPremium = false;
-      let isTrialActive = false;
-      let daysRemaining = 0;
-
-      if (data.is_premium) {
-        // User is premium
-        hasAccess = true;
-        isPremium = true;
-        isTrialActive = false;
-      } else if (data.status === 'trial') {
-        // User is on trial
-        const trialEndDate = new Date(data.trial_end_date);
-        isTrialActive = trialEndDate > now;
-        hasAccess = isTrialActive;
-        daysRemaining = isTrialActive ? Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
-      } else if (data.status === 'active') {
-        // User has active subscription
-        hasAccess = true;
-        isPremium = true;
-        isTrialActive = false;
-      }
-
-      const status: FastSubscriptionStatus = {
-        hasAccess,
-        isPremium,
-        isTrialActive,
-        status: data.status,
-        planId: data.plan_id,
-        daysRemaining
+      // Use the new DatabaseSubscriptionManager as single source of truth
+      const dbStatus = await DatabaseSubscriptionManager.getSubscriptionStatus(userId);
+      
+      // Convert to legacy format for backward compatibility
+      const legacyStatus: FastSubscriptionStatus = {
+        hasAccess: dbStatus.hasAccess,
+        isPremium: dbStatus.isPremium,
+        isTrialActive: dbStatus.isTrialActive,
+        status: dbStatus.status,
+        planId: dbStatus.planId,
+        daysRemaining: dbStatus.daysRemaining
       };
 
-      // Cache the result
-      this.cache.set(userId, { status, timestamp: Date.now() });
-      
-      console.log('💎 Subscription status determined:', {
-        hasAccess,
-        isPremium,
-        isTrialActive,
-        status: data.status
+      console.log('💎 Fast subscription status (via DatabaseSubscriptionManager):', {
+        hasAccess: legacyStatus.hasAccess,
+        isPremium: legacyStatus.isPremium,
+        isTrialActive: legacyStatus.isTrialActive,
+        status: legacyStatus.status,
+        source: dbStatus.source
       });
 
-      return status;
+      return legacyStatus;
 
     } catch (error) {
-      console.error('❌ Error getting fast subscription status:', error);
+      console.error('❌ Error in getFastSubscriptionStatus:', error);
       
-      // Return safe fallback
-      const fallbackStatus: FastSubscriptionStatus = {
+      // Return fallback status on error
+      return {
         hasAccess: false,
         isPremium: false,
         isTrialActive: false,
         status: 'error'
       };
-      
-      return fallbackStatus;
     }
   }
 
   /**
-   * Clear cache for a user
+   * Clear cache for a user - now delegates to DatabaseSubscriptionManager
    */
   static clearCache(userId?: string): void {
     if (userId) {
-      this.cache.delete(userId);
-    } else {
-      this.cache.clear();
+      DatabaseSubscriptionManager.clearUserCache(userId);
     }
+    // Note: DatabaseSubscriptionManager handles its own caching
+    console.log('💎 Cache cleared via DatabaseSubscriptionManager');
   }
 
   /**
-   * Get cache statistics
+   * Get cache statistics - now from DatabaseSubscriptionManager
    */
   static getCacheStats(): { size: number; entries: string[] } {
+    const stats = DatabaseSubscriptionManager.getCacheStats();
     return {
-      size: this.cache.size,
-      entries: Array.from(this.cache.keys())
+      size: stats.size,
+      entries: stats.entries.map(e => e.userId)
     };
   }
 }

@@ -33,3 +33,6 @@ FROM profiles p
 JOIN user_subscriptions us ON p.id = us.user_id
 WHERE p.email = 'troy21@gmail.com';
 
+
+
+

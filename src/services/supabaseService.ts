@@ -1,9 +1,35 @@
 import 'react-native-url-polyfill/auto';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+import { connectionHealthManager } from './connectionHealthManager';
 
-const supabaseUrl = 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxra2JzdHdtemRibWxmc293d2d0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzNzE2MzAsImV4cCI6MjA3NDk0NzYzMH0.CKoWTs7bCDymUteLM9BfG2ugl07N9fid1WV6mmabT-I';
+// Use environment variables with proper fallbacks
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxra2JzdHdtemRibWxmc293d2d0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzNzE2MzAsImV4cCI6MjA3NDk0NzYzMH0.CKoWTs7bCDymUteLM9BfG2ugl07N9fid1WV6mmabT-I';
+
+// Production-ready logging
+console.log('🔍 Supabase URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
+
+// Validate environment variables
+if (!process.env.EXPO_PUBLIC_SUPABASE_URL) {
+  console.warn('⚠️ EXPO_PUBLIC_SUPABASE_URL not found in environment variables, using fallback');
+}
+if (!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
+  console.warn('⚠️ EXPO_PUBLIC_SUPABASE_ANON_KEY not found in environment variables, using fallback');
+}
+
+// Additional validation
+if (!supabaseUrl || supabaseUrl.trim() === '') {
+  console.error('🚨 SUPABASE URL IS EMPTY OR NULL!');
+  throw new Error('Supabase URL is empty or null');
+}
+
+if (!supabaseUrl.startsWith('http://') && !supabaseUrl.startsWith('https://')) {
+  console.error('🚨 SUPABASE URL DOES NOT START WITH HTTP/HTTPS:', supabaseUrl);
+  throw new Error('Supabase URL does not start with http/https: ' + supabaseUrl);
+}
+
+console.log('✅ Supabase client initialized successfully');
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -17,10 +43,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       'X-Client-Info': 'cigar-catalog-app',
     },
     fetch: (url, options = {}) => {
+      // Add timeout using AbortController (standard approach)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      
       return fetch(url, {
         ...options,
-        timeout: 30000, // 30 second timeout
-      });
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId));
     },
   },
   db: {
@@ -28,50 +58,27 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 });
 
-// Add connection health check
+// Enhanced connection health check using ConnectionHealthManager
 export const checkSupabaseConnection = async () => {
-  try {
-    console.log('🔍 Checking Supabase connection...');
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('count')
-      .limit(1);
-    
-    if (error) {
-      console.error('❌ Supabase connection check failed:', error);
-      return false;
-    }
-    
-    console.log('✅ Supabase connection healthy');
-    return true;
-  } catch (error) {
-    console.error('❌ Supabase connection check error:', error);
-    return false;
-  }
+  return await connectionHealthManager.checkDatabaseHealth();
 };
 
-// Network connectivity check
+// Enhanced network connectivity check using ConnectionHealthManager  
 export const checkNetworkConnectivity = async () => {
-  try {
-    console.log('🌐 Checking network connectivity...');
-    
-    // Test basic internet connectivity
-    const response = await fetch('https://www.google.com', { 
-      method: 'HEAD',
-      timeout: 5000 
-    });
-    
-    if (response.ok) {
-      console.log('✅ Basic internet connectivity confirmed');
-      return true;
-    } else {
-      console.log('❌ Internet connectivity failed');
-      return false;
-    }
-  } catch (error) {
-    console.error('❌ Network connectivity check failed:', error);
-    return false;
-  }
+  return await connectionHealthManager.checkNetworkConnectivity();
+};
+
+// Execute database operations with resilient retry logic
+export const executeWithResilience = async <T>(
+  operation: () => Promise<T>,
+  operationName: string,
+  options?: { timeoutMs?: number; maxRetries?: number }
+): Promise<T> => {
+  return await connectionHealthManager.executeWithRetry(
+    operation,
+    operationName,
+    options
+  );
 };
 
 // Auth Service
@@ -149,12 +156,12 @@ export const AuthService = {
         
         console.log('✅ Supabase signup successful:', data.user?.id);
         return data;
-      } catch (error) {
+      } catch (error: any) {
         console.error(`❌ Signup failed (attempt ${attempt}):`, error);
         lastError = error;
         
         // If it's a network error and we have retries left, continue
-        if (error.message && error.message.includes('Network request failed') && attempt < maxRetries) {
+        if (error?.message && error.message.includes('Network request failed') && attempt < maxRetries) {
           console.log(`🔄 Network error, retrying in ${attempt * 2} seconds...`);
           await new Promise(resolve => setTimeout(resolve, attempt * 2000));
           continue;
@@ -474,7 +481,7 @@ export const DatabaseService = {
         aggregate,
         loadTime
       };
-    } catch (error) {
+    } catch (error: any) {
       const loadTime = Date.now() - startTime;
       console.error(`❌ DatabaseService - Optimized humidor data load failed after ${loadTime}ms:`, error);
       throw error;
@@ -573,7 +580,7 @@ export const DatabaseService = {
       notes: item.notes || undefined,
       humidorId: item.humidor_id,
     })) || [];
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ DatabaseService.getInventory error:', error);
       throw error;
     }

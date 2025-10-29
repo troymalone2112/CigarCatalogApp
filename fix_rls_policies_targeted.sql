@@ -167,3 +167,6 @@ BEGIN
   RAISE NOTICE '📊 All policies should now be properly optimized';
   RAISE NOTICE '🚀 Run the verification query above to confirm optimization';
 END $$;
+
+
+

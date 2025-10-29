@@ -16,6 +16,8 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList, Humidor } from '../types';
 import { DatabaseService } from '../services/supabaseService';
+import { clearHumidorCache } from '../services/humidorCacheService';
+import { OptimizedHumidorService } from '../services/optimizedHumidorService';
 
 type EditHumidorScreenNavigationProp = StackNavigationProp<RootStackParamList, 'EditHumidor'>;
 type EditHumidorScreenRouteProp = RouteProp<RootStackParamList, 'EditHumidor'>;
@@ -62,6 +64,17 @@ export default function EditHumidorScreen() {
       
       console.log('✅ Humidor updated successfully:', updatedHumidor);
 
+      // Clear cache to ensure updated humidor data appears in the list
+      console.log('🗑️ Clearing humidor cache to show updated humidor...');
+      const userId = humidor.userId || humidor.user_id; // Handle different property names
+      if (userId) {
+        await Promise.all([
+          clearHumidorCache(userId),
+          OptimizedHumidorService.clearCache(userId)
+        ]);
+        console.log('✅ Cache cleared, updated humidor will appear in list');
+      }
+
       // Navigate back directly without popup
       navigation.goBack();
     } catch (error: any) {
@@ -99,6 +112,19 @@ export default function EditHumidorScreen() {
     try {
       setLoading(true);
       await DatabaseService.deleteHumidor(humidor.id);
+      
+      console.log('✅ Humidor deleted successfully:', humidor.id);
+
+      // Clear cache to ensure deleted humidor is removed from the list
+      console.log('🗑️ Clearing humidor cache after deletion...');
+      const userId = humidor.userId || humidor.user_id; // Handle different property names
+      if (userId) {
+        await Promise.all([
+          clearHumidorCache(userId),
+          OptimizedHumidorService.clearCache(userId)
+        ]);
+        console.log('✅ Cache cleared, deleted humidor will be removed from list');
+      }
       
       // Navigate back directly without popup
       navigation.goBack();

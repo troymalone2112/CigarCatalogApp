@@ -153,3 +153,6 @@ The improved humidor flow is now implemented with:
 - ✅ **Proper state** - Real-time capacity updates
 
 The flow now works exactly as you specified! 🚀
+
+
+

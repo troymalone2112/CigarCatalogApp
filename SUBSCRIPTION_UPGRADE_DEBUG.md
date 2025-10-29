@@ -177,3 +177,6 @@ SELECT update_subscription_from_revenuecat('your-user-id-here', true, 'test-reve
 
 **Result:** After upgrade, users will see proper premium status in UI, banner will disappear, and profile will show "Manage Subscription" instead of "Upgrade".
 
+
+
+

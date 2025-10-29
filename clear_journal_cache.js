@@ -25,3 +25,6 @@ async function clearJournalCache() {
 
 // Run the script
 clearJournalCache();
+
+
+

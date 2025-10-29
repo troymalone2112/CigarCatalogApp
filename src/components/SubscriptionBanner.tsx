@@ -192,7 +192,7 @@ export default function SubscriptionBanner() {
     return (
       <View style={styles.bannerContainer}>
         <ImageBackground 
-          source={require('../assets/tobacco-leaves-bg.jpg')}
+          source={require('../../assets/tobacco-leaves-bg.jpg')}
           style={styles.bannerBackground}
           imageStyle={styles.tobaccoBackgroundImage}
         >

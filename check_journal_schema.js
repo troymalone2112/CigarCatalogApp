@@ -58,3 +58,6 @@ async function checkJournalSchema() {
 
 // Run the check
 checkJournalSchema();
+
+
+

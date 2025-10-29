@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase, AuthService, DatabaseService, checkSupabaseConnection } from '../services/supabaseService';
+import { supabase, AuthService, DatabaseService, checkSupabaseConnection, executeWithResilience } from '../services/supabaseService';
+import { connectionHealthManager } from '../services/connectionHealthManager';
+import { ColdStartCache } from '../services/coldStartCache';
 import { StorageService } from '../storage/storageService';
 import { UserManagementService } from '../services/userManagementService';
 import { UserRole } from '../types';
@@ -17,6 +19,7 @@ import {
 import { ProfileCacheService, NetworkError } from '../services/profileCacheService';
 import { PerformanceMonitor } from '../utils/performanceMonitor';
 import { FastSubscriptionService, FastSubscriptionStatus } from '../services/fastSubscriptionService';
+import { DatabaseSubscriptionManager } from '../services/databaseSubscriptionManager';
 
 interface Profile {
   id: string;
@@ -122,79 +125,220 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
-    console.log('🚀 AuthContext: Starting parallel initialization...');
+    console.log('🚀 AuthContext: Starting resilient initialization with cache fallback...');
     
-    // Set a shorter timeout to prevent infinite loading
-    const authTimeout = getTimeoutValue(5000, 'auth'); // Reduced from 10s to 5s
+    // Shorter timeout for faster failure detection
+    const authTimeout = getTimeoutValue(3000, 'auth'); // Reduced to 3s for faster failure
     const loadingTimeout = setTimeout(() => {
       console.log('⏰ Auth loading timeout - forcing loading to false');
       setLoading(false);
     }, authTimeout);
 
-    // Parallel initialization - run session check and connection check simultaneously
+    // Resilient initialization with cache fallback
     const initializeAuth = async () => {
       try {
         PerformanceMonitor.startTimer('auth-initialization');
-        console.log('🔄 Starting parallel auth initialization...');
+        console.log('🔄 Starting resilient auth initialization...');
         
-        // Run session check and connection check in parallel
-        const [sessionResult, connectionResult] = await Promise.allSettled([
-          supabase.auth.getSession(),
-          checkSupabaseConnection()
-        ]);
+        // Step 1: Check if we have cached data available
+        const hasCachedData = await ColdStartCache.hasCachedData();
+        console.log('💾 Cached data available:', hasCachedData);
         
-        const { data: { session } } = sessionResult.status === 'fulfilled' ? sessionResult.value : { data: { session: null } };
-        const isConnectionHealthy = connectionResult.status === 'fulfilled' && connectionResult.value;
+        // Step 2: Perform health check first
+        const healthCheck = await connectionHealthManager.performHealthCheck();
+        console.log('🔍 Connection health:', healthCheck);
         
-        console.log('🔍 Initial session check:', session?.user?.id || 'no user');
-        console.log('🔍 Connection healthy:', isConnectionHealthy);
-        
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          console.log('👤 User found, loading subscription status FIRST, then profile and permissions...');
-          // Set current user in StorageService for user-specific data
-          StorageService.setCurrentUser(session.user.id);
-          
-          // Step 1: Load subscription status FIRST (highest priority)
-          console.log('💎 Loading subscription status with PRIORITY...');
-          await loadSubscriptionStatus(session.user.id);
-          
-          // Step 2: Load profile and permissions in parallel (non-blocking)
-          console.log('👤 Loading profile and permissions in background...');
-          Promise.allSettled([
-            loadProfile(session.user.id),
-            loadUserPermissions()
-          ]).then(([profileResult, permissionsResult]) => {
-            if (profileResult.status === 'rejected') {
-              console.error('❌ Profile load failed:', profileResult.reason);
-            }
-            if (permissionsResult.status === 'rejected') {
-              console.error('❌ Permissions load failed:', permissionsResult.reason);
-            }
-          });
+        // Step 3: Try to load from network if healthy, otherwise use cache
+        if (healthCheck.isOnline && healthCheck.isDatabaseHealthy) {
+          console.log('✅ Network is healthy, attempting fresh data load...');
+          await loadFreshData();
+        } else if (hasCachedData) {
+          console.log('⚠️ Network issues detected, loading from cache...');
+          await loadFromCache();
+          // Try to sync in background
+          syncInBackground();
         } else {
-          console.log('👤 No user found, proceeding to login');
+          console.log('❌ No network and no cache, attempting degraded load...');
+          await attemptDegradedLoad();
         }
         
-        console.log('✅ Auth initialization complete');
+        console.log('✅ Resilient auth initialization complete');
         PerformanceMonitor.endTimer('auth-initialization');
         setLoading(false);
         clearTimeout(loadingTimeout);
         
       } catch (error) {
-        console.error('❌ Error during auth initialization:', error);
+        console.error('❌ Error during resilient auth initialization:', error);
         PerformanceMonitor.endTimer('auth-initialization');
         
-        if (shouldUseGracefulDegradation()) {
-          console.log('⚠️ Auth initialization failed, but continuing with degraded state');
-          setLoading(false);
-        } else {
-          console.log('❌ Auth initialization failed - setting loading to false');
-          setLoading(false);
+        // Try cache as last resort
+        const cachedState = await ColdStartCache.loadCachedAppState();
+        if (cachedState) {
+          console.log('🆘 Using cached app state as fallback');
+          setUser(cachedState.user);
+          setProfile(cachedState.profile);
+          setSession(cachedState.session);
+          setSubscriptionStatus(cachedState.subscriptionStatus);
+          StorageService.setCurrentUser(cachedState.user.id);
         }
+        
+        setLoading(false);
         clearTimeout(loadingTimeout);
+      }
+    };
+    
+    // Helper function to load fresh data from network
+    const loadFreshData = async () => {
+      try {
+        // Get session with retry logic
+        const sessionData = await executeWithResilience(
+          () => supabase.auth.getSession(),
+          'session-check',
+          { timeoutMs: 3000, maxRetries: 2 }
+        );
+        
+        const { data: { session } } = sessionData;
+        console.log('🔍 Fresh session loaded:', session?.user?.id || 'no user');
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          StorageService.setCurrentUser(session.user.id);
+          
+          // Load subscription status with priority
+          console.log('💎 Loading fresh subscription status...');
+          await loadSubscriptionStatus(session.user.id);
+          
+          // Load profile in background
+          console.log('👤 Loading fresh profile in background...');
+          loadProfile(session.user.id).catch(error => {
+            console.error('❌ Profile load failed, but continuing:', error);
+          });
+          
+          // Cache successful state after a delay to ensure all state is updated
+          setTimeout(async () => {
+            try {
+              if (profile && subscriptionStatus) {
+                console.log('💾 Caching complete successful app state...');
+                await ColdStartCache.cacheSuccessfulState(
+                  session.user,
+                  profile,
+                  subscriptionStatus,
+                  session
+                );
+                console.log('✅ Complete app state cached successfully');
+              }
+            } catch (error) {
+              console.error('❌ Failed to cache complete app state:', error);
+            }
+          }, 1000); // Wait 1 second for state to settle
+        }
+      } catch (error) {
+        console.error('❌ Fresh data load failed:', error);
+        throw error;
+      }
+    };
+    
+    // Helper function to load from cache
+    const loadFromCache = async () => {
+      try {
+        console.log('💾 Loading app state from cache...');
+        const cachedState = await ColdStartCache.loadCachedAppState();
+        
+        if (cachedState) {
+          console.log('✅ Loaded cached app state successfully');
+          setUser(cachedState.user);
+          setProfile(cachedState.profile);
+          setSession(cachedState.session);
+          setSubscriptionStatus(cachedState.subscriptionStatus);
+          StorageService.setCurrentUser(cachedState.user.id);
+        } else {
+          console.log('❌ No valid cached state found');
+          throw new Error('No cached state available');
+        }
+      } catch (error) {
+        console.error('❌ Cache load failed:', error);
+        throw error;
+      }
+    };
+    
+    // Helper function for background sync
+    const syncInBackground = async () => {
+      try {
+        console.log('🔄 Starting background sync...');
+        
+        // Wait a bit for the UI to load
+        setTimeout(async () => {
+          try {
+            const sessionData = await supabase.auth.getSession();
+            const { data: { session } } = sessionData;
+            
+            if (session?.user) {
+              console.log('🔄 Background sync: updating subscription status...');
+              await loadSubscriptionStatus(session.user.id);
+              
+              console.log('🔄 Background sync: updating profile...');
+              await loadProfile(session.user.id);
+              
+              console.log('✅ Background sync completed');
+              connectionHealthManager.resetHealthState();
+              
+              // Update cached state after successful sync
+              setTimeout(async () => {
+                try {
+                  if (profile && subscriptionStatus) {
+                    console.log('💾 Updating cached state after successful background sync...');
+                    await ColdStartCache.cacheSuccessfulState(
+                      session.user,
+                      profile,
+                      subscriptionStatus,
+                      session
+                    );
+                    await ColdStartCache.updateCacheTimestamp();
+                  }
+                } catch (error) {
+                  console.error('❌ Failed to update cache after background sync:', error);
+                }
+              }, 500);
+            }
+          } catch (error) {
+            console.error('❌ Background sync failed:', error);
+          }
+        }, 2000); // Wait 2 seconds before syncing
+      } catch (error) {
+        console.error('❌ Background sync setup failed:', error);
+      }
+    };
+    
+    // Helper function for degraded load (last resort)
+    const attemptDegradedLoad = async () => {
+      try {
+        console.log('🆘 Attempting degraded load...');
+        
+        // Try to get session from AsyncStorage
+        const cachedSession = await ColdStartCache.loadCachedUserSession();
+        if (cachedSession) {
+          setSession(cachedSession);
+          setUser(cachedSession.user);
+          StorageService.setCurrentUser(cachedSession.user.id);
+          
+          // Try to load other cached components
+          const [cachedProfile, cachedSubscription] = await Promise.all([
+            ColdStartCache.loadCachedUserProfile(),
+            ColdStartCache.loadCachedSubscriptionStatus()
+          ]);
+          
+          if (cachedProfile) setProfile(cachedProfile);
+          if (cachedSubscription) setSubscriptionStatus(cachedSubscription);
+          
+          console.log('✅ Degraded load completed with partial cached data');
+        } else {
+          console.log('❌ No cached session available, user needs to sign in');
+        }
+      } catch (error) {
+        console.error('❌ Degraded load failed:', error);
+        // At this point, we just show the login screen
       }
     };
     
@@ -255,8 +399,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const profileData = await Promise.race([profilePromise, timeoutPromise]);
       console.log('✅ Profile loaded successfully:', profileData);
       
-      // Cache the profile for future use
+      // Cache the profile for future use (both old and new cache systems)
       await ProfileCacheService.cacheProfile(profileData);
+      await ColdStartCache.cacheUserProfile(profileData);
+      
       setProfile(profileData);
     } catch (error) {
       console.error('❌ Error loading profile:', error);
@@ -360,18 +506,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Function to refresh subscription status
   const refreshSubscription = async () => {
     if (user) {
-      FastSubscriptionService.clearCache(user.id);
+      DatabaseSubscriptionManager.clearUserCache(user.id);
       await loadSubscriptionStatus(user.id, true);
     }
   };
 
-  // Load subscription status with priority
+  // Load subscription status with priority and cache fallback
   const loadSubscriptionStatus = async (userId: string, forceRefresh = false) => {
     try {
       setSubscriptionLoading(true);
       console.log('💎 Loading subscription status (PRIORITY) for user:', userId, forceRefresh ? '(forced refresh)' : '');
       
-      const status = await FastSubscriptionService.getFastSubscriptionStatus(userId);
+      // Try to load with resilience using DatabaseSubscriptionManager directly
+      const dbStatus = await executeWithResilience(
+        () => DatabaseSubscriptionManager.getSubscriptionStatus(userId),
+        'subscription-status-load',
+        { timeoutMs: 5000, maxRetries: 2 }
+      );
+      
+      // Convert to FastSubscriptionStatus for compatibility
+      const status: FastSubscriptionStatus = {
+        hasAccess: dbStatus.hasAccess,
+        isPremium: dbStatus.isPremium,
+        isTrialActive: dbStatus.isTrialActive,
+        status: dbStatus.status,
+        planId: dbStatus.planId,
+        daysRemaining: dbStatus.daysRemaining
+      };
+      
       console.log('💎 Subscription status loaded:', {
         hasAccess: status.hasAccess,
         isPremium: status.isPremium,
@@ -379,10 +541,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         status: status.status
       });
       
+      // Cache successful subscription status
+      await ColdStartCache.cacheSubscriptionStatus(status);
+      
       setSubscriptionStatus(status);
       return status;
     } catch (error) {
       console.error('❌ Error loading subscription status:', error);
+      
+      // Try to use cached subscription status
+      try {
+        const cachedStatus = await ColdStartCache.loadCachedSubscriptionStatus();
+        if (cachedStatus) {
+          console.log('✅ Using cached subscription status due to network error');
+          setSubscriptionStatus(cachedStatus);
+          return cachedStatus;
+        }
+      } catch (cacheError) {
+        console.error('❌ Failed to load cached subscription status:', cacheError);
+      }
+      
       // Provide fallback status
       const fallbackStatus: FastSubscriptionStatus = {
         hasAccess: false,
@@ -498,6 +676,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const cleanupPromises = [
         StorageService.clearCurrentUserData(),
         ProfileCacheService.clearCachedProfile(),
+        // Clear cold start cache for the current user
+        user ? ColdStartCache.clearUserCache(user.id) : Promise.resolve(),
         // RevenueCat logout with error handling
         (async () => {
           try {

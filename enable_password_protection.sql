@@ -73,3 +73,6 @@ USING (public.validate_password_strength(auth.users.encrypted_password::TEXT));
 -- ============================================
 
 GRANT EXECUTE ON FUNCTION public.validate_password_strength(TEXT) TO authenticated;
+
+
+

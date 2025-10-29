@@ -7,12 +7,13 @@ import {
   ImageBackground,
   ScrollView
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 
 type OnboardingExperienceNavigationProp = StackNavigationProp<RootStackParamList, 'OnboardingExperience'>;
+type OnboardingExperienceRouteProp = RouteProp<RootStackParamList, 'OnboardingExperience'>;
 
 const experienceOptions = [
   { key: 'newbie', label: 'Newbie', description: 'Just getting started' },
@@ -23,14 +24,17 @@ const experienceOptions = [
 
 export default function OnboardingExperienceScreen() {
   const navigation = useNavigation<OnboardingExperienceNavigationProp>();
+  const route = useRoute<OnboardingExperienceRouteProp>();
   const [selectedDuration, setSelectedDuration] = useState<string | null>(null);
 
   const handleContinue = () => {
     if (selectedDuration) {
       // Store the selection and move directly to taste preferences
+      // Important: Pass through the onComplete callback from the previous screen
       navigation.navigate('OnboardingTastePreferences', { 
         smokingDuration: selectedDuration,
-        experienceLevel: 'getting-started' // Default experience level
+        experienceLevel: 'getting-started', // Default experience level
+        onComplete: route.params?.onComplete // Pass through the onComplete callback
       });
     }
   };
@@ -39,8 +43,13 @@ export default function OnboardingExperienceScreen() {
     navigation.goBack();
   };
 
-  const handleSkip = () => {
-    navigation.navigate('MainTabs', { screen: 'Home' });
+  const handleSkip = async () => {
+    // Use the onComplete callback if available, otherwise fall back to navigation
+    if (route.params?.onComplete) {
+      route.params.onComplete();
+    } else {
+      navigation.navigate('MainTabs', { screen: 'Home' });
+    }
   };
 
   return (

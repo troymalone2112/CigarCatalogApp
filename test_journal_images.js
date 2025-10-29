@@ -72,3 +72,6 @@ async function testJournalImages() {
 
 // Run the test
 testJournalImages();
+
+
+

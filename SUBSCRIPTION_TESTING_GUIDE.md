@@ -117,3 +117,6 @@ node clear_user_for_testing.js --reset USER_ID_HERE
 
 Once you apply the database fix, your users should see the trial banner and upgrade button, allowing you to properly test the subscription upgrade flow! 🎉
 
+
+
+

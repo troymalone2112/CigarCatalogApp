@@ -129,3 +129,6 @@ The cigar recognition loading screen has been simplified by:
 
 The loading screen is now cleaner and easier to read!
 
+
+
+

@@ -213,3 +213,6 @@ await CacheUtils.refreshCache();
 The journal caching system provides significant performance improvements while maintaining data consistency. The system is designed to be transparent to existing code while providing powerful debugging and monitoring capabilities.
 
 The caching system reduces database load, improves app performance, and provides a better user experience with faster loading times and offline support.
+
+
+

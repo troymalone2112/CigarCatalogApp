@@ -9,21 +9,26 @@ import {
 } from 'react-native-purchases';
 import { supabase } from './supabaseService';
 
-// RevenueCat API Keys - platform-specific
+// RevenueCat API Keys - use environment variables for production security
 const REVENUECAT_API_KEYS = {
-  ios: 'appl_OdWJAJMHMYrvZGgQDapUsNfpLmf', // iOS key for cigar app
-  android: 'goog_xxxxxxxxxxxxxxxxxxxxxxxx', // Android key (if you have one)
-  test: 'test_gSaOwHULRwmRJyPIJSbmUhOqdGX', // Test Store key
-  web: process.env.EXPO_PUBLIC_STRIPE_API_KEY || '***REMOVED***_KEY' // Web Billing key for Expo Go
+  ios: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || 'appl_OdWJAJMHMYrvZGgQDapUsNfpLmf', // iOS key for cigar app
+  android: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || 'appl_OdWJAJMHMYrvZGgQDapUsNfpLmf', // Android key
+  test: process.env.EXPO_PUBLIC_REVENUECAT_TEST_KEY || 'test_gSaOwHULRwmRJyPIJSbmUhOqdGX', // Test Store key
+  web: process.env.EXPO_PUBLIC_REVENUECAT_WEB_KEY || 'appl_OdWJAJMHMYrvZGgQDapUsNfpLmf', // Web key
 };
+
+// Validate RevenueCat environment variables
+if (!process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY) {
+  console.warn('⚠️ EXPO_PUBLIC_REVENUECAT_IOS_KEY not found in environment variables, using fallback');
+}
 
 // For TestFlight testing - use production iOS key
 const USE_TEST_STORE = false; // TestFlight will use native iOS mode
 
 // Product IDs (must match what you set up in RevenueCat dashboard)
 export const PRODUCT_IDS = {
-  MONTHLY: '0004', // Promptly Monthly
-  YEARLY: '0005',  // Promptly Yearly
+  MONTHLY: 'premium_monthly', // Premium Monthly
+  YEARLY: 'premium_yearly',  // Premium Yearly
 };
 
 // Entitlement IDs (what users get access to)
@@ -55,7 +60,13 @@ export const initializeRevenueCat = async (): Promise<boolean> => {
     console.log(`📱 Platform: ${platform}`);
     console.log(`🔑 Using API key: ${apiKey.substring(0, 10)}...`);
     
+    // Validate API key format
+    if (!apiKey || apiKey.length < 10) {
+      throw new Error(`Invalid API key for platform ${platform}: ${apiKey}`);
+    }
+    
     // Configure RevenueCat
+    console.log('🔄 Configuring RevenueCat...');
     await Purchases.configure({
       apiKey,
       appUserID: undefined, // Let RevenueCat generate anonymous user ID
@@ -65,6 +76,15 @@ export const initializeRevenueCat = async (): Promise<boolean> => {
     Purchases.setLogLevel(LOG_LEVEL.DEBUG);
     
     console.log('✅ RevenueCat initialized successfully');
+    
+    // Test the connection by getting customer info
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      console.log('✅ RevenueCat connection verified - User ID:', customerInfo.originalAppUserId);
+    } catch (connectionError) {
+      console.warn('⚠️ RevenueCat initialized but connection test failed:', connectionError);
+    }
+    
     return true;
     
   } catch (error) {
@@ -116,7 +136,7 @@ export const getCustomerInfo = async (): Promise<CustomerInfo | null> => {
 };
 
 // Purchase a package
-export const purchasePackage = async (packageToPurchase: PurchasesPackage): Promise<boolean> => {
+export const purchasePackage = async (packageToPurchase: PurchasesPackage): Promise<{ success: boolean; error?: string }> => {
   try {
     console.log('🔄 Starting purchase...');
     console.log('📦 Package:', packageToPurchase.identifier);
@@ -127,19 +147,22 @@ export const purchasePackage = async (packageToPurchase: PurchasesPackage): Prom
     console.log('✅ Purchase successful!');
     console.log('🎫 Active entitlements:', Object.keys(customerInfo.entitlements.active));
     
-    return true;
+    return { success: true };
     
-  } catch (error) {
-    if (error instanceof PurchasesError) {
+  } catch (error: any) {
+    // Check if error has the structure of a PurchasesError
+    if (error && typeof error === 'object' && 'code' in error) {
       if (error.code === 'PURCHASES_ERROR_PURCHASE_CANCELLED') {
         console.log('ℹ️ Purchase cancelled by user');
+        return { success: false, error: 'Purchase cancelled by user' };
       } else {
-        console.error('❌ Purchase error:', error.message);
+        console.error('❌ Purchase error:', error.message || error.code);
+        return { success: false, error: error.message || error.code || 'Purchase failed' };
       }
     } else {
       console.error('❌ Unexpected purchase error:', error);
+      return { success: false, error: (error as Error)?.message || 'Unknown error' };
     }
-    return false;
   }
 };
 
@@ -216,4 +239,57 @@ export const getSubscriptionStatus = (customerInfo: CustomerInfo) => {
     productIdentifier: premiumEntitlement?.productIdentifier,
     originalPurchaseDate: premiumEntitlement?.originalPurchaseDate
   };
+};
+
+// Export as a service object for convenience
+export const RevenueCatService = {
+  initialize: initializeRevenueCat,
+  getOfferings,
+  getCustomerInfo,
+  purchasePackage,
+  restorePurchases,
+  hasPremiumAccess,
+  syncSubscriptionWithSupabase,
+  getSubscriptionStatus,
+  setUserId: async (userId: string) => {
+    try {
+      await Purchases.logIn(userId);
+      console.log('✅ RevenueCat user ID set:', userId);
+      return true;
+    } catch (error) {
+      console.error('❌ Error setting RevenueCat user ID:', error);
+      return false;
+    }
+  },
+  logOut: async () => {
+    try {
+      await Purchases.logOut();
+      console.log('✅ RevenueCat user logged out');
+      return true;
+    } catch (error) {
+      console.error('❌ Error logging out from RevenueCat:', error);
+      return false;
+    }
+  },
+  syncSubscriptionStatus: async (userId: string) => {
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      return await syncSubscriptionWithSupabase(customerInfo);
+    } catch (error) {
+      console.error('❌ Error syncing subscription status:', error);
+      return false;
+    }
+  },
+  debugSubscriptionStatus: async () => {
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      const status = getSubscriptionStatus(customerInfo);
+      return `User ID: ${customerInfo.originalAppUserId}\n` +
+        `Has Access: ${status.hasAccess}\n` +
+        `Is Active: ${status.isActive}\n` +
+        `Product ID: ${status.productIdentifier || 'None'}`;
+    } catch (error) {
+      return `Error: ${error}`;
+    }
+  }
 };

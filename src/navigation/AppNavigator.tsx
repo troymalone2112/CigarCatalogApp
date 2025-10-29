@@ -548,7 +548,11 @@ function OnboardingStack({ onComplete }: { onComplete: () => void }) {
         component={OnboardingAgeVerificationScreen}
         initialParams={{ onComplete }}
       />
-      <Stack.Screen name="OnboardingExperience" component={OnboardingExperienceScreen} />
+      <Stack.Screen 
+        name="OnboardingExperience" 
+        component={OnboardingExperienceScreen}
+        initialParams={{ onComplete }}
+      />
       <Stack.Screen 
         name="OnboardingTastePreferences" 
         component={OnboardingTastePreferencesScreen}

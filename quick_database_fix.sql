@@ -45,3 +45,6 @@ ANALYZE humidors;
 ANALYZE user_subscriptions;
 ANALYZE recommendations;
 ANALYZE usage_tracking;
+
+
+

@@ -243,9 +243,9 @@ export type RootStackParamList = {
   ForgotPassword: undefined;
   Paywall: undefined;
   Onboarding: undefined;
-  OnboardingAgeVerification: undefined;
-  OnboardingExperience: undefined;
-  OnboardingTastePreferences: { onComplete?: () => void } | undefined;
+  OnboardingAgeVerification: { onComplete?: () => void } | undefined;
+  OnboardingExperience: { onComplete?: () => void } | undefined;
+  OnboardingTastePreferences: { smokingDuration?: string; experienceLevel?: string; onComplete?: () => void } | undefined;
   AdminDashboard: undefined;
 };
 

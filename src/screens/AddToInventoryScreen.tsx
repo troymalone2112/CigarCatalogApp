@@ -15,6 +15,8 @@ import { RootStackParamList, InventoryItem, HumidorStackParamList } from '../typ
 import { Ionicons } from '@expo/vector-icons';
 import { StorageService } from '../storage/storageService';
 import { DatabaseService, supabase } from '../services/supabaseService';
+import { clearHumidorCache } from '../services/humidorCacheService';
+import { OptimizedHumidorService } from '../services/optimizedHumidorService';
 import { useAuth } from '../contexts/AuthContext';
 // Removed ReliableDataService - using direct database calls
 import CigarSpecificationForm from '../components/CigarSpecificationForm';
@@ -265,6 +267,16 @@ export default function AddToInventoryScreen({ route }: Props) {
       console.log('🔍 About to save inventory item:', inventoryItem.id, inventoryItem.cigar.brand);
       await StorageService.saveInventoryItem(inventoryItem);
       console.log('✅ Saved inventory item:', inventoryItem);
+      
+      // Clear humidor cache to ensure updated counts appear immediately
+      console.log('🗑️ Clearing humidor cache after inventory save...');
+      if (user) {
+        await Promise.all([
+          clearHumidorCache(user.id),
+          OptimizedHumidorService.clearCache(user.id)
+        ]);
+        console.log('✅ Cache cleared, humidor stats will reflect new inventory');
+      }
       
       // Add to recent cigars only if it's a new item
       if (!existingItem) {

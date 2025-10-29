@@ -171,3 +171,6 @@ BEGIN
   RAISE NOTICE '💡 This will help us create a working solution';
   RAISE NOTICE '';
 END $$;
+
+
+

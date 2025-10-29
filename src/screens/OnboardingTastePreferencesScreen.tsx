@@ -54,8 +54,11 @@ export default function OnboardingTastePreferencesScreen() {
   };
 
   const handleFinish = async () => {
+    console.log('🔄 Finish Setup button pressed - completing onboarding...');
+    
     try {
       if (!user) {
+        console.error('❌ No user found');
         Alert.alert('Error', 'No user logged in. Please log in again.');
         return;
       }
@@ -74,23 +77,48 @@ export default function OnboardingTastePreferencesScreen() {
         updatedAt: new Date(),
       };
 
+      console.log('💾 Saving user profile to database...');
       // Save to storage
       await StorageService.saveUserProfile(userProfile);
-      
-      console.log('✅ User profile saved, calling completion handler...');
+      console.log('✅ User profile saved successfully');
       
       // Call the completion handler if provided
       if (route.params?.onComplete) {
-        console.log('🔍 Calling onComplete handler...');
+        console.log('📞 Calling onComplete handler...');
         route.params.onComplete();
       } else {
-        console.log('🔍 No onComplete handler, using fallback navigation...');
-        // Fallback navigation
-        navigation.navigate('MainTabs', { screen: 'Home' });
+        console.error('❌ No onComplete handler found - using fallback navigation');
+        // Fallback navigation using reset to ensure clean state
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
+        });
       }
     } catch (error) {
       console.error('❌ Error saving user profile:', error);
-      Alert.alert('Error', 'Failed to save preferences. Please try again.');
+      
+      // Production fix: Don't block user on database errors
+      console.log('🆘 Profile save failed, attempting fallback completion...');
+      
+      // Try to mark onboarding as completed at minimum
+      try {
+        await StorageService.updateUserProfile({ onboardingCompleted: true });
+        console.log('✅ Minimal onboarding completion saved');
+      } catch (updateError) {
+        console.error('❌ Even minimal update failed:', updateError);
+      }
+      
+      // Still try to complete onboarding
+      if (route.params?.onComplete) {
+        console.log('📞 Calling onComplete handler (fallback)...');
+        route.params.onComplete();
+      } else {
+        console.log('🔀 Using direct navigation fallback...');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
+        });
+      }
     }
   };
 
@@ -98,8 +126,41 @@ export default function OnboardingTastePreferencesScreen() {
     navigation.goBack();
   };
 
-  const handleSkip = () => {
-    navigation.navigate('MainTabs', { screen: 'Home' });
+  const handleSkip = async () => {
+    console.log('🔄 Skip button pressed on taste preferences...');
+    
+    try {
+      // Mark onboarding as completed when skipping
+      console.log('💾 Marking onboarding as completed...');
+      await StorageService.updateUserProfile({ onboardingCompleted: true });
+      console.log('✅ Onboarding marked as completed');
+      
+      // Use the onComplete callback if available, otherwise fall back to navigation
+      if (route.params?.onComplete) {
+        console.log('📞 Calling onComplete handler...');
+        route.params.onComplete();
+      } else {
+        console.log('🔀 Using fallback navigation...');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
+        });
+      }
+    } catch (error) {
+      console.error('❌ Error in handleSkip:', error);
+      
+      // Fallback: still try to complete onboarding
+      if (route.params?.onComplete) {
+        console.log('📞 Calling onComplete handler (fallback)...');
+        route.params.onComplete();
+      } else {
+        console.log('🔀 Using direct navigation fallback...');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
+        });
+      }
+    }
   };
 
   return (

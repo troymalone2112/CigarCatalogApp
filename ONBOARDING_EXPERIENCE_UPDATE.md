@@ -166,3 +166,6 @@ The onboarding experience screen now uses four clear, experience-based categorie
 
 This provides a more intuitive and user-friendly onboarding experience that focuses on actual experience level rather than time duration, making it easier for users to self-identify their appropriate category.
 
+
+
+

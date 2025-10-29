@@ -243,3 +243,6 @@ BEGIN
   RAISE NOTICE '✅ All policies should now show as OPTIMIZED';
   RAISE NOTICE '';
 END $$;
+
+
+

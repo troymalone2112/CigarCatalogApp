@@ -55,3 +55,6 @@ FROM profiles p
 LEFT JOIN user_subscriptions us ON p.id = us.user_id
 WHERE p.id = 'USER_ID_HERE';
 
+
+
+

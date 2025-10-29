@@ -174,3 +174,6 @@ if (humidorsList.length === 0) {
 
 This approach is much more user-friendly and gives users the control they need while ensuring they get the expected progress bar functionality!
 
+
+
+

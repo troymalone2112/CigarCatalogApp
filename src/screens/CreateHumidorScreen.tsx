@@ -17,6 +17,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { DatabaseService } from '../services/supabaseService';
+import { clearHumidorCache } from '../services/humidorCacheService';
+import { OptimizedHumidorService } from '../services/optimizedHumidorService';
 
 type CreateHumidorScreenNavigationProp = StackNavigationProp<RootStackParamList, 'CreateHumidor'>;
 
@@ -65,6 +67,14 @@ export default function CreateHumidorScreen() {
       );
       
       console.log('✅ Humidor created successfully:', newHumidor);
+
+      // Clear cache to ensure new humidor appears in the list
+      console.log('🗑️ Clearing humidor cache to show new humidor...');
+      await Promise.all([
+        clearHumidorCache(user.id),
+        OptimizedHumidorService.clearCache(user.id)
+      ]);
+      console.log('✅ Cache cleared, new humidor will appear in list');
 
       // Navigate back directly without popup
       navigation.goBack();

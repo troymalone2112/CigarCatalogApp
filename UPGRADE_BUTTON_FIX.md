@@ -179,3 +179,6 @@ The upgrade button issue has been fixed with:
 
 The upgrade button should now always appear for trial users, providing a clear path to upgrade to premium!
 
+
+
+

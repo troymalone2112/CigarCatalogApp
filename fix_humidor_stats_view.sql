@@ -62,3 +62,6 @@ BEGIN
             RAISE WARNING '⚠️ humidor_stats view has issues: %', SQLERRM;
     END;
 END $$;
+
+
+

@@ -46,3 +46,6 @@ FROM pg_indexes
 WHERE schemaname = 'public' 
 AND tablename IN ('journal_entries', 'inventory', 'humidors', 'user_subscriptions', 'recommendations', 'usage_tracking')
 ORDER BY tablename, indexname;
+
+
+

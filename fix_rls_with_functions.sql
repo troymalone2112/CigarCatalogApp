@@ -280,3 +280,6 @@ BEGIN
   RAISE NOTICE '✅ All policies should now show as FUNCTION OPTIMIZED';
   RAISE NOTICE '';
 END $$;
+
+
+

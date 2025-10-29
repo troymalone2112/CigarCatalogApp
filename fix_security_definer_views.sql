@@ -122,3 +122,6 @@ BEGIN
         RAISE NOTICE 'View: % - Definition: %', rec.viewname, LEFT(rec.definition, 100);
     END LOOP;
 END $$;
+
+
+

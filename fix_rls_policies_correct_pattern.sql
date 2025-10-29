@@ -231,3 +231,6 @@ BEGIN
   RAISE NOTICE '✅ All policies should now be performance optimized';
   RAISE NOTICE '';
 END $$;
+
+
+

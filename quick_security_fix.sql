@@ -69,3 +69,6 @@ GROUP BY h.id, h.user_id, h.name, h.description, h.capacity;
 GRANT SELECT ON public.user_humidor_aggregate TO authenticated;
 GRANT SELECT ON public.cigar_aging_status TO authenticated;
 GRANT SELECT ON public.humidor_stats TO authenticated;
+
+
+

@@ -148,3 +148,6 @@ try {
 
 The "Failed to take picture" error should no longer appear when the picture is successfully taken, and users will see more helpful error messages when recognition processing fails.
 
+
+
+

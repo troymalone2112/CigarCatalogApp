@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useSubscription } from '../contexts/SubscriptionContext';
 import { SubscriptionPlan } from '../services/subscriptionService';
-import { RevenueCatService } from '../services/revenueCatService';
+import { PaymentService } from '../services/paymentService';
 import { PurchasesPackage } from 'react-native-purchases';
 
 export default function PaywallScreen() {
@@ -36,18 +36,29 @@ export default function PaywallScreen() {
   const loadRevenueCatPackages = async () => {
     try {
       setLoadingPackages(true);
-      const offerings = await RevenueCatService.getOfferings();
+      console.log('🔄 Loading RevenueCat packages...');
+      
+      // Initialize RevenueCat on-demand using PaymentService
+      await PaymentService.initializeForPayments();
+      console.log('✅ RevenueCat initialized for PaywallScreen');
+      
+      // Get offerings directly from RevenueCat (now that it's initialized)
+      const Purchases = (await import('react-native-purchases')).default;
+      const offerings = await Purchases.getOfferings();
+      
       console.log('📦 RevenueCat offerings loaded:', offerings);
       
-      // Extract all packages from all offerings
-      const allPackages = offerings.flatMap(offering => offering.availablePackages);
-      console.log('📦 All available packages:', allPackages.map(pkg => ({
-        identifier: pkg.identifier,
-        title: pkg.product.title,
-        price: pkg.product.priceString
-      })));
-      
-      setRevenueCatPackages(allPackages);
+      // Extract all packages from current offering
+      if (offerings.current && offerings.current.availablePackages) {
+        setRevenueCatPackages(offerings.current.availablePackages);
+        console.log('📦 Available packages:', offerings.current.availablePackages.map(pkg => ({
+          identifier: pkg.identifier,
+          title: pkg.product.title,
+          price: pkg.product.priceString
+        })));
+      } else {
+        console.warn('⚠️ No current offering or packages available');
+      }
     } catch (error) {
       console.error('❌ Failed to load RevenueCat packages:', error);
     } finally {
@@ -60,18 +71,19 @@ export default function PaywallScreen() {
       setPurchasing(true);
       console.log('🔄 Restoring purchases...');
       
-      const customerInfo = await RevenueCatService.restorePurchases();
-      console.log('✅ Restore result:', customerInfo);
+      const restoreResult = await PaymentService.restorePurchases();
+      console.log('✅ Restore result:', restoreResult);
       
-      // Check if user now has premium access
-      const hasAccess = customerInfo.entitlements.active['premium_features'] !== undefined;
+      // Check if restore was successful
+      const hasAccess = restoreResult.success;
       
       if (hasAccess) {
         // Sync with our database
         const { supabase } = await import('../services/supabaseService');
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          await RevenueCatService.syncSubscriptionStatus(user.id);
+          // PaymentService handles database sync automatically
+          console.log('✅ Database sync handled by PaymentService webhook');
         }
         
         Alert.alert(
@@ -95,28 +107,26 @@ export default function PaywallScreen() {
   };
 
   const handlePurchase = async () => {
+    console.log('🚀 Purchase button pressed - starting purchase flow...');
+    
     if (!currentPlan) {
+      console.error('❌ No current plan selected');
       Alert.alert('Error', 'No plan selected');
       return;
     }
+    
+    console.log('📋 Selected plan:', currentPlan.name);
+    console.log('📋 Plan details:', {
+      name: currentPlan.name,
+      type: selectedTab
+    });
+    
     try {
       setPurchasing(true);
+      console.log('🔄 Purchase state set to true');
       
-      // Force RevenueCat initialization before purchase
-      console.log('🔧 Force initializing RevenueCat before purchase...');
-      try {
-        await RevenueCatService.initialize();
-        console.log('✅ RevenueCat initialized for purchase');
-        
-        // Show alert for debugging in TestFlight
-        if (__DEV__) {
-          alert('RevenueCat initialized for purchase!');
-        }
-      } catch (initError) {
-        console.error('❌ RevenueCat initialization failed:', initError);
-        Alert.alert('Error', 'Failed to initialize payment system. Please try again.');
-        return;
-      }
+      // PaymentService handles initialization automatically
+      console.log('🔧 PaymentService will initialize RevenueCat on-demand...');
       
       // Check if RevenueCat packages are available
       if (!revenueCatPackages || revenueCatPackages.length === 0) {
@@ -138,10 +148,10 @@ export default function PaywallScreen() {
       const revenueCatPackage = revenueCatPackages.find(pkg => {
         if (currentPlan.name === 'Premium Monthly') {
           // Match by package identifier or product identifier
-          return pkg.identifier === '$rc_monthly' || pkg.product.identifier === '0004';
+          return pkg.identifier === '$rc_monthly' || pkg.product.identifier === 'premium_monthly';
         } else if (currentPlan.name === 'Premium Yearly') {
           // Match by package identifier or product identifier  
-          return pkg.identifier === '$rc_annual' || pkg.product.identifier === '0005';
+          return pkg.identifier === '$rc_annual' || pkg.product.identifier === 'premium_yearly';
         }
         return false;
       });
@@ -156,40 +166,40 @@ export default function PaywallScreen() {
       console.log('✅ Found matching package:', revenueCatPackage.identifier);
 
       console.log('🛒 Purchasing package:', revenueCatPackage.identifier);
+      console.log('📦 Package details:', {
+        identifier: revenueCatPackage.identifier,
+        productId: revenueCatPackage.product.identifier,
+        price: revenueCatPackage.product.priceString,
+        currencyCode: revenueCatPackage.product.currencyCode
+      });
       
-      // Make the purchase through RevenueCat
-      const purchaseResult = await RevenueCatService.purchasePackage(revenueCatPackage);
+      // Make the purchase using RevenueCat (PaymentService handles initialization)
+      const Purchases = (await import('react-native-purchases')).default;
+      const { customerInfo } = await Purchases.purchasePackage(revenueCatPackage);
+      const purchaseResult = { success: true, customerInfo };
       
-      if (purchaseResult.success) {
-        // Sync with our database - we need to get the user ID
-        const { supabase } = await import('../services/supabaseService');
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          console.log('🔄 Syncing subscription status with database...');
-          await RevenueCatService.syncSubscriptionStatus(user.id);
-          
-          // Force refresh the subscription context
-          console.log('🔄 Refreshing subscription context...');
-          await refreshSubscription();
-          
-          // Wait a moment for the webhook to process, then refresh again
-          console.log('⏳ Waiting for webhook to process...');
-          setTimeout(async () => {
-            console.log('🔄 Final refresh after webhook processing...');
-            await refreshSubscription();
-          }, 2000);
-        }
+      console.log('📊 Purchase result:', purchaseResult);
+      
+      // If we reach here, the purchase was successful
+      // Sync with our database - we need to get the user ID
+      const { supabase } = await import('../services/supabaseService');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // PaymentService handles database sync automatically via webhook
+        console.log('✅ Database sync handled by PaymentService webhook');
         
-        // Show success message and navigate back
-        // Note: iOS may show its own success message, so we keep this brief
-        Alert.alert(
-          'Welcome to Premium!',
-          'Your subscription is now active!',
-          [{ text: 'Continue', onPress: () => navigation.goBack() }]
-        );
-      } else {
-        Alert.alert('Purchase Failed', purchaseResult.error || 'Something went wrong');
+        // Force refresh the subscription context
+        console.log('🔄 Refreshing subscription context...');
+        await refreshSubscription();
       }
+      
+      // Show success message and navigate back
+      // Note: iOS may show its own success message, so we keep this brief
+      Alert.alert(
+        'Welcome to Premium!',
+        'Your subscription is now active!',
+        [{ text: 'Continue', onPress: () => navigation.goBack() }]
+      );
     } catch (error) {
       console.error('❌ Purchase error:', error);
       Alert.alert('Purchase Failed', 'Please try again later');
@@ -314,37 +324,28 @@ export default function PaywallScreen() {
           <Text style={styles.restoreButtonText}>Restore Purchases</Text>
         </TouchableOpacity>
 
-        {/* Debug Button - Show in development and TestFlight builds */}
-        {(__DEV__ || true) && (
+        {/* Debug Button - Show in development builds only */}
+        {__DEV__ && (
           <TouchableOpacity
             style={styles.debugButton}
             onPress={async () => {
               try {
                 console.log('🔍 Debug button pressed - checking RevenueCat status...');
                 
-                // Get customer info for display in alert
-                const customerInfo = await RevenueCatService.getCustomerInfo();
-                const hasPremiumAccess = await RevenueCatService.hasPremiumAccess();
-                
-                // Create debug summary for TestFlight
+                // Show subscription status from our database
                 const debugSummary = `
-RevenueCat Debug Info:
-• User ID: ${customerInfo.originalAppUserId}
-• Active Entitlements: ${Object.keys(customerInfo.entitlements.active).join(', ') || 'None'}
-• Active Subscriptions: ${Object.keys(customerInfo.activeSubscriptions).join(', ') || 'None'}
-• Has Premium Access: ${hasPremiumAccess ? 'Yes' : 'No'}
-• All Entitlements: ${Object.keys(customerInfo.entitlements.all).join(', ') || 'None'}
-
-${Object.keys(customerInfo.entitlements.all).length === 0 ? 
-  '✅ No existing subscriptions - purchases should work!' : 
-  '⚠️ Existing subscriptions found - this may block new purchases'}
+Debug Info:
+• Subscription Status: ${subscriptionStatus?.hasAccess ? 'Active' : 'Inactive'}
+• Is Premium: ${subscriptionStatus?.isPremium ? 'Yes' : 'No'}
+• Is Trial Active: ${subscriptionStatus?.isTrialActive ? 'Yes' : 'No'}
+• Payment System: Using PaymentService with on-demand initialization
                 `;
                 
-                await RevenueCatService.debugSubscriptionStatus();
-                Alert.alert('RevenueCat Debug Info', debugSummary, [{ text: 'OK' }]);
+                Alert.alert('Payment Debug Info', debugSummary, [{ text: 'OK' }]);
               } catch (error) {
                 console.error('❌ Debug failed:', error);
-                Alert.alert('Debug Error', `Failed to get debug information: ${error.message}`);
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                Alert.alert('Debug Error', `Failed to get debug information: ${errorMessage}`);
               }
             }}
             disabled={purchasing}

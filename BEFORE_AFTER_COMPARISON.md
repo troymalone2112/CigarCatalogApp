@@ -345,3 +345,6 @@ const shouldShowPaywall = !hasAccess;
 **Implementation:** Database fixes + improved React logic = smooth experience
 
 
+
+
+

@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json());
 
 // Supabase configuration with proper keys
-const supabaseUrl = 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
+const supabaseUrl = 'https://lkkbstwmzdbmlfsowwgt.supabase.com';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxra2JzdHdtemRibWxmc293d2d0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTM3MTYzMCwiZXhwIjoyMDc0OTQ3NjMwfQ.8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8';
 
 if (!supabaseServiceKey || supabaseServiceKey === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxra2JzdHdtemRibWxmc293d2d0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTM3MTYzMCwiZXhwIjoyMDc0OTQ3NjMwfQ.8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8QJ8') {

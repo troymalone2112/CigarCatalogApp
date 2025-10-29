@@ -3,7 +3,6 @@
     "name": "CigarCatalogApp",
     "slug": "CigarCatalogApp",
     "version": "1.0.1",
-    "buildNumber": "1",
     "sdkVersion": "54.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,7 +14,8 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
+      "buildNumber": "20",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to identify cigars from photos.",
         "NSPhotoLibraryUsageDescription": "This app accesses your photo library to select cigar images for identification.",
@@ -24,6 +24,7 @@
       "bundleIdentifier": "com.anonymous.CigarCatalogApp"
     },
     "android": {
+      "versionCode": 7,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

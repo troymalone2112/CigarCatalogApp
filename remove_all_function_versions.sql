@@ -163,3 +163,6 @@ BEGIN
         RAISE WARNING '⚠️ % functions still have mutable search_path', mutable_count;
     END IF;
 END $$;
+
+
+

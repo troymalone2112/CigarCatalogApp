@@ -23,6 +23,8 @@ import { getStrengthInfo } from '../utils/strengthUtils';
 import { useScreenLoading } from '../hooks/useScreenLoading';
 import { useRecognitionFlow } from '../contexts/RecognitionFlowContext';
 import HumidorCapacitySetupModal from '../components/HumidorCapacitySetupModal';
+import { clearHumidorCache } from '../services/humidorCacheService';
+import { OptimizedHumidorService } from '../services/optimizedHumidorService';
 
 type InventoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Inventory'>;
 type InventoryScreenRouteProp = RouteProp<RootStackParamList, 'Inventory'>;
@@ -261,6 +263,17 @@ export default function InventoryScreen() {
       // Update database in background
       await StorageService.updateInventoryQuantity(itemId, newQuantity);
       console.log('✅ Quantity updated successfully');
+      
+      // Clear humidor cache to ensure updated counts appear in humidor list
+      console.log('🗑️ Clearing humidor cache after quantity update...');
+      if (user) {
+        await Promise.all([
+          clearHumidorCache(user.id),
+          OptimizedHumidorService.clearCache(user.id)
+        ]);
+        console.log('✅ Cache cleared, humidor stats will reflect new quantities');
+      }
+      
     } catch (error) {
       console.error('Error updating quantity:', error);
       
@@ -298,6 +311,17 @@ export default function InventoryScreen() {
               const dbStartTime = Date.now();
               await StorageService.removeInventoryItem(itemId);
               console.log('🗑️ Database delete completed in:', Date.now() - dbStartTime, 'ms');
+              
+              // Clear humidor cache to ensure updated counts appear in humidor list
+              console.log('🗑️ Clearing humidor cache after inventory delete...');
+              if (user) {
+                await Promise.all([
+                  clearHumidorCache(user.id),
+                  OptimizedHumidorService.clearCache(user.id)
+                ]);
+                console.log('✅ Cache cleared, humidor stats will reflect item deletion');
+              }
+              
               console.log('🗑️ Total delete time:', Date.now() - startTime, 'ms');
             } catch (error: any) {
               console.error('❌ Error deleting item:', error);

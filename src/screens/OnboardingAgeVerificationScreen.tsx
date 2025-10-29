@@ -30,18 +30,42 @@ export default function OnboardingAgeVerificationScreen() {
   };
 
   const handleSkip = async () => {
-    // Allow users to skip onboarding and mark as completed
+    console.log('🔄 Skip button pressed - starting onboarding completion...');
+    
     try {
+      // Mark onboarding as completed in database
+      console.log('💾 Updating user profile with onboarding completed...');
       await StorageService.updateUserProfile({ onboardingCompleted: true });
+      console.log('✅ User profile updated successfully');
+      
       // Call the onComplete callback to trigger the parent component to show the main app
       if (onComplete) {
+        console.log('📞 Calling onComplete callback...');
         onComplete();
+      } else {
+        console.error('❌ No onComplete callback found - using fallback navigation');
+        // Fallback: Navigate directly to main app
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
+        });
       }
     } catch (error) {
-      console.error('Error marking onboarding as completed:', error);
-      // Still complete onboarding even if marking as completed fails
+      console.error('❌ Error marking onboarding as completed:', error);
+      
+      // Production fix: Still complete onboarding even if database update fails
+      console.log('🆘 Database update failed, using fallback completion...');
+      
       if (onComplete) {
+        console.log('📞 Calling onComplete callback (fallback)...');
         onComplete();
+      } else {
+        console.log('🔀 Using direct navigation fallback...');
+        // Ultimate fallback: Navigate directly to main app
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
+        });
       }
     }
   };
