@@ -205,7 +205,8 @@ exports.handler = async (event, context) => {
           expiration_at_ms: final_expiration_at_ms, // Use corrected timestamp
           store,
           is_trial_period: Boolean(is_trial_period),
-          auto_renew_status: Boolean(auto_renew_status),
+          // Important: If RevenueCat omits auto_renew_status, pass null so DB can default to true
+          auto_renew_status: (typeof auto_renew_status === 'boolean' ? auto_renew_status : null),
           original_transaction_id,
           transaction_id,
           environment
