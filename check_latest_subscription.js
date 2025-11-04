@@ -10,18 +10,18 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 async function checkLatestSubscription() {
   try {
     console.log('🔍 Checking latest subscription data...');
-    
+
     const { data: subscriptions, error } = await supabase
       .from('user_subscriptions')
       .select('*')
       .order('updated_at', { ascending: false })
       .limit(1);
-    
+
     if (error) {
       console.error('❌ Error:', error);
       return;
     }
-    
+
     if (subscriptions && subscriptions.length > 0) {
       const sub = subscriptions[0];
       console.log('📊 Latest subscription:');
@@ -33,12 +33,12 @@ async function checkLatestSubscription() {
       console.log('- Subscription Start:', sub.subscription_start_date);
       console.log('- Subscription End:', sub.subscription_end_date);
       console.log('- Updated At:', sub.updated_at);
-      
+
       // Check if the subscription should be premium
       const now = new Date();
       const endDate = new Date(sub.subscription_end_date);
       const isActive = endDate > now;
-      
+
       console.log('\n🔍 Analysis:');
       console.log('- Current time:', now.toISOString());
       console.log('- Subscription ends:', endDate.toISOString());
@@ -48,14 +48,10 @@ async function checkLatestSubscription() {
     } else {
       console.log('❌ No subscriptions found');
     }
-    
   } catch (error) {
     console.error('❌ Error:', error.message);
   }
 }
 
 checkLatestSubscription();
-
-
-
 

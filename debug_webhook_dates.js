@@ -4,21 +4,21 @@ console.log('🔍 Debugging RevenueCat webhook date processing...');
 
 // Simulate a RevenueCat webhook payload
 const mockWebhookPayload = {
-  api_version: "1.0",
+  api_version: '1.0',
   event: {
-    type: "INITIAL_PURCHASE",
-    app_user_id: "test-user-123",
-    product_id: "premium_monthly",
-    period_type: "NORMAL",
-    purchased_at_ms: "1698123456789", // Example timestamp
-    expiration_at_ms: "1700715456789", // Example timestamp (30 days later)
-    store: "APP_STORE",
+    type: 'INITIAL_PURCHASE',
+    app_user_id: 'test-user-123',
+    product_id: 'premium_monthly',
+    period_type: 'NORMAL',
+    purchased_at_ms: '1698123456789', // Example timestamp
+    expiration_at_ms: '1700715456789', // Example timestamp (30 days later)
+    store: 'APP_STORE',
     is_trial_period: false,
     auto_renew_status: true,
-    original_transaction_id: "1000000123456789",
-    transaction_id: "1000000123456789",
-    environment: "SANDBOX"
-  }
+    original_transaction_id: '1000000123456789',
+    transaction_id: '1000000123456789',
+    environment: 'SANDBOX',
+  },
 };
 
 console.log('📊 Mock webhook payload:', JSON.stringify(mockWebhookPayload, null, 2));
@@ -51,7 +51,9 @@ console.log('Days:', diffDays);
 // Check if this is the issue
 if (diffMinutes < 10) {
   console.log('🚨 ISSUE FOUND: Dates are too close together!');
-  console.log('This suggests the timestamps from RevenueCat are incorrect or being processed wrong.');
+  console.log(
+    'This suggests the timestamps from RevenueCat are incorrect or being processed wrong.',
+  );
 } else {
   console.log('✅ Dates look correct for this example');
 }

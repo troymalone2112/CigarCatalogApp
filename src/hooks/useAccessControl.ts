@@ -27,7 +27,7 @@ export const useAccessControl = () => {
       scan: 'cigar scanning',
       humidor: 'adding cigars to humidor',
       journal: 'creating journal entries',
-      recognition: 'cigar recognition'
+      recognition: 'cigar recognition',
     };
 
     const featureName = featureNames[feature as keyof typeof featureNames] || feature;
@@ -37,11 +37,11 @@ export const useAccessControl = () => {
       `Your free trial has expired. Upgrade to Premium to continue using ${featureName}.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Upgrade Now', 
-          onPress: () => navigation.navigate('Paywall' as never)
-        }
-      ]
+        {
+          text: 'Upgrade Now',
+          onPress: () => navigation.navigate('Paywall' as never),
+        },
+      ],
     );
   };
 
@@ -57,6 +57,6 @@ export const useAccessControl = () => {
     canAddToJournal,
     canUseRecognition,
     checkAccess,
-    showUpgradePrompt
+    showUpgradePrompt,
   };
 };

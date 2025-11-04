@@ -16,7 +16,6 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList, Humidor } from '../types';
 import { DatabaseService } from '../services/supabaseService';
-import { clearHumidorCache } from '../services/humidorCacheService';
 import { OptimizedHumidorService } from '../services/optimizedHumidorService';
 
 type EditHumidorScreenNavigationProp = StackNavigationProp<RootStackParamList, 'EditHumidor'>;
@@ -40,38 +39,35 @@ export default function EditHumidorScreen() {
 
     try {
       setLoading(true);
-      
+
       const capacityNumber = capacity.trim() ? parseInt(capacity.trim()) : undefined;
-      
+
       if (capacityNumber && (isNaN(capacityNumber) || capacityNumber <= 0)) {
         Alert.alert('Error', 'Capacity must be a positive number');
         return;
       }
 
       const descriptionValue = description.trim() === '' ? null : description.trim();
-      
+
       console.log('🔄 Updating humidor:', humidor.id, {
         name: name.trim(),
         description: descriptionValue,
         capacity: capacityNumber,
       });
-      
+
       const updatedHumidor = await DatabaseService.updateHumidor(humidor.id, {
         name: name.trim(),
         description: descriptionValue,
         capacity: capacityNumber,
       });
-      
+
       console.log('✅ Humidor updated successfully:', updatedHumidor);
 
       // Clear cache to ensure updated humidor data appears in the list
       console.log('🗑️ Clearing humidor cache to show updated humidor...');
       const userId = humidor.userId || humidor.user_id; // Handle different property names
       if (userId) {
-        await Promise.all([
-          clearHumidorCache(userId),
-          OptimizedHumidorService.clearCache(userId)
-        ]);
+        await OptimizedHumidorService.clearCache(userId);
         console.log('✅ Cache cleared, updated humidor will appear in list');
       }
 
@@ -79,7 +75,7 @@ export default function EditHumidorScreen() {
       navigation.goBack();
     } catch (error: any) {
       console.error('Error updating humidor:', error);
-      
+
       if (error.code === '23505') {
         Alert.alert('Error', 'A humidor with this name already exists');
       } else {
@@ -104,7 +100,7 @@ export default function EditHumidorScreen() {
           style: 'destructive',
           onPress: confirmDeleteHumidor,
         },
-      ]
+      ],
     );
   };
 
@@ -112,20 +108,17 @@ export default function EditHumidorScreen() {
     try {
       setLoading(true);
       await DatabaseService.deleteHumidor(humidor.id);
-      
+
       console.log('✅ Humidor deleted successfully:', humidor.id);
 
       // Clear cache to ensure deleted humidor is removed from the list
       console.log('🗑️ Clearing humidor cache after deletion...');
       const userId = humidor.userId || humidor.user_id; // Handle different property names
       if (userId) {
-        await Promise.all([
-          clearHumidorCache(userId),
-          OptimizedHumidorService.clearCache(userId)
-        ]);
+        await OptimizedHumidorService.clearCache(userId);
         console.log('✅ Cache cleared, deleted humidor will be removed from list');
       }
-      
+
       // Navigate back directly without popup
       navigation.goBack();
     } catch (error) {
@@ -218,9 +211,7 @@ export default function EditHumidorScreen() {
                 onPress={handleUpdateHumidor}
                 disabled={loading}
               >
-                <Text style={styles.updateButtonText}>
-                  {loading ? 'Updating...' : 'Update'}
-                </Text>
+                <Text style={styles.updateButtonText}>{loading ? 'Updating...' : 'Update'}</Text>
               </TouchableOpacity>
             </View>
           </View>

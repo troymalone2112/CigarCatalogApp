@@ -68,36 +68,42 @@ async function testHealthCheck() {
 // Test 2: Problematic Annual Subscription (36 minutes apart - like the screenshot)
 async function testProblematicAnnualSubscription() {
   console.log('2️⃣ Testing Problematic Annual Subscription (36 minutes apart)...');
-  
+
   // Simulate the exact scenario from the screenshot
   const problematicWebhookPayload = {
-    api_version: "1.0",
+    api_version: '1.0',
     event: {
-      type: "INITIAL_PURCHASE",
-      app_user_id: "b132205b-2bc7-4ea9-8788-5ce047a57639", // The actual user ID from the screenshot
-      product_id: "premium_yearly", // Annual plan
-      period_type: "NORMAL",
-      purchased_at_ms: "1729982015000", // Oct 26, 2025 00:13:35 UTC
-      expiration_at_ms: "1729982255000", // Oct 26, 2025 00:49:35 UTC (36 minutes later!)
-      store: "APP_STORE",
+      type: 'INITIAL_PURCHASE',
+      app_user_id: 'b132205b-2bc7-4ea9-8788-5ce047a57639', // The actual user ID from the screenshot
+      product_id: 'premium_yearly', // Annual plan
+      period_type: 'NORMAL',
+      purchased_at_ms: '1729982015000', // Oct 26, 2025 00:13:35 UTC
+      expiration_at_ms: '1729982255000', // Oct 26, 2025 00:49:35 UTC (36 minutes later!)
+      store: 'APP_STORE',
       is_trial_period: false,
       auto_renew_status: true,
-      original_transaction_id: "1000000123456789",
-      transaction_id: "1000000123456789",
-      environment: "PRODUCTION"
-    }
+      original_transaction_id: '1000000123456789',
+      transaction_id: '1000000123456789',
+      environment: 'PRODUCTION',
+    },
   };
 
   try {
     console.log('📤 Sending webhook with problematic dates...');
-    console.log('📅 Purchase date:', new Date(parseInt(problematicWebhookPayload.event.purchased_at_ms)).toISOString());
-    console.log('📅 Expiration date:', new Date(parseInt(problematicWebhookPayload.event.expiration_at_ms)).toISOString());
-    
+    console.log(
+      '📅 Purchase date:',
+      new Date(parseInt(problematicWebhookPayload.event.purchased_at_ms)).toISOString(),
+    );
+    console.log(
+      '📅 Expiration date:',
+      new Date(parseInt(problematicWebhookPayload.event.expiration_at_ms)).toISOString(),
+    );
+
     const response = await makeRequest('', 'POST', problematicWebhookPayload);
-    
+
     if (response.statusCode === 200) {
       console.log('✅ Webhook processed successfully');
-      
+
       if (response.body.corrected_dates) {
         console.log('🔧 Dates were corrected by the webhook');
       } else {
@@ -106,10 +112,9 @@ async function testProblematicAnnualSubscription() {
     } else {
       console.log('❌ Webhook failed');
     }
-    
+
     console.log('📊 Status:', response.statusCode);
     console.log('📊 Response:', JSON.stringify(response.body, null, 2));
-    
   } catch (error) {
     console.log('❌ Test error:', error.message);
   }
@@ -119,35 +124,41 @@ async function testProblematicAnnualSubscription() {
 // Test 3: Normal Annual Subscription (for comparison)
 async function testNormalAnnualSubscription() {
   console.log('3️⃣ Testing Normal Annual Subscription (365 days)...');
-  
+
   const normalWebhookPayload = {
-    api_version: "1.0",
+    api_version: '1.0',
     event: {
-      type: "INITIAL_PURCHASE",
-      app_user_id: "b132205b-2bc7-4ea9-8788-5ce047a57639", // Same user
-      product_id: "premium_yearly", // Annual plan
-      period_type: "NORMAL",
-      purchased_at_ms: "1729982015000", // Oct 26, 2025 00:13:35 UTC
-      expiration_at_ms: "1861518015000", // Oct 26, 2026 00:13:35 UTC (1 year later)
-      store: "APP_STORE",
+      type: 'INITIAL_PURCHASE',
+      app_user_id: 'b132205b-2bc7-4ea9-8788-5ce047a57639', // Same user
+      product_id: 'premium_yearly', // Annual plan
+      period_type: 'NORMAL',
+      purchased_at_ms: '1729982015000', // Oct 26, 2025 00:13:35 UTC
+      expiration_at_ms: '1861518015000', // Oct 26, 2026 00:13:35 UTC (1 year later)
+      store: 'APP_STORE',
       is_trial_period: false,
       auto_renew_status: true,
-      original_transaction_id: "1000000123456790",
-      transaction_id: "1000000123456790",
-      environment: "PRODUCTION"
-    }
+      original_transaction_id: '1000000123456790',
+      transaction_id: '1000000123456790',
+      environment: 'PRODUCTION',
+    },
   };
 
   try {
     console.log('📤 Sending webhook with normal dates...');
-    console.log('📅 Purchase date:', new Date(parseInt(normalWebhookPayload.event.purchased_at_ms)).toISOString());
-    console.log('📅 Expiration date:', new Date(parseInt(normalWebhookPayload.event.expiration_at_ms)).toISOString());
-    
+    console.log(
+      '📅 Purchase date:',
+      new Date(parseInt(normalWebhookPayload.event.purchased_at_ms)).toISOString(),
+    );
+    console.log(
+      '📅 Expiration date:',
+      new Date(parseInt(normalWebhookPayload.event.expiration_at_ms)).toISOString(),
+    );
+
     const response = await makeRequest('', 'POST', normalWebhookPayload);
-    
+
     if (response.statusCode === 200) {
       console.log('✅ Webhook processed successfully');
-      
+
       if (response.body.corrected_dates) {
         console.log('⚠️ Normal dates were corrected (unexpected)');
       } else {
@@ -156,10 +167,9 @@ async function testNormalAnnualSubscription() {
     } else {
       console.log('❌ Webhook failed');
     }
-    
+
     console.log('📊 Status:', response.statusCode);
     console.log('📊 Response:', JSON.stringify(response.body, null, 2));
-    
   } catch (error) {
     console.log('❌ Test error:', error.message);
   }

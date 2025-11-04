@@ -1,13 +1,13 @@
 import React, { useState, useLayoutEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
   Alert,
-  Image
+  Image,
 } from 'react-native';
 import { RouteProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -15,7 +15,6 @@ import { RootStackParamList, InventoryItem, HumidorStackParamList } from '../typ
 import { Ionicons } from '@expo/vector-icons';
 import { StorageService } from '../storage/storageService';
 import { DatabaseService, supabase } from '../services/supabaseService';
-import { clearHumidorCache } from '../services/humidorCacheService';
 import { OptimizedHumidorService } from '../services/optimizedHumidorService';
 import { useAuth } from '../contexts/AuthContext';
 // Removed ReliableDataService - using direct database calls
@@ -32,12 +31,12 @@ export default function AddToInventoryScreen({ route }: Props) {
   const navigation = useNavigation<AddToInventoryScreenNavigationProp>();
   const { user } = useAuth();
   const { cigar, singleStickPrice, existingItem, mode, humidorId } = route.params;
-  
-  console.log('🔍 AddToInventoryScreen params:', { 
-    mode, 
-    humidorId, 
+
+  console.log('🔍 AddToInventoryScreen params:', {
+    mode,
+    humidorId,
     existingItem: !!existingItem,
-    existingItemHumidorId: existingItem?.humidorId 
+    existingItemHumidorId: existingItem?.humidorId,
   });
 
   useLayoutEffect(() => {
@@ -54,20 +53,28 @@ export default function AddToInventoryScreen({ route }: Props) {
       },
     });
   }, [navigation]);
-  
-  const [inventoryQuantity, setInventoryQuantity] = useState(mode === 'addMore' ? 1 : (existingItem?.quantity || 1));
+
+  const [inventoryQuantity, setInventoryQuantity] = useState(
+    mode === 'addMore' ? 1 : existingItem?.quantity || 1,
+  );
   const [boxQuantity, setBoxQuantity] = useState(1);
   const [priceType, setPriceType] = useState<'stick' | 'box'>(
-    mode === 'addMore' ? 'stick' : (existingItem?.originalBoxPrice && existingItem?.sticksPerBox ? 'box' : 'stick')
+    mode === 'addMore'
+      ? 'stick'
+      : existingItem?.originalBoxPrice && existingItem?.sticksPerBox
+        ? 'box'
+        : 'stick',
   );
-  
+
   // Cigar specification state
   const [dateAcquired, setDateAcquired] = useState<Date>(existingItem?.dateAcquired || new Date());
-  const [agingPreferenceMonths, setAgingPreferenceMonths] = useState<number>(existingItem?.agingPreferenceMonths || 0);
+  const [agingPreferenceMonths, setAgingPreferenceMonths] = useState<number>(
+    existingItem?.agingPreferenceMonths || 0,
+  );
   const [lengthInches, setLengthInches] = useState<number | undefined>(existingItem?.lengthInches);
   const [ringGauge, setRingGauge] = useState<number | undefined>(existingItem?.ringGauge);
   const [vitola, setVitola] = useState<string | undefined>(existingItem?.vitola);
-  
+
   console.log('🔍 AddToInventoryScreen render - mode:', mode, 'existingItem:', !!existingItem);
   const [pricePaid, setPricePaid] = useState(() => {
     if (mode === 'addMore') {
@@ -89,18 +96,30 @@ export default function AddToInventoryScreen({ route }: Props) {
   const handleSave = async () => {
     console.log('🔍 handleSave called - mode:', mode, 'existingItem:', !!existingItem);
     try {
-
       // Check for duplicates if this is a new item (not editing existing or adding more)
       if (!mode && !existingItem) {
         console.log('🔍 Checking for duplicates...');
-        const existingItems = await StorageService.getInventoryItems();
-        const duplicateItem = existingItems.find(item => 
-          item.humidorId === humidorId && 
-          item.cigar.brand === cigar.brand && 
-          item.cigar.line === cigar.line &&
-          item.cigar.name === cigar.name
+        let existingItems = [] as any[];
+        try {
+          existingItems = await StorageService.getInventoryItems();
+        } catch (dupErr: any) {
+          const msg = String(dupErr?.message || '').toLowerCase();
+          if (dupErr?.name === 'AbortError' || msg.includes('abort')) {
+            console.warn('⚠️ Duplicate-check aborted; proceeding with save to avoid blocking');
+            existingItems = [];
+          } else {
+            // Non-abort errors should surface
+            throw dupErr;
+          }
+        }
+        const duplicateItem = existingItems.find(
+          (item) =>
+            item.humidorId === humidorId &&
+            item.cigar.brand === cigar.brand &&
+            item.cigar.line === cigar.line &&
+            item.cigar.name === cigar.name,
         );
-        
+
         if (duplicateItem) {
           console.log('🔍 Duplicate found:', duplicateItem);
           // Show choice dialog
@@ -114,7 +133,7 @@ export default function AddToInventoryScreen({ route }: Props) {
                   console.log('🔍 User chose to create new entry');
                   // Continue with normal save flow
                   saveInventoryItem();
-                }
+                },
               },
               {
                 text: 'Add to Existing',
@@ -126,15 +145,15 @@ export default function AddToInventoryScreen({ route }: Props) {
                     singleStickPrice: pricePaid,
                     existingItem: duplicateItem,
                     mode: 'addMore',
-                    humidorId: humidorId
+                    humidorId: humidorId,
                   });
-                }
+                },
               },
               {
                 text: 'Cancel',
-                style: 'cancel'
-              }
-            ]
+                style: 'cancel',
+              },
+            ],
           );
           return; // Exit early, don't save yet
         }
@@ -144,7 +163,10 @@ export default function AddToInventoryScreen({ route }: Props) {
       await saveInventoryItem();
     } catch (error) {
       console.error('🔍 Error in handleSave:', error);
-      Alert.alert('Error', error instanceof Error ? error.message : 'An error occurred while saving');
+      Alert.alert(
+        'Error',
+        error instanceof Error ? error.message : 'An error occurred while saving',
+      );
     }
   };
 
@@ -154,14 +176,14 @@ export default function AddToInventoryScreen({ route }: Props) {
       let totalQuantity: number;
       let perStickPrice: number | undefined;
       const unit = priceType === 'stick' ? 'sticks' : 'boxes';
-      
+
       if (pricePaid && pricePaid.trim() !== '') {
         const priceValue = parseFloat(pricePaid.replace('$', ''));
-        
+
         if (isNaN(priceValue) || priceValue <= 0) {
           throw new Error('Please enter a valid price');
         }
-        
+
         if (priceType === 'stick') {
           // Single stick pricing: store per-stick price directly
           if (inventoryQuantity <= 0) {
@@ -173,15 +195,15 @@ export default function AddToInventoryScreen({ route }: Props) {
           // Box pricing: calculate per-stick price and total quantity
           const sticksPerBox = parseInt(sticksInBox) || 20;
           const numberOfBoxes = boxQuantity;
-          
+
           if (isNaN(sticksPerBox) || sticksPerBox <= 0) {
             throw new Error('Please enter a valid number of sticks per box');
           }
-          
+
           if (numberOfBoxes <= 0) {
             throw new Error('Please enter a valid number of boxes');
           }
-          
+
           totalQuantity = numberOfBoxes * sticksPerBox;
           perStickPrice = Math.round((priceValue / sticksPerBox) * 100) / 100;
         }
@@ -197,20 +219,20 @@ export default function AddToInventoryScreen({ route }: Props) {
           // Box pricing without price
           const sticksPerBox = parseInt(sticksInBox) || 20;
           const numberOfBoxes = boxQuantity;
-          
+
           if (isNaN(sticksPerBox) || sticksPerBox <= 0) {
             throw new Error('Please enter a valid number of sticks per box');
           }
-          
+
           if (numberOfBoxes <= 0) {
             throw new Error('Please enter a valid number of boxes');
           }
-          
+
           totalQuantity = numberOfBoxes * sticksPerBox;
           perStickPrice = 0; // No price provided
         }
       }
-      
+
       console.log('💰 Per-stick price calculated:', perStickPrice);
       console.log('💰 Total quantity:', totalQuantity);
       console.log('💰 Price type:', priceType);
@@ -218,14 +240,15 @@ export default function AddToInventoryScreen({ route }: Props) {
 
       // Create or update inventory item
       let inventoryItem: InventoryItem;
-      
+
       if (mode === 'addMore' && existingItem) {
         // Add More mode: merge with existing item
         const existingTotalValue = (existingItem.pricePaid || 0) * existingItem.quantity;
         const newTotalValue = (perStickPrice || 0) * totalQuantity;
         const combinedQuantity = existingItem.quantity + totalQuantity;
-        const averagePricePerStick = Math.round(((existingTotalValue + newTotalValue) / combinedQuantity) * 100) / 100;
-        
+        const averagePricePerStick =
+          Math.round(((existingTotalValue + newTotalValue) / combinedQuantity) * 100) / 100;
+
         inventoryItem = {
           ...existingItem,
           quantity: combinedQuantity,
@@ -249,7 +272,8 @@ export default function AddToInventoryScreen({ route }: Props) {
           quantity: totalQuantity,
           purchaseDate: existingItem?.purchaseDate || new Date(),
           pricePaid: perStickPrice,
-          originalBoxPrice: priceType === 'box' ? parseFloat(pricePaid.replace('$', '')) : undefined,
+          originalBoxPrice:
+            priceType === 'box' ? parseFloat(pricePaid.replace('$', '')) : undefined,
           sticksPerBox: priceType === 'box' ? parseInt(sticksInBox) : undefined,
           location: location.trim() || undefined,
           notes: notes.trim() || undefined,
@@ -267,17 +291,14 @@ export default function AddToInventoryScreen({ route }: Props) {
       console.log('🔍 About to save inventory item:', inventoryItem.id, inventoryItem.cigar.brand);
       await StorageService.saveInventoryItem(inventoryItem);
       console.log('✅ Saved inventory item:', inventoryItem);
-      
+
       // Clear humidor cache to ensure updated counts appear immediately
       console.log('🗑️ Clearing humidor cache after inventory save...');
       if (user) {
-        await Promise.all([
-          clearHumidorCache(user.id),
-          OptimizedHumidorService.clearCache(user.id)
-        ]);
+        await OptimizedHumidorService.clearCache(user.id);
         console.log('✅ Cache cleared, humidor stats will reflect new inventory');
       }
-      
+
       // Add to recent cigars only if it's a new item
       if (!existingItem) {
         await StorageService.addRecentCigar(cigar);
@@ -286,27 +307,36 @@ export default function AddToInventoryScreen({ route }: Props) {
 
       let action: string;
       let displayQuantity: string;
-      
+
       if (mode === 'addMore') {
         action = 'Added more';
-        displayQuantity = priceType === 'stick' ? `${totalQuantity} cigars` : `${boxQuantity} boxes (${totalQuantity} cigars)`;
+        displayQuantity =
+          priceType === 'stick'
+            ? `${totalQuantity} cigars`
+            : `${boxQuantity} boxes (${totalQuantity} cigars)`;
       } else if (existingItem) {
         action = 'Updated';
-        displayQuantity = priceType === 'stick' ? `${totalQuantity} cigars` : `${boxQuantity} boxes (${totalQuantity} cigars)`;
+        displayQuantity =
+          priceType === 'stick'
+            ? `${totalQuantity} cigars`
+            : `${boxQuantity} boxes (${totalQuantity} cigars)`;
       } else {
         action = 'Added';
-        displayQuantity = priceType === 'stick' ? `${totalQuantity} cigars` : `${boxQuantity} boxes (${totalQuantity} cigars)`;
+        displayQuantity =
+          priceType === 'stick'
+            ? `${totalQuantity} cigars`
+            : `${boxQuantity} boxes (${totalQuantity} cigars)`;
       }
-      
+
       // Navigate to the specific humidor's inventory view to show the saved cigar
       console.log('🔍 About to navigate - humidorId:', humidorId);
       console.log('🔍 About to navigate - existingItem?.humidorId:', existingItem?.humidorId);
       console.log('🔍 About to navigate - inventoryItem.humidorId:', inventoryItem.humidorId);
-      
+
       // Use the humidorId from the route params, existingItem, or inventoryItem
       const targetHumidorId = humidorId || existingItem?.humidorId || inventoryItem.humidorId;
       console.log('🔍 Target humidorId for navigation:', targetHumidorId);
-      
+
       if (targetHumidorId) {
         try {
           // Get humidor name using optimized service
@@ -317,64 +347,80 @@ export default function AddToInventoryScreen({ route }: Props) {
             .eq('id', targetHumidorId)
             .eq('user_id', user?.id || '')
             .single();
-          
+
           const humidorName = humidor?.name || 'Unknown Humidor';
-          
-          console.log('🔍 Navigating to Inventory with targetHumidorId:', targetHumidorId, 'humidorName:', humidorName);
+
+          console.log(
+            '🔍 Navigating to Inventory with targetHumidorId:',
+            targetHumidorId,
+            'humidorName:',
+            humidorName,
+          );
           console.log('📋 Saved cigar ID:', inventoryItem.id);
-          
+
           // Navigate directly to the main humidor screen with cleared recognition flow
           // Pass cigar info and humidor name for success message but clear recognition flow
-          (navigation as any).getParent()?.getParent()?.navigate('HumidorList', {
-            screen: 'HumidorListMain',
-            params: {
-              fromRecognition: false,
-              cigar: cigar, // Keep cigar info for success message
-              humidorName: humidorName, // Pass humidor name for success message
-              singleStickPrice: undefined
-            }
-          });
-          
+          (navigation as any)
+            .getParent()
+            ?.getParent()
+            ?.navigate('HumidorList', {
+              screen: 'HumidorListMain',
+              params: {
+                fromRecognition: false,
+                cigar: cigar, // Keep cigar info for success message
+                humidorName: humidorName, // Pass humidor name for success message
+                singleStickPrice: undefined,
+              },
+            });
+
           console.log('✅ Navigated to main humidor screen with cleared parameters');
         } catch (error) {
           console.error('🔍 Error fetching humidor name:', error);
           // Fallback to generic name
           console.log('🔍 Fallback navigation to Inventory');
-          
+
           // Navigate directly to the main humidor screen with cleared recognition flow
           // Pass cigar info and humidor name for success message but clear recognition flow
-          (navigation as any).getParent()?.getParent()?.navigate('HumidorList', {
-            screen: 'HumidorListMain',
-            params: {
-              fromRecognition: false,
-              cigar: cigar, // Keep cigar info for success message
-              humidorName: 'Humidor', // Fallback humidor name
-              singleStickPrice: undefined
-            }
-          });
-          
+          (navigation as any)
+            .getParent()
+            ?.getParent()
+            ?.navigate('HumidorList', {
+              screen: 'HumidorListMain',
+              params: {
+                fromRecognition: false,
+                cigar: cigar, // Keep cigar info for success message
+                humidorName: 'Humidor', // Fallback humidor name
+                singleStickPrice: undefined,
+              },
+            });
+
           console.log('✅ Navigated to main humidor screen with cleared parameters');
         }
       } else {
         // Fallback if no humidorId - go to humidor list with cleared parameters
         console.log('🔍 No humidorId, navigating to HumidorList');
         // Go to the main tab navigator and reset the HumidorList tab with cleared parameters
-        (navigation as any).getParent()?.getParent()?.navigate('HumidorList', {
-          screen: 'HumidorListMain',
-          params: {
-            fromRecognition: false,
-            cigar: undefined,
-            singleStickPrice: undefined
-          }
-        });
+        (navigation as any)
+          .getParent()
+          ?.getParent()
+          ?.navigate('HumidorList', {
+            screen: 'HumidorListMain',
+            params: {
+              fromRecognition: false,
+              cigar: undefined,
+              singleStickPrice: undefined,
+            },
+          });
       }
     } catch (error) {
       console.error('🔍 Error saving to inventory:', error);
       console.error('🔍 Error details:', JSON.stringify(error));
-      Alert.alert('Error', `Failed to save cigar to inventory: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
+      Alert.alert(
+        'Error',
+        `Failed to save cigar to inventory: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`,
+      );
     }
   };
-
 
   return (
     <ScrollView style={styles.container}>
@@ -383,9 +429,14 @@ export default function AddToInventoryScreen({ route }: Props) {
           {cigar.imageUrl && cigar.imageUrl !== 'placeholder' ? (
             <Image source={{ uri: cigar.imageUrl }} style={styles.cigarImage} />
           ) : (
-            <Image source={require('../../assets/cigar-placeholder.jpg')} style={styles.cigarImage} />
+            <Image
+              source={require('../../assets/cigar-placeholder.jpg')}
+              style={styles.cigarImage}
+            />
           )}
-          <Text style={styles.subtitle}>{cigar.brand} {cigar.line}</Text>
+          <Text style={styles.subtitle}>
+            {cigar.brand} {cigar.line}
+          </Text>
         </View>
       </View>
 
@@ -393,8 +444,11 @@ export default function AddToInventoryScreen({ route }: Props) {
         {/* Price Type Selection */}
         <View style={styles.section}>
           <View style={styles.priceTypeSelector}>
-            <TouchableOpacity 
-              style={[styles.priceTypeButton, priceType === 'stick' && styles.priceTypeButtonActive]}
+            <TouchableOpacity
+              style={[
+                styles.priceTypeButton,
+                priceType === 'stick' && styles.priceTypeButtonActive,
+              ]}
               onPress={() => {
                 setPriceType('stick');
                 // If we have existing item with calculated pricePaid, show that instead of original box price
@@ -403,11 +457,13 @@ export default function AddToInventoryScreen({ route }: Props) {
                 }
               }}
             >
-              <Text style={[styles.priceTypeText, priceType === 'stick' && styles.priceTypeTextActive]}>
+              <Text
+                style={[styles.priceTypeText, priceType === 'stick' && styles.priceTypeTextActive]}
+              >
                 Per Stick
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.priceTypeButton, priceType === 'box' && styles.priceTypeButtonActive]}
               onPress={() => {
                 setPriceType('box');
@@ -417,7 +473,9 @@ export default function AddToInventoryScreen({ route }: Props) {
                 }
               }}
             >
-              <Text style={[styles.priceTypeText, priceType === 'box' && styles.priceTypeTextActive]}>
+              <Text
+                style={[styles.priceTypeText, priceType === 'box' && styles.priceTypeTextActive]}
+              >
                 Box Price
               </Text>
             </TouchableOpacity>
@@ -430,8 +488,8 @@ export default function AddToInventoryScreen({ route }: Props) {
             {priceType === 'stick' ? 'Number of Sticks' : 'Number of Boxes'}
           </Text>
           <View style={styles.quantityControls}>
-            <TouchableOpacity 
-              style={styles.quantityButton} 
+            <TouchableOpacity
+              style={styles.quantityButton}
               onPress={() => {
                 if (priceType === 'stick') {
                   setInventoryQuantity(Math.max(1, inventoryQuantity - 1));
@@ -445,8 +503,8 @@ export default function AddToInventoryScreen({ route }: Props) {
             <Text style={styles.quantityText}>
               {priceType === 'stick' ? inventoryQuantity : boxQuantity}
             </Text>
-            <TouchableOpacity 
-              style={styles.quantityButton} 
+            <TouchableOpacity
+              style={styles.quantityButton}
               onPress={() => {
                 if (priceType === 'stick') {
                   setInventoryQuantity(inventoryQuantity + 1);
@@ -467,13 +525,17 @@ export default function AddToInventoryScreen({ route }: Props) {
           </Text>
           <TextInput
             style={styles.input}
-            placeholder={priceType === 'stick' ? 'Enter price you paid per stick (e.g., 12.50)' : 'Enter total box price you paid (e.g., 250.00)'}
+            placeholder={
+              priceType === 'stick'
+                ? 'Enter price you paid per stick (e.g., 12.50)'
+                : 'Enter total box price you paid (e.g., 250.00)'
+            }
             placeholderTextColor="#999"
             value={pricePaid}
             onChangeText={setPricePaid}
             keyboardType="numeric"
           />
-          
+
           {priceType === 'box' && (
             <View style={styles.boxDetailsSection}>
               <Text style={styles.sectionTitle}>Sticks in Box</Text>
@@ -485,16 +547,19 @@ export default function AddToInventoryScreen({ route }: Props) {
                 onChangeText={setSticksInBox}
                 keyboardType="numeric"
               />
-              
+
               {/* Price Per Stick Display */}
-              {pricePaid && sticksInBox && !isNaN(parseFloat(pricePaid)) && !isNaN(parseInt(sticksInBox)) && (
-                <View style={styles.calculatedPriceContainer}>
-                  <Text style={styles.calculatedPriceLabel}>Price Per Stick:</Text>
-                  <Text style={styles.calculatedPriceValue}>
-                    ${(parseFloat(pricePaid) / parseInt(sticksInBox)).toFixed(2)}
-                  </Text>
-                </View>
-              )}
+              {pricePaid &&
+                sticksInBox &&
+                !isNaN(parseFloat(pricePaid)) &&
+                !isNaN(parseInt(sticksInBox)) && (
+                  <View style={styles.calculatedPriceContainer}>
+                    <Text style={styles.calculatedPriceLabel}>Price Per Stick:</Text>
+                    <Text style={styles.calculatedPriceValue}>
+                      ${(parseFloat(pricePaid) / parseInt(sticksInBox)).toFixed(2)}
+                    </Text>
+                  </View>
+                )}
             </View>
           )}
         </View>
@@ -541,8 +606,8 @@ export default function AddToInventoryScreen({ route }: Props) {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            style={styles.cancelButton} 
+          <TouchableOpacity
+            style={styles.cancelButton}
             onPress={() => {
               console.log('🔍 Cancel button pressed');
               // Navigate to HumidorListMain to clear any recognition params
@@ -551,8 +616,8 @@ export default function AddToInventoryScreen({ route }: Props) {
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.saveButton} 
+          <TouchableOpacity
+            style={styles.saveButton}
             onPress={() => {
               console.log('🔍 Update button pressed!');
               console.log('🔍 Button press - mode:', mode, 'existingItem:', !!existingItem);

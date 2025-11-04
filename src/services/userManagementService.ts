@@ -1,22 +1,23 @@
 import { supabase } from './supabaseService';
-import { 
-  UserRole, 
-  UserRoleData, 
-  AdminAnalytics, 
-  UserActivityLog, 
-  UserManagementData 
+import {
+  UserRole,
+  UserRoleData,
+  AdminAnalytics,
+  UserActivityLog,
+  UserManagementData,
 } from '../types';
 
 export class UserManagementService {
-  
   // ========== ROLE MANAGEMENT ==========
-  
+
   /**
    * Get the current user's role
    */
   static async getCurrentUserRole(): Promise<UserRole | null> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return null;
 
       // Check if user_roles table exists by trying to query it directly
@@ -32,7 +33,7 @@ export class UserManagementService {
         return 'standard_user';
       }
 
-      return data?.role_type as UserRole || 'standard_user';
+      return (data?.role_type as UserRole) || 'standard_user';
     } catch (error) {
       console.error('Error getting user role:', error);
       return 'standard_user';
@@ -44,7 +45,9 @@ export class UserManagementService {
    */
   static async isSuperUser(): Promise<boolean> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return false;
 
       // Check if user_roles table exists by trying to query it directly
@@ -71,16 +74,12 @@ export class UserManagementService {
   /**
    * Assign a role to a user (super users only)
    */
-  static async assignUserRole(
-    targetUserId: string, 
-    role: UserRole
-  ): Promise<boolean> {
+  static async assignUserRole(targetUserId: string, role: UserRole): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .rpc('assign_user_role', {
-          target_user_id: targetUserId,
-          role: role
-        });
+      const { error } = await supabase.rpc('assign_user_role', {
+        target_user_id: targetUserId,
+        role: role,
+      });
 
       if (error) {
         console.error('Error assigning user role:', error);
@@ -110,11 +109,11 @@ export class UserManagementService {
         return [];
       }
 
-      return data.map(role => ({
+      return data.map((role) => ({
         ...role,
         grantedAt: new Date(role.granted_at),
         createdAt: new Date(role.created_at),
-        updatedAt: new Date(role.updated_at)
+        updatedAt: new Date(role.updated_at),
       }));
     } catch (error) {
       console.error('Error fetching user roles:', error);
@@ -139,11 +138,11 @@ export class UserManagementService {
         return [];
       }
 
-      return data.map(user => ({
+      return data.map((user) => ({
         ...user,
         userCreatedAt: new Date(user.user_created_at),
         lastSignInAt: user.last_sign_in_at ? new Date(user.last_sign_in_at) : undefined,
-        grantedAt: user.granted_at ? new Date(user.granted_at) : undefined
+        grantedAt: user.granted_at ? new Date(user.granted_at) : undefined,
       }));
     } catch (error) {
       console.error('Error fetching user management data:', error);
@@ -160,7 +159,7 @@ export class UserManagementService {
         .from('user_roles')
         .update({
           role_type: newRole,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('user_id', userId);
 
@@ -185,7 +184,7 @@ export class UserManagementService {
         .from('user_roles')
         .update({
           is_active: false,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
         .eq('user_id', userId);
 
@@ -207,17 +206,15 @@ export class UserManagementService {
    * Record analytics data (super users only)
    */
   static async recordAnalytics(
-    metricName: string, 
-    metricValue: Record<string, any>
+    metricName: string,
+    metricValue: Record<string, any>,
   ): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('admin_analytics')
-        .insert({
-          metric_name: metricName,
-          metric_value: metricValue,
-          date_recorded: new Date().toISOString()
-        });
+      const { error } = await supabase.from('admin_analytics').insert({
+        metric_name: metricName,
+        metric_value: metricValue,
+        date_recorded: new Date().toISOString(),
+      });
 
       if (error) {
         console.error('Error recording analytics:', error);
@@ -237,7 +234,7 @@ export class UserManagementService {
   static async getAnalytics(
     metricName?: string,
     startDate?: Date,
-    endDate?: Date
+    endDate?: Date,
   ): Promise<AdminAnalytics[]> {
     try {
       let query = supabase
@@ -264,10 +261,10 @@ export class UserManagementService {
         return [];
       }
 
-      return data.map(analytics => ({
+      return data.map((analytics) => ({
         ...analytics,
         dateRecorded: new Date(analytics.date_recorded),
-        createdAt: new Date(analytics.created_at)
+        createdAt: new Date(analytics.created_at),
       }));
     } catch (error) {
       console.error('Error fetching analytics:', error);
@@ -286,8 +283,7 @@ export class UserManagementService {
     newUsersThisMonth: number;
   }> {
     try {
-      const { data, error } = await supabase
-        .rpc('get_user_statistics');
+      const { data, error } = await supabase.rpc('get_user_statistics');
 
       if (error) {
         console.error('Error fetching user statistics:', error);
@@ -296,7 +292,7 @@ export class UserManagementService {
           superUsers: 0,
           standardUsers: 0,
           activeUsers: 0,
-          newUsersThisMonth: 0
+          newUsersThisMonth: 0,
         };
       }
 
@@ -308,7 +304,7 @@ export class UserManagementService {
         superUsers: 0,
         standardUsers: 0,
         activeUsers: 0,
-        newUsersThisMonth: 0
+        newUsersThisMonth: 0,
       };
     }
   }
@@ -322,23 +318,23 @@ export class UserManagementService {
     action: string,
     resourceType?: string,
     resourceId?: string,
-    metadata?: Record<string, any>
+    metadata?: Record<string, any>,
   ): Promise<boolean> {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return false;
 
-      const { error } = await supabase
-        .from('user_activity_log')
-        .insert({
-          user_id: user.id,
-          action,
-          resource_type: resourceType,
-          resource_id: resourceId,
-          metadata,
-          ip_address: null, // Could be populated from request headers
-          user_agent: null  // Could be populated from request headers
-        });
+      const { error } = await supabase.from('user_activity_log').insert({
+        user_id: user.id,
+        action,
+        resource_type: resourceType,
+        resource_id: resourceId,
+        metadata,
+        ip_address: null, // Could be populated from request headers
+        user_agent: null, // Could be populated from request headers
+      });
 
       if (error) {
         console.log('Activity logging not available yet (user_activity_log table not set up)');
@@ -359,7 +355,7 @@ export class UserManagementService {
     userId?: string,
     startDate?: Date,
     endDate?: Date,
-    limit: number = 100
+    limit: number = 100,
   ): Promise<UserActivityLog[]> {
     try {
       let query = supabase
@@ -387,9 +383,9 @@ export class UserManagementService {
         return [];
       }
 
-      return data.map(log => ({
+      return data.map((log) => ({
         ...log,
-        createdAt: new Date(log.created_at)
+        createdAt: new Date(log.created_at),
       }));
     } catch (error) {
       console.error('Error fetching user activity logs:', error);
@@ -416,11 +412,11 @@ export class UserManagementService {
   }> {
     const role = await this.getCurrentUserRole();
     const isSuperUser = await this.isSuperUser();
-    
+
     return {
       role,
       isSuperUser,
-      canAccessAdmin: isSuperUser
+      canAccessAdmin: isSuperUser,
     };
   }
 

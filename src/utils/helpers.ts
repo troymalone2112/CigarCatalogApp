@@ -26,13 +26,18 @@ export const formatRating = (rating: number): number => {
 };
 
 // Import the new strength system
-import { normalizeStrength as newNormalizeStrength, getStrengthColor as newGetStrengthColor } from './strengthUtils';
+import {
+  normalizeStrength as newNormalizeStrength,
+  getStrengthColor as newGetStrengthColor,
+} from './strengthUtils';
 
 /**
  * Normalize strength to standard values: Mild, Mild-Medium, Medium, Medium-Full, Full
  * @deprecated Use normalizeStrength from strengthUtils instead
  */
-export const normalizeStrength = (strength: string): 'Mild' | 'Mild-Medium' | 'Medium' | 'Medium-Full' | 'Full' => {
+export const normalizeStrength = (
+  strength: string,
+): 'Mild' | 'Mild-Medium' | 'Medium' | 'Medium-Full' | 'Full' => {
   return newNormalizeStrength(strength);
 };
 
@@ -87,7 +92,7 @@ export const getFlavorColor = (flavor: string): string => {
     coffee: '#5D4037',
     leather: '#6D4C41',
   };
-  
+
   return colors[flavor.toLowerCase()] || '#9E9E9E';
 };
 
@@ -96,22 +101,25 @@ export const getFlavorColor = (flavor: string): string => {
  */
 export const sortCigars = <T extends { cigar: any }>(
   items: T[],
-  sortBy: 'brand' | 'strength' | 'date'
+  sortBy: 'brand' | 'strength' | 'date',
 ): T[] => {
   return [...items].sort((a, b) => {
     switch (sortBy) {
-      case 'brand':
+      case 'brand': {
         return a.cigar.brand.localeCompare(b.cigar.brand);
-      case 'strength':
-        const strengthOrder = { 'Mild': 1, 'Mild-Medium': 2, 'Medium': 3, 'Medium-Full': 4, 'Full': 5 };
+      }
+      case 'strength': {
+        const strengthOrder = { Mild: 1, 'Mild-Medium': 2, Medium: 3, 'Medium-Full': 4, Full: 5 } as const;
         const normalizedA = normalizeStrength(a.cigar.strength);
         const normalizedB = normalizeStrength(b.cigar.strength);
         return (strengthOrder[normalizedA] || 3) - (strengthOrder[normalizedB] || 3);
-      case 'date':
+      }
+      case 'date': {
         // Assumes items have a date property
         const dateA = (a as any).date || (a as any).purchaseDate || new Date(0);
         const dateB = (b as any).date || (b as any).purchaseDate || new Date(0);
         return new Date(dateB).getTime() - new Date(dateA).getTime();
+      }
       default:
         return 0;
     }
@@ -121,20 +129,16 @@ export const sortCigars = <T extends { cigar: any }>(
 /**
  * Filter cigars by search query
  */
-export const filterCigars = <T extends { cigar: any }>(
-  items: T[],
-  searchQuery: string
-): T[] => {
+export const filterCigars = <T extends { cigar: any }>(items: T[], searchQuery: string): T[] => {
   if (!searchQuery.trim()) return items;
-  
+
   const query = searchQuery.toLowerCase();
-  return items.filter(item => 
-    item.cigar.brand.toLowerCase().includes(query) ||
-    item.cigar.line.toLowerCase().includes(query) ||
-    item.cigar.name.toLowerCase().includes(query) ||
-    item.cigar.flavorProfile.some((flavor: string) => 
-      flavor.toLowerCase().includes(query)
-    )
+  return items.filter(
+    (item) =>
+      item.cigar.brand.toLowerCase().includes(query) ||
+      item.cigar.line.toLowerCase().includes(query) ||
+      item.cigar.name.toLowerCase().includes(query) ||
+      item.cigar.flavorProfile.some((flavor: string) => flavor.toLowerCase().includes(query)),
   );
 };
 
@@ -143,10 +147,10 @@ export const filterCigars = <T extends { cigar: any }>(
  */
 export const debounce = <T extends (...args: any[]) => any>(
   func: T,
-  wait: number
+  wait: number,
 ): ((...args: Parameters<T>) => void) => {
   let timeout: NodeJS.Timeout;
-  
+
   return (...args: Parameters<T>) => {
     clearTimeout(timeout);
     timeout = setTimeout(() => func(...args), wait);

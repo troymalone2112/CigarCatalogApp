@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Share, ScrollView } from 'react-native';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
-import { TabParamList, RootStackParamList, HumidorStackParamList, JournalStackParamList, RecommendationsStackParamList } from '../types';
+import {
+  TabParamList,
+  RootStackParamList,
+  HumidorStackParamList,
+  JournalStackParamList,
+  RecommendationsStackParamList,
+} from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { StorageService } from '../storage/storageService';
+import { Api } from '../services/api';
 import { preloadBackgroundImage } from '../services/backgroundImageService';
 import CachedBackgroundImage from '../components/CachedBackgroundImage';
 
@@ -15,6 +22,8 @@ import HomeScreen from '../screens/HomeScreen';
 import HumidorListScreen from '../screens/HumidorListScreen';
 import InventoryScreen from '../screens/InventoryScreen';
 import JournalScreen from '../screens/JournalScreen';
+import StatsScreen from '../screens/StatsScreen';
+import { NotificationService, AppNotification } from '../services/notificationService';
 import RecommendationsScreen from '../screens/RecommendationsScreen';
 import EnhancedCigarRecognitionScreen from '../screens/EnhancedCigarRecognitionScreen';
 import CigarDetailsScreen from '../screens/CigarDetailsScreen';
@@ -54,9 +63,62 @@ const RecommendationsStack = createStackNavigator<RecommendationsStackParamList>
 const CustomHeader = ({ title }: { title?: string }) => {
   const { user, profile, signOut } = useAuth();
   const navigation = useNavigation();
-  
-  const userName = profile?.full_name || "User";
-  const userInitials = userName.split(' ').map(name => name[0]).join('').toUpperCase();
+  const [showInbox, setShowInbox] = React.useState(false);
+  const [unread, setUnread] = React.useState(0);
+  const [inbox, setInbox] = React.useState<AppNotification[]>([]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      if (!user) return;
+      const count = await NotificationService.getUnreadCount(user.id);
+      if (mounted) setUnread(count);
+    };
+    load();
+    let cleanup: (() => void) | undefined;
+    try {
+      const maybeSubscribe: any = (NotificationService as any).subscribe;
+      if (typeof maybeSubscribe === 'function') {
+        cleanup = maybeSubscribe(async (changedUserId: string) => {
+          if (!user || changedUserId !== user.id) return;
+          const count = await NotificationService.getUnreadCount(user.id);
+          setUnread(count);
+        });
+      } else {
+        // Fallback: poll unread count briefly (lightweight)
+        const interval = setInterval(async () => {
+          if (!user) return;
+          const count = await NotificationService.getUnreadCount(user.id);
+          setUnread(count);
+        }, 4000);
+        cleanup = () => clearInterval(interval);
+      }
+    } catch {
+      // ignore
+    }
+    return () => {
+      mounted = false;
+      if (cleanup) cleanup();
+    };
+  }, [user]);
+
+  const toggleInbox = async () => {
+    if (!user) return;
+    const items = await NotificationService.list(user.id);
+    setInbox(items);
+    setShowInbox((s) => !s);
+    if (unread > 0) {
+      await NotificationService.markAllRead(user.id);
+      setUnread(0);
+    }
+  };
+
+  const userName = profile?.full_name || 'User';
+  const userInitials = userName
+    .split(' ')
+    .map((name) => name[0])
+    .join('')
+    .toUpperCase();
 
   const handleLogout = async () => {
     try {
@@ -74,22 +136,112 @@ const CustomHeader = ({ title }: { title?: string }) => {
         </View>
         <Text style={headerStyles.userName}>{userName}</Text>
       </View>
-      <TouchableOpacity onPress={() => navigation.navigate('Profile' as never)} style={headerStyles.profileButton}>
-        <Ionicons name="person-outline" size={24} color="#DC851F" />
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'row' }}>
+        <View>
+          <TouchableOpacity onPress={toggleInbox} style={headerStyles.profileButton}>
+            <Ionicons name="notifications-outline" size={22} color="#DC851F" />
+            {unread > 0 && <View style={headerStyles.dot} />}
+          </TouchableOpacity>
+          {showInbox && (
+            <View style={headerStyles.inboxContainer}>
+              <View style={headerStyles.inboxHeader}>
+                <Text style={headerStyles.inboxTitle}>Notifications</Text>
+              </View>
+              <ScrollView style={{ maxHeight: 220 }}>
+                {inbox.length === 0 && (
+                  <Text style={headerStyles.inboxEmpty}>No notifications yet</Text>
+                )}
+                {inbox.map((n) => (
+                  <TouchableOpacity
+                    key={n.id}
+                    style={headerStyles.inboxItem}
+                    onPress={async () => {
+                      setShowInbox(false);
+                      // Navigate based on notification type
+                      if (n.type === 'inventory_add') {
+                        const cigar = n.data?.cigar;
+                        if (cigar) {
+                          navigation.navigate('MainTabs' as never, {
+                            screen: 'HumidorList',
+                            params: { screen: 'CigarDetails', params: { cigar } },
+                          } as never);
+                        } else if (n.data?.humidorId) {
+                          navigation.navigate('MainTabs' as never, {
+                            screen: 'HumidorList',
+                            params: { screen: 'Inventory', params: { humidorId: n.data.humidorId } },
+                          } as never);
+                        }
+                      } else if (n.type === 'journal_saved') {
+                        const entry = n.data?.entry;
+                        if (entry) {
+                          navigation.navigate('JournalEntryDetails' as never, { entry } as never);
+                        } else if (n.data?.journalEntryId) {
+                          try {
+                            const { StorageService } = await import('../storage/storageService');
+                            const all = await StorageService.getJournalEntries();
+                            const found = all.find((e: any) => e.id === n.data.journalEntryId);
+                            if (found) {
+                              navigation.navigate('JournalEntryDetails' as never, { entry: found } as never);
+                            } else {
+                              navigation.navigate('MainTabs' as never, { screen: 'Journal' } as never);
+                            }
+                          } catch {
+                            navigation.navigate('MainTabs' as never, { screen: 'Journal' } as never);
+                          }
+                        }
+                      }
+                    }}
+                  >
+                    <Text style={headerStyles.inboxItemTitle}>{n.title}</Text>
+                    <Text style={headerStyles.inboxItemMsg}>{n.message}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          )}
+        </View>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Stats' as never)}
+          style={headerStyles.profileButton}
+        >
+          <Ionicons name="bar-chart-outline" size={22} color="#DC851F" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Profile' as never)}
+          style={headerStyles.profileButton}
+        >
+          <Ionicons name="person-outline" size={24} color="#DC851F" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 // Custom Header Component for Tab Screens with Back Arrow
-const TabHeader = ({ title, onBackPress }: { title: string; onBackPress: () => void }) => {
+const TabHeader = ({
+  title,
+  onBackPress,
+  onRightPress,
+  rightIconName,
+}: {
+  title: string;
+  onBackPress: () => void;
+  onRightPress?: () => void;
+  rightIconName?: keyof typeof Ionicons.glyphMap;
+}) => {
   return (
     <View style={headerStyles.tabHeaderContainer}>
       <TouchableOpacity onPress={onBackPress} style={headerStyles.backButton}>
         <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
       </TouchableOpacity>
       <Text style={headerStyles.tabHeaderTitle}>{title}</Text>
-      <View style={headerStyles.headerSpacer} />
+      {onRightPress ? (
+        <TouchableOpacity onPress={onRightPress} style={headerStyles.backButton}>
+          <Ionicons name={rightIconName || 'share-social-outline'} size={22} color="#FFFFFF" />
+        </TouchableOpacity>
+      ) : (
+        <View style={headerStyles.headerSpacer} />
+      )}
     </View>
   );
 };
@@ -132,6 +284,56 @@ const headerStyles = StyleSheet.create({
   },
   profileButton: {
     padding: 8,
+  },
+  dot: {
+    position: 'absolute',
+    right: 6,
+    top: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#DC851F',
+  },
+  inboxContainer: {
+    position: 'absolute',
+    right: 0,
+    top: 44,
+    width: 260,
+    backgroundColor: '#1a1a1a',
+    borderRadius: 12,
+    borderColor: '#333333',
+    borderWidth: 1,
+    padding: 8,
+    zIndex: 1000,
+  },
+  inboxHeader: {
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  inboxTitle: {
+    color: '#CCCCCC',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  inboxEmpty: {
+    color: '#999999',
+    fontSize: 12,
+    padding: 8,
+  },
+  inboxItem: {
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#2a2a2a',
+  },
+  inboxItemTitle: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  inboxItemMsg: {
+    color: '#BBBBBB',
+    fontSize: 12,
   },
   tabHeaderContainer: {
     backgroundColor: '#0a0a0a',
@@ -180,37 +382,27 @@ function HumidorStackNavigator() {
         },
       }}
     >
-      <HumidorStack.Screen 
-        name="HumidorListMain" 
-        component={HumidorListScreen} 
+      <HumidorStack.Screen
+        name="HumidorListMain"
+        component={HumidorListScreen}
         options={({ navigation }) => ({
+          header: () => <TabHeader title="My Humidors" onBackPress={() => navigation.goBack()} />,
+        })}
+      />
+      <HumidorStack.Screen
+        name="Inventory"
+        component={InventoryScreen}
+        options={({ route, navigation }) => ({
           header: () => (
-            <TabHeader 
-              title="My Humidors" 
-              onBackPress={() => navigation.goBack()} 
+            <TabHeader
+              title={route.params?.humidorName || 'Humidor'}
+              onBackPress={() => navigation.goBack()}
             />
           ),
         })}
       />
-      <HumidorStack.Screen 
-        name="Inventory" 
-        component={InventoryScreen}
-        options={({ route, navigation }) => ({
-          title: route.params?.humidorName || 'Humidor',
-          headerShown: true,
-          headerStyle: {
-            backgroundColor: '#0a0a0a',
-          },
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: {
-            fontWeight: '400',
-            fontSize: 14,
-            color: '#FFFFFF',
-          },
-        })}
-      />
-      <HumidorStack.Screen 
-        name="AddToInventory" 
+      <HumidorStack.Screen
+        name="AddToInventory"
         component={AddToInventoryScreen}
         options={({ route }) => ({
           title: route.params?.existingItem ? 'Update Entry' : 'Add to Humidor',
@@ -222,21 +414,65 @@ function HumidorStackNavigator() {
           },
         })}
       />
-      <HumidorStack.Screen 
-        name="CigarDetails" 
+      <HumidorStack.Screen
+        name="CigarDetails"
         component={CigarDetailsScreen}
-        options={{
-          title: 'Cigar Details',
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: {
-            fontWeight: '400',
-            fontSize: 14,
-            color: '#FFFFFF',
-          },
-        }}
+        options={({ navigation, route }: any) => ({
+          header: () => (
+            <TabHeader
+              title="Cigar Details"
+              onBackPress={() => navigation.goBack()}
+              onRightPress={async () => {
+                try {
+                  const cigar = route.params?.cigar || route.params?.item || {};
+                  const name = cigar.name || cigar.line || 'Cigar';
+                  const brand = cigar.brand || cigar.brand_name || '';
+                  const strength = cigar.strength ? `\nStrength: ${cigar.strength}` : '';
+                  const notes = cigar.overview ? `\nNotes: ${cigar.overview}` : '';
+                  const message = `${brand} ${name}${strength}${notes}`.trim();
+                  // Try image share when available
+                  const imageUrl = cigar.imageUrl || cigar.image_url;
+                  if (imageUrl) {
+                    try {
+                      const Sharing = await import('expo-sharing');
+                      const FileSystem = await import('expo-file-system');
+                      const extMatch = (imageUrl.match(/\.(jpg|jpeg|png)$/i) || [,'jpg'])[1];
+                      let fileUri = `${FileSystem.cacheDirectory}cigar-share.${extMatch}`;
+                      if (imageUrl.startsWith('http')) {
+                        const dl = await FileSystem.downloadAsync(imageUrl, fileUri);
+                        fileUri = dl?.uri || fileUri;
+                      } else {
+                        // Local asset/uri copy
+                        await FileSystem.copyAsync({ from: imageUrl, to: fileUri });
+                      }
+                      const info = await FileSystem.getInfoAsync(fileUri);
+                      if (!info.exists) throw new Error('Downloaded image not found');
+                      // First try RN Share with url+message (often more reliable on iOS)
+                      try {
+                        await Share.share({ url: fileUri });
+                        return;
+                      } catch {}
+                      try {
+                        await Share.share({ url: fileUri, message });
+                        return;
+                      } catch {}
+                      // Fallback to expo-sharing if available
+                      if ((Sharing as any).isAvailableAsync && (await (Sharing as any).isAvailableAsync())) {
+                        await (Sharing as any).shareAsync(fileUri, { dialogTitle: `${brand} ${name}` });
+                        return;
+                      }
+                    } catch {}
+                  }
+                  await Share.share({ message });
+                } catch (e) {}
+              }}
+              rightIconName="share-social-outline"
+            />
+          ),
+        })}
       />
-      <HumidorStack.Screen 
-        name="EditOptions" 
+      <HumidorStack.Screen
+        name="EditOptions"
         component={EditOptionsScreen}
         options={{
           title: 'Manage Cigar',
@@ -248,8 +484,8 @@ function HumidorStackNavigator() {
           },
         }}
       />
-      <HumidorStack.Screen 
-        name="CreateHumidor" 
+      <HumidorStack.Screen
+        name="CreateHumidor"
         component={CreateHumidorScreen}
         options={{
           title: 'Create Humidor',
@@ -261,8 +497,8 @@ function HumidorStackNavigator() {
           },
         }}
       />
-      <HumidorStack.Screen 
-        name="EditHumidor" 
+      <HumidorStack.Screen
+        name="EditHumidor"
         component={EditHumidorScreen}
         options={{
           title: 'Edit Humidor',
@@ -296,90 +532,64 @@ function JournalStackNavigator() {
         headerBackTitle: '',
       }}
     >
-      <JournalStack.Screen 
-        name="Journal" 
-        component={JournalScreen} 
+      <JournalStack.Screen
+        name="Journal"
+        component={JournalScreen}
         options={({ navigation }) => ({
           header: () => (
-            <TabHeader 
-              title="Smoking Journal" 
-              onBackPress={() => navigation.goBack()} 
-            />
+            <TabHeader title="Smoking Journal" onBackPress={() => navigation.goBack()} />
           ),
         })}
       />
-      <JournalStack.Screen 
-        name="JournalCigarRecognition" 
+      <JournalStack.Screen
+        name="JournalCigarRecognition"
         component={JournalCigarRecognitionScreen}
         options={({ navigation }) => ({
           header: () => (
-            <TabHeader 
-              title="Identify Cigar" 
-              onBackPress={() => navigation.goBack()} 
-            />
+            <TabHeader title="Identify Cigar" onBackPress={() => navigation.goBack()} />
           ),
         })}
       />
-      <JournalStack.Screen 
-        name="JournalManualEntry" 
+      <JournalStack.Screen
+        name="JournalManualEntry"
         component={JournalManualEntryScreen}
         options={({ navigation }) => ({
           header: () => (
-            <TabHeader 
-              title="Search by Name" 
-              onBackPress={() => navigation.goBack()} 
-            />
+            <TabHeader title="Search by Name" onBackPress={() => navigation.goBack()} />
           ),
         })}
       />
-      <JournalStack.Screen 
-        name="JournalInitialNotes" 
+      <JournalStack.Screen
+        name="JournalInitialNotes"
         component={JournalInitialNotesScreen}
         options={({ navigation }) => ({
-          header: () => (
-            <TabHeader 
-              title="Start Entry" 
-              onBackPress={() => navigation.goBack()} 
-            />
-          ),
+          header: () => <TabHeader title="Start Entry" onBackPress={() => navigation.goBack()} />,
         })}
       />
-      <JournalStack.Screen 
-        name="JournalRating" 
+      <JournalStack.Screen
+        name="JournalRating"
         component={JournalRatingScreen}
         options={({ navigation }) => ({
           header: () => (
-            <TabHeader 
-              title="Rate Your Experience" 
-              onBackPress={() => navigation.goBack()} 
-            />
+            <TabHeader title="Rate Your Experience" onBackPress={() => navigation.goBack()} />
           ),
         })}
       />
-      <JournalStack.Screen 
-        name="JournalNotes" 
+      <JournalStack.Screen
+        name="JournalNotes"
         component={JournalNotesScreen}
         options={({ navigation }) => ({
-          header: () => (
-            <TabHeader 
-              title="Final Notes" 
-              onBackPress={() => navigation.goBack()} 
-            />
-          ),
+          header: () => <TabHeader title="Final Notes" onBackPress={() => navigation.goBack()} />,
         })}
       />
-      <JournalStack.Screen 
-        name="JournalEntryDetails" 
+      <JournalStack.Screen
+        name="JournalEntryDetails"
         component={JournalEntryDetailsScreen}
-        options={{
-          title: 'Journal Entry',
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: {
-            fontWeight: '400',
-            fontSize: 14,
-            color: '#FFFFFF',
-          },
-        }}
+        options={({ navigation }) => ({
+          header: () => (
+            <TabHeader title="Journal Entry" onBackPress={() => navigation.goBack()} />
+          ),
+        })}
       />
     </JournalStack.Navigator>
   );
@@ -403,30 +613,67 @@ function RecommendationsStackNavigator() {
         headerBackTitle: '',
       }}
     >
-      <RecommendationsStack.Screen 
-        name="Recommendations" 
-        component={RecommendationsScreen} 
+      <RecommendationsStack.Screen
+        name="Recommendations"
+        component={RecommendationsScreen}
         options={({ navigation }) => ({
           header: () => (
-            <TabHeader 
-              title="Recommendations" 
-              onBackPress={() => navigation.goBack()} 
-            />
+            <TabHeader title="Recommendations" onBackPress={() => navigation.goBack()} />
           ),
         })}
       />
-      <RecommendationsStack.Screen 
-        name="CigarDetails" 
+      <RecommendationsStack.Screen
+        name="CigarDetails"
         component={CigarDetailsScreen}
-        options={{
-          title: 'Cigar Details',
-          headerTintColor: '#FFFFFF',
-          headerTitleStyle: {
-            fontWeight: '400',
-            fontSize: 14,
-            color: '#FFFFFF',
-          },
-        }}
+        options={({ navigation, route }: any) => ({
+          header: () => (
+            <TabHeader
+              title="Cigar Details"
+              onBackPress={() => navigation.goBack()}
+              onRightPress={async () => {
+                try {
+                  const cigar = route.params?.cigar || route.params?.item || {};
+                  const name = cigar.name || cigar.line || 'Cigar';
+                  const brand = cigar.brand || cigar.brand_name || '';
+                  const strength = cigar.strength ? `\nStrength: ${cigar.strength}` : '';
+                  const notes = cigar.overview ? `\nNotes: ${cigar.overview}` : '';
+                  const message = `${brand} ${name}${strength}${notes}`.trim();
+                  const imageUrl = cigar.imageUrl || cigar.image_url;
+                  if (imageUrl) {
+                    try {
+                      const Sharing = await import('expo-sharing');
+                      const FileSystem = await import('expo-file-system');
+                      const extMatch = (imageUrl.match(/\.(jpg|jpeg|png)$/i) || [,'jpg'])[1];
+                      let fileUri = `${FileSystem.cacheDirectory}cigar-share.${extMatch}`;
+                      if (imageUrl.startsWith('http')) {
+                        const dl = await FileSystem.downloadAsync(imageUrl, fileUri);
+                        fileUri = dl?.uri || fileUri;
+                      } else {
+                        await FileSystem.copyAsync({ from: imageUrl, to: fileUri });
+                      }
+                      const info = await FileSystem.getInfoAsync(fileUri);
+                      if (!info.exists) throw new Error('Downloaded image not found');
+                      try {
+                        await Share.share({ url: fileUri });
+                        return;
+                      } catch {}
+                      try {
+                        await Share.share({ url: fileUri, message });
+                        return;
+                      } catch {}
+                      if ((Sharing as any).isAvailableAsync && (await (Sharing as any).isAvailableAsync())) {
+                        await (Sharing as any).shareAsync(fileUri, { dialogTitle: `${brand} ${name}` });
+                        return;
+                      }
+                    } catch {}
+                  }
+                  await Share.share({ message });
+                } catch (e) {}
+              }}
+              rightIconName="share-social-outline"
+            />
+          ),
+        })}
       />
     </RecommendationsStack.Navigator>
   );
@@ -473,32 +720,32 @@ function TabNavigator() {
         headerBackButtonDisplayMode: 'default',
       })}
     >
-      <Tab.Screen 
-        name="Home" 
-        component={HomeScreen} 
-        options={{ 
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
           header: () => <CustomHeader />,
         }}
       />
-      <Tab.Screen 
-        name="HumidorList" 
-        component={HumidorStackNavigator} 
+      <Tab.Screen
+        name="HumidorList"
+        component={HumidorStackNavigator}
         options={{
           title: 'Humidor',
           headerShown: false, // Hide tab header, let stack handle headers
         }}
       />
-      <Tab.Screen 
-        name="Journal" 
-        component={JournalStackNavigator} 
+      <Tab.Screen
+        name="Journal"
+        component={JournalStackNavigator}
         options={{
           title: 'Journal',
           headerShown: false,
         }}
       />
-      <Tab.Screen 
-        name="Recommendations" 
-        component={RecommendationsStackNavigator} 
+      <Tab.Screen
+        name="Recommendations"
+        component={RecommendationsStackNavigator}
         options={{
           title: 'Recommendations',
           headerShown: false,
@@ -510,10 +757,7 @@ function TabNavigator() {
 
 // Loading Screen Component
 const LoadingScreen = () => (
-  <CachedBackgroundImage 
-    style={styles.loadingContainer}
-    imageStyle={styles.loadingBackgroundImage}
-  >
+  <CachedBackgroundImage style={styles.loadingContainer} imageStyle={styles.loadingBackgroundImage}>
     <View style={styles.loadingContent}>
       <ActivityIndicator size="large" color="#DC851F" />
       <Text style={styles.loadingText}>Loading your cigar collection...</Text>
@@ -543,21 +787,21 @@ function OnboardingStack({ onComplete }: { onComplete: () => void }) {
         headerShown: false,
       }}
     >
-      <Stack.Screen 
-        name="OnboardingAgeVerification" 
+      <Stack.Screen
+        name="OnboardingAgeVerification"
         component={OnboardingAgeVerificationScreen}
         initialParams={{ onComplete }}
       />
-      <Stack.Screen 
-        name="OnboardingExperience" 
+      <Stack.Screen
+        name="OnboardingExperience"
         component={OnboardingExperienceScreen}
         initialParams={{ onComplete }}
       />
-      <Stack.Screen 
-        name="OnboardingTastePreferences" 
+      <Stack.Screen
+        name="OnboardingTastePreferences"
         component={OnboardingTastePreferencesScreen}
         options={{
-          title: 'Taste Preferences'
+          title: 'Taste Preferences',
         }}
         initialParams={{ onComplete }}
       />
@@ -566,7 +810,8 @@ function OnboardingStack({ onComplete }: { onComplete: () => void }) {
 }
 
 export default function AppNavigator() {
-  const { user, loading, profile, subscriptionStatus, subscriptionLoading, refreshProfile } = useAuth();
+  const { user, loading, profile, subscriptionStatus, subscriptionLoading, refreshProfile } =
+    useAuth();
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const [onboardingCheckComplete, setOnboardingCheckComplete] = useState(false);
 
@@ -582,7 +827,7 @@ export default function AppNavigator() {
         try {
           console.log('🔍 Checking onboarding status for user:', user.id);
           console.log('🔍 Profile onboarding_completed:', profile.onboarding_completed);
-          
+
           // IMPORTANT: Check explicitly for true, don't default to false
           // If it's null/undefined, it means the user hasn't completed onboarding yet
           const completed = profile.onboarding_completed === true;
@@ -590,17 +835,16 @@ export default function AppNavigator() {
           setOnboardingCompleted(completed);
           setOnboardingCheckComplete(true); // Only mark complete when we have both user and profile
         } catch (error) {
-          console.error('❌ Error checking onboarding status:', error);
+          console.warn('⚠️ Error checking onboarding status (non-fatal):', error);
           // On error, check database directly as a fallback
           if (user) {
             try {
-              const { DatabaseService } = await import('../services/supabaseService');
-              const profileData = await DatabaseService.getProfile(user.id);
+              const profileData = await Api.profiles.get(user.id);
               const completed = profileData?.onboarding_completed === true;
               console.log('✅ Onboarding status from database fallback:', completed);
               setOnboardingCompleted(completed);
             } catch (dbError) {
-              console.error('❌ Database fallback also failed:', dbError);
+              console.warn('⚠️ Database fallback also failed:', dbError);
               setOnboardingCompleted(false); // Only default to false if everything fails
             }
           }
@@ -609,12 +853,12 @@ export default function AppNavigator() {
       } else if (user && !profile) {
         // User exists but profile hasn't loaded yet, wait for it
         console.log('⏳ Waiting for profile to load...');
-        
+
         // Check if profile exists in database
         try {
           const { DatabaseService } = await import('../services/supabaseService');
           const profileData = await DatabaseService.getProfile(user.id);
-          
+
           if (profileData) {
             console.log('✅ Found profile in database, setting onboarding status');
             const completed = profileData.onboarding_completed === true;
@@ -625,7 +869,7 @@ export default function AppNavigator() {
           }
           setOnboardingCheckComplete(true);
         } catch (error) {
-          console.error('❌ Error checking profile in database:', error);
+          console.warn('⚠️ Error checking profile in database:', error);
           console.log('🔧 Defaulting to onboarding required');
           setOnboardingCompleted(false);
           setOnboardingCheckComplete(true);
@@ -643,37 +887,39 @@ export default function AppNavigator() {
   const handleOnboardingComplete = async () => {
     try {
       console.log('🔍 Completing onboarding...');
-      
+
       if (!user) {
         console.error('❌ No user found when completing onboarding');
         return;
       }
-      
+
       // Update the database directly to ensure it's persisted
       await StorageService.updateUserProfile({ onboardingCompleted: true });
       console.log('✅ Onboarding status saved to database');
-      
+
       // Refresh the profile in AuthContext to get updated onboarding status
       await refreshProfile();
       console.log('✅ Profile refreshed from database');
-      
+
       // Set local state immediately to show main app
       setOnboardingCompleted(true);
       console.log('✅ Onboarding marked as completed locally');
-      
+
       // Double-check the profile was actually updated
-      const { DatabaseService } = await import('../services/supabaseService');
-      const updatedProfile = await DatabaseService.getProfile(user.id);
-      console.log('🔍 Verification - Profile onboarding_completed:', updatedProfile?.onboarding_completed);
-      
+      const updatedProfile = await Api.profiles.get(user.id);
+      console.log(
+        '🔍 Verification - Profile onboarding_completed:',
+        updatedProfile?.onboarding_completed,
+      );
+
       if (updatedProfile?.onboarding_completed !== true) {
         console.error('⚠️ Warning: Profile was not updated correctly in database!');
         // Try one more time
-        await DatabaseService.updateProfile(user.id, { onboarding_completed: true });
+        await Api.profiles.update(user.id, { onboarding_completed: true });
         console.log('✅ Second attempt to update profile completed');
       }
     } catch (error) {
-      console.error('❌ Error completing onboarding:', error);
+      console.warn('⚠️ Error completing onboarding:', error);
       // Even on error, try to set it locally so user isn't stuck
       setOnboardingCompleted(true);
     }
@@ -692,10 +938,10 @@ export default function AppNavigator() {
       isPremium: subscriptionStatus.isPremium,
       isTrialActive: subscriptionStatus.isTrialActive,
       status: subscriptionStatus.status,
-      subscriptionLoading
+      subscriptionLoading,
     });
   }
-  
+
   // If we have a user but onboarding check isn't complete, show the app with a loading state
   // This prevents the app from being completely blocked while checking onboarding status
   if (user && !onboardingCheckComplete) {
@@ -707,121 +953,123 @@ export default function AppNavigator() {
   return (
     <NavigationContainer>
       {user ? (
-        // Check if onboarding is needed
-        !onboardingCompleted ? (
+        // Only show onboarding when the check is complete and explicitly false
+        onboardingCheckComplete && onboardingCompleted === false ? (
           <OnboardingStack onComplete={handleOnboardingComplete} />
         ) : (
-        <Stack.Navigator
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: '#0a0a0a',
-            },
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-            headerBackTitleVisible: false,
-            headerBackTitle: '',
-          }}
-        >
-        <Stack.Screen 
-          name="MainTabs" 
-          component={TabNavigator} 
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="CigarRecognition" 
-          component={EnhancedCigarRecognitionScreen}
-          options={({ navigation }) => ({
-            header: () => (
-              <TabHeader 
-                title="Identify Cigar" 
-                onBackPress={() => navigation.goBack()} 
-              />
-            ),
-          })}
-        />
-        <Stack.Screen 
-          name="NewJournalEntry" 
-          component={NewJournalEntryScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="JournalEntryDetails" 
-          component={JournalEntryDetailsScreen}
-          options={{
-            title: 'Journal Entry',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="Settings" 
-          component={SettingsScreen}
-          options={{ 
-            title: 'Settings',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="Profile" 
-          component={ProfileScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="ManageSubscription" 
-          component={ManageSubscriptionScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="OpenSourceLicenses" 
-          component={OpenSourceLicensesScreen}
-          options={{ 
-            title: 'Open Source Licenses',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '400',
-              fontSize: 14,
-              color: '#FFFFFF',
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="AdminDashboard" 
-          component={AdminDashboardScreen}
-          options={{ 
-            title: 'Admin Dashboard',
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '600',
-              fontSize: 16,
-              color: '#FFFFFF',
-            },
-            headerStyle: {
-              backgroundColor: '#0a0a0a',
-            },
-          }}
-        />
-        <Stack.Screen 
-          name="Paywall" 
-          component={PaywallScreen}
-          options={{ 
-            title: 'Upgrade to Premium',
-            presentation: 'modal',
-          }}
-        />
-        </Stack.Navigator>
+          <Stack.Navigator
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: '#0a0a0a',
+              },
+              headerTintColor: '#FFFFFF',
+              headerTitleStyle: {
+                fontWeight: '400',
+                fontSize: 14,
+                color: '#FFFFFF',
+              },
+              headerBackTitleVisible: false,
+              headerBackTitle: '',
+            }}
+          >
+            <Stack.Screen
+              name="MainTabs"
+              component={TabNavigator}
+              options={{ headerShown: false }}
+            />
+          <Stack.Screen
+            name="Stats"
+            component={StatsScreen}
+            options={({ navigation }) => ({
+              header: () => (
+                <TabHeader title="Your Stats" onBackPress={() => navigation.goBack()} />
+              ),
+            })}
+          />
+            <Stack.Screen
+              name="CigarRecognition"
+              component={EnhancedCigarRecognitionScreen}
+              options={({ navigation }) => ({
+                header: () => (
+                  <TabHeader title="Identify Cigar" onBackPress={() => navigation.goBack()} />
+                ),
+              })}
+            />
+            <Stack.Screen
+              name="NewJournalEntry"
+              component={NewJournalEntryScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="JournalEntryDetails"
+              component={JournalEntryDetailsScreen}
+              options={({ navigation }) => ({
+                header: () => (
+                  <TabHeader title="Journal Entry" onBackPress={() => navigation.goBack()} />
+                ),
+              })}
+            />
+            <Stack.Screen
+              name="Settings"
+              component={SettingsScreen}
+              options={{
+                title: 'Settings',
+                headerTintColor: '#FFFFFF',
+                headerTitleStyle: {
+                  fontWeight: '400',
+                  fontSize: 14,
+                  color: '#FFFFFF',
+                },
+              }}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={ProfileScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="ManageSubscription"
+              component={ManageSubscriptionScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="OpenSourceLicenses"
+              component={OpenSourceLicensesScreen}
+              options={{
+                title: 'Open Source Licenses',
+                headerTintColor: '#FFFFFF',
+                headerTitleStyle: {
+                  fontWeight: '400',
+                  fontSize: 14,
+                  color: '#FFFFFF',
+                },
+              }}
+            />
+            <Stack.Screen
+              name="AdminDashboard"
+              component={AdminDashboardScreen}
+              options={{
+                title: 'Admin Dashboard',
+                headerTintColor: '#FFFFFF',
+                headerTitleStyle: {
+                  fontWeight: '600',
+                  fontSize: 16,
+                  color: '#FFFFFF',
+                },
+                headerStyle: {
+                  backgroundColor: '#0a0a0a',
+                },
+              }}
+            />
+            <Stack.Screen
+              name="Paywall"
+              component={PaywallScreen}
+              options={{
+                title: 'Upgrade to Premium',
+                presentation: 'modal',
+              }}
+            />
+          </Stack.Navigator>
         )
       ) : (
         <AuthStack />

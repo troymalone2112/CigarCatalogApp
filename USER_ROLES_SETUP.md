@@ -5,6 +5,7 @@ This guide explains how to set up and manage user roles in the Cigar Catalog App
 ## Overview
 
 The app supports two user roles:
+
 - **Standard User**: Regular app users who sign up through the App Store
 - **Super User**: Admin users with access to analytics and user management
 
@@ -19,6 +20,7 @@ Execute the SQL schema file in your Supabase project:
 ```
 
 This will create:
+
 - `user_roles` table for role assignments
 - `admin_analytics` table for analytics data
 - `user_activity_log` table for activity tracking
@@ -27,7 +29,7 @@ This will create:
 
 ### 2. Assign Your Super User Role
 
-After creating your account, you need to manually assign the super user role. 
+After creating your account, you need to manually assign the super user role.
 
 #### Option A: Through Supabase Dashboard
 
@@ -45,7 +47,7 @@ After creating your account, you need to manually assign the super user role.
 
 ```sql
 -- Replace 'YOUR_USER_ID_HERE' with your actual user ID from auth.users
-INSERT INTO user_roles (user_id, role_type, granted_by) 
+INSERT INTO user_roles (user_id, role_type, granted_by)
 VALUES ('YOUR_USER_ID_HERE', 'super_user', 'YOUR_USER_ID_HERE')
 ON CONFLICT (user_id) DO NOTHING;
 ```
@@ -53,6 +55,7 @@ ON CONFLICT (user_id) DO NOTHING;
 ### 3. Verify Your Role
 
 After assigning the role, restart the app and check:
+
 1. Go to **Settings** in the app
 2. You should see "Super User" role badge
 3. You should see an "Administration" section with "Admin Dashboard" option
@@ -94,6 +97,7 @@ SELECT is_super_user('USER_ID_HERE');
 ## Features by Role
 
 ### Standard User Features
+
 - ✅ Access to all core app functionality
 - ✅ Cigar identification and cataloging
 - ✅ Inventory management
@@ -104,6 +108,7 @@ SELECT is_super_user('USER_ID_HERE');
 - ❌ Analytics viewing
 
 ### Super User Features
+
 - ✅ All Standard User features
 - ✅ Admin Dashboard access
 - ✅ User management (promote/demote users)
@@ -114,13 +119,16 @@ SELECT is_super_user('USER_ID_HERE');
 ## Security Features
 
 ### Row Level Security (RLS)
+
 - All tables have RLS enabled
 - Users can only access their own data
 - Super users can access admin tables
 - Automatic role assignment for new users
 
 ### Activity Logging
+
 The system automatically logs:
+
 - Inventory item additions/updates/deletions
 - Journal entry additions/updates/deletions
 - Quantity changes
@@ -128,6 +136,7 @@ The system automatically logs:
 - Admin actions
 
 ### Access Control
+
 - Role checks happen at the database level
 - Frontend UI adapts based on user role
 - API calls are protected by RLS policies
@@ -135,6 +144,7 @@ The system automatically logs:
 ## Troubleshooting
 
 ### Can't Access Admin Dashboard
+
 1. Verify your user ID is in the `user_roles` table
 2. Check that `role_type` is `super_user`
 3. Ensure `is_active` is `true`
@@ -142,12 +152,14 @@ The system automatically logs:
 5. Check console for permission errors
 
 ### Role Not Updating
+
 1. Check Supabase logs for RLS policy violations
 2. Verify the `user_roles` table has the correct data
 3. Try refreshing the app or logging out/in
 4. Check that the `granted_by` field is set correctly
 
 ### Activity Logs Not Appearing
+
 1. Check Supabase logs for insert errors
 2. Verify RLS policies allow inserts to `user_activity_log`
 3. Check that the user is properly authenticated
@@ -156,19 +168,23 @@ The system automatically logs:
 ## Database Functions Reference
 
 ### Core Functions
+
 - `get_user_role(user_uuid)` - Returns user's role
 - `is_super_user(user_uuid)` - Returns true if super user
 - `assign_user_role(target_user_id, role, granted_by)` - Assigns role
 
 ### Triggers
+
 - `on_auth_user_created` - Automatically assigns `standard_user` role to new users
 
 ### Views
+
 - `user_management` - Aggregated user data for admin dashboard
 
 ## Monitoring and Analytics
 
 ### Key Metrics Tracked
+
 - Total users
 - Active users
 - User role distribution
@@ -176,6 +192,7 @@ The system automatically logs:
 - Feature usage
 
 ### Admin Dashboard Features
+
 - User statistics overview
 - Recent user activity
 - User management interface
@@ -193,19 +210,9 @@ The system automatically logs:
 ## Support
 
 If you encounter issues with user roles:
+
 1. Check the Supabase logs
 2. Verify RLS policies are correctly configured
 3. Test role functions in the SQL editor
 4. Review the activity logs for clues
 5. Contact support with specific error messages
-
-
-
-
-
-
-
-
-
-
-

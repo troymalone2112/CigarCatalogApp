@@ -149,7 +149,7 @@ export default function OpenSourceLicensesScreen() {
   ];
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.backgroundImage}
       imageStyle={styles.tobaccoBackgroundImage}
@@ -157,10 +157,7 @@ export default function OpenSourceLicensesScreen() {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.title}>Open Source Licenses</Text>
@@ -169,7 +166,8 @@ export default function OpenSourceLicensesScreen() {
 
         <ScrollView style={styles.content} contentContainerStyle={styles.scrollContent}>
           <Text style={styles.description}>
-            This app is built using open source software. We thank the developers and contributors of these projects.
+            This app is built using open source software. We thank the developers and contributors
+            of these projects.
           </Text>
 
           {licenses.map((license, index) => (
@@ -296,8 +294,3 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-
-
-
-
-

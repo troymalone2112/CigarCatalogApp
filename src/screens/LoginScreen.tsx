@@ -30,7 +30,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (isSubmitting || loading) return;
-    
+
     if (!email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -57,26 +57,34 @@ export default function LoginScreen() {
   };
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.backgroundImage}
       imageStyle={styles.tobaccoBackgroundImage}
     >
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
-        <ScrollView 
+        <ScrollView
           ref={scrollViewRef}
-          contentContainerStyle={styles.scrollContainer} 
+          contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.content}>
             {/* Header */}
             <View style={styles.header}>
-              <Text style={styles.title}>Welcome Back</Text>
-              <Text style={styles.subtitle}>Sign in to Golden Leaf</Text>
+              <Text style={styles.title}>Welcome to Your Personal Humidor</Text>
+              <Text style={styles.subtitle}>
+                To bring you a tailored experience, securely save your cigar collection, and
+                preserve your tasting notes and ratings across all your devices, please create an
+                account or log in.
+              </Text>
+              <Text style={styles.helperText}>
+                Your account keeps your unique cigar journey private, safe, and always at your
+                fingertips.
+              </Text>
             </View>
 
             {/* Login Form */}
@@ -98,7 +106,12 @@ export default function LoginScreen() {
 
               {/* Password Input */}
               <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#DC851F" style={styles.inputIcon} />
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color="#DC851F"
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Password"
@@ -112,10 +125,10 @@ export default function LoginScreen() {
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeIcon}
                 >
-                  <Ionicons 
-                    name={showPassword ? 'eye-outline' : 'eye-off-outline'} 
-                    size={20} 
-                    color="#999999" 
+                  <Ionicons
+                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={20}
+                    color="#999999"
                   />
                 </TouchableOpacity>
               </View>
@@ -126,13 +139,16 @@ export default function LoginScreen() {
               </TouchableOpacity>
 
               {/* Login Button */}
-              <TouchableOpacity 
-                style={[styles.loginButton, (loading || isSubmitting) && styles.loginButtonDisabled]} 
+              <TouchableOpacity
+                style={[
+                  styles.loginButton,
+                  (loading || isSubmitting) && styles.loginButtonDisabled,
+                ]}
                 onPress={handleLogin}
                 disabled={loading || isSubmitting}
               >
                 <Text style={styles.loginButtonText}>
-                  {(loading || isSubmitting) ? 'Signing In...' : 'Sign In'}
+                  {loading || isSubmitting ? 'Signing In...' : 'Sign In'}
                 </Text>
               </TouchableOpacity>
 
@@ -190,6 +206,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FFA737',
     textAlign: 'center',
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#999999',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 18,
   },
   form: {
     backgroundColor: '#1a1a1a',
@@ -265,6 +288,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-
-
-

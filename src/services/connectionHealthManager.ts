@@ -24,16 +24,17 @@ export class ConnectionHealthManager {
     isOnline: true,
     isDatabaseHealthy: true,
     lastSuccessfulCheck: 0,
-    consecutiveFailures: 0
+    consecutiveFailures: 0,
   };
 
-  private readonly supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
+  private readonly supabaseUrl =
+    process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
   private readonly defaultRetryOptions: RetryOptions = {
     maxRetries: 3,
     initialDelay: 1000,
     maxDelay: 8000,
     backoffMultiplier: 2,
-    timeoutMs: 10000
+    timeoutMs: 10000,
   };
 
   private constructor() {}
@@ -51,24 +52,25 @@ export class ConnectionHealthManager {
   async checkNetworkConnectivity(): Promise<boolean> {
     try {
       console.log('🔍 Checking network connectivity...');
-      
+
       // Try to reach a reliable endpoint
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
-      
+
       const response = await fetch('https://www.google.com/generate_204', {
         method: 'HEAD',
         signal: controller.signal,
-        cache: 'no-cache'
+        cache: 'no-cache',
       });
-      
+
       clearTimeout(timeoutId);
       const isOnline = response.ok;
-      
-      console.log(isOnline ? '✅ Network connectivity: ONLINE' : '❌ Network connectivity: OFFLINE');
+
+      console.log(
+        isOnline ? '✅ Network connectivity: ONLINE' : '❌ Network connectivity: OFFLINE',
+      );
       this.healthState.isOnline = isOnline;
       return isOnline;
-      
     } catch (error) {
       console.log('❌ Network connectivity check failed:', error.message);
       this.healthState.isOnline = false;
@@ -82,22 +84,24 @@ export class ConnectionHealthManager {
   async checkDatabaseHealth(): Promise<boolean> {
     try {
       console.log('🔍 Checking Supabase database health...');
-      
+
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.defaultRetryOptions.timeoutMs);
-      
+
       // Try to reach Supabase health endpoint or make a simple API call
       const response = await fetch(`${this.supabaseUrl}/rest/v1/`, {
         method: 'HEAD',
         signal: controller.signal,
         headers: {
-          'apikey': process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxra2JzdHdtemRibWxmc293d2d0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzNzE2MzAsImV4cCI6MjA3NDk0NzYzMH0.CKoWTs7bCDymUteLM9BfG2ugl07N9fid1WV6mmabT-I'
-        }
+          apikey:
+            process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxra2JzdHdtemRibWxmc293d2d0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzNzE2MzAsImV4cCI6MjA3NDk0NzYzMH0.CKoWTs7bCDymUteLM9BfG2ugl07N9fid1WV6mmabT-I',
+        },
       });
-      
+
       clearTimeout(timeoutId);
       const isDatabaseHealthy = response.ok || response.status === 401; // 401 is also OK (means auth is working)
-      
+
       if (isDatabaseHealthy) {
         console.log('✅ Database health: HEALTHY');
         this.healthState.isDatabaseHealthy = true;
@@ -108,9 +112,8 @@ export class ConnectionHealthManager {
         this.healthState.isDatabaseHealthy = false;
         this.healthState.consecutiveFailures++;
       }
-      
+
       return isDatabaseHealthy;
-      
     } catch (error) {
       console.log('❌ Database health check failed:', error.message);
       this.healthState.isDatabaseHealthy = false;
@@ -124,21 +127,22 @@ export class ConnectionHealthManager {
    */
   async performHealthCheck(): Promise<ConnectionHealth> {
     console.log('🔄 Performing comprehensive health check...');
-    
+
     const [isOnline, isDatabaseHealthy] = await Promise.allSettled([
       this.checkNetworkConnectivity(),
-      this.checkDatabaseHealth()
+      this.checkDatabaseHealth(),
     ]);
 
     this.healthState.isOnline = isOnline.status === 'fulfilled' ? isOnline.value : false;
-    this.healthState.isDatabaseHealthy = isDatabaseHealthy.status === 'fulfilled' ? isDatabaseHealthy.value : false;
-    
+    this.healthState.isDatabaseHealthy =
+      isDatabaseHealthy.status === 'fulfilled' ? isDatabaseHealthy.value : false;
+
     console.log('🔍 Health check result:', {
       isOnline: this.healthState.isOnline,
       isDatabaseHealthy: this.healthState.isDatabaseHealthy,
-      consecutiveFailures: this.healthState.consecutiveFailures
+      consecutiveFailures: this.healthState.consecutiveFailures,
     });
-    
+
     return { ...this.healthState };
   }
 
@@ -148,7 +152,7 @@ export class ConnectionHealthManager {
   async executeWithRetry<T>(
     operation: () => Promise<T>,
     operationName: string,
-    options: Partial<RetryOptions> = {}
+    options: Partial<RetryOptions> = {},
   ): Promise<T> {
     const opts = { ...this.defaultRetryOptions, ...options };
     let lastError: Error | null = null;
@@ -158,46 +162,51 @@ export class ConnectionHealthManager {
     for (let attempt = 0; attempt <= opts.maxRetries; attempt++) {
       try {
         // Create timeout promise
-        const timeoutPromise = new Promise<never>((_, reject) => 
-          setTimeout(() => reject(new Error(`${operationName} timeout after ${opts.timeoutMs}ms`)), opts.timeoutMs)
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`${operationName} timeout after ${opts.timeoutMs}ms`)),
+            opts.timeoutMs,
+          ),
         );
-        
+
         // Race between operation and timeout
         const result = await Promise.race([operation(), timeoutPromise]);
-        
+
         console.log(`✅ ${operationName} succeeded on attempt ${attempt + 1}`);
-        
+
         // Reset failure count on success
         this.healthState.consecutiveFailures = 0;
         this.healthState.lastSuccessfulCheck = Date.now();
-        
+
         return result;
-        
       } catch (error) {
         lastError = error as Error;
         console.warn(`⚠️ ${operationName} failed on attempt ${attempt + 1}:`, error.message);
-        
+
         // Don't retry on the last attempt
         if (attempt === opts.maxRetries) {
           break;
         }
-        
+
         // Check if error is retryable
         if (!this.isRetryableError(error as Error)) {
           console.log(`❌ ${operationName} failed with non-retryable error, stopping retries`);
           break;
         }
-        
+
         // Calculate delay for next retry (exponential backoff with jitter)
-        const baseDelay = Math.min(opts.initialDelay * Math.pow(opts.backoffMultiplier, attempt), opts.maxDelay);
+        const baseDelay = Math.min(
+          opts.initialDelay * Math.pow(opts.backoffMultiplier, attempt),
+          opts.maxDelay,
+        );
         const jitter = Math.random() * 0.1 * baseDelay; // Add 10% jitter
         const delay = Math.floor(baseDelay + jitter);
-        
+
         console.log(`⏳ Retrying ${operationName} in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
-    
+
     this.healthState.consecutiveFailures++;
     throw lastError || new Error(`${operationName} failed after ${opts.maxRetries + 1} attempts`);
   }
@@ -217,11 +226,11 @@ export class ConnectionHealthManager {
       '500',
       '502',
       '503',
-      '504'
+      '504',
     ];
-    
+
     const errorMessage = error.message.toLowerCase();
-    return retryablePatterns.some(pattern => errorMessage.includes(pattern));
+    return retryablePatterns.some((pattern) => errorMessage.includes(pattern));
   }
 
   /**
@@ -235,9 +244,11 @@ export class ConnectionHealthManager {
    * Check if we should use degraded mode
    */
   shouldUseDegradedMode(): boolean {
-    return !this.healthState.isOnline || 
-           !this.healthState.isDatabaseHealthy || 
-           this.healthState.consecutiveFailures >= 3;
+    return (
+      !this.healthState.isOnline ||
+      !this.healthState.isDatabaseHealthy ||
+      this.healthState.consecutiveFailures >= 3
+    );
   }
 
   /**

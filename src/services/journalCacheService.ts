@@ -24,7 +24,7 @@ export class JournalCacheService {
   static async getCachedEntries(): Promise<JournalEntry[] | null> {
     try {
       const metadata = await this.getCacheMetadata();
-      
+
       // Check if cache exists and is not expired
       if (!metadata || this.isCacheExpired(metadata.lastUpdated)) {
         console.log('📦 Journal cache expired or missing');
@@ -40,7 +40,7 @@ export class JournalCacheService {
     } catch (error) {
       console.error('❌ Error loading journal cache:', error);
     }
-    
+
     return null;
   }
 
@@ -50,7 +50,7 @@ export class JournalCacheService {
   static async cacheEntries(entries: JournalEntry[]): Promise<void> {
     try {
       // Validate entries before caching
-      const validEntries = entries.filter(entry => {
+      const validEntries = entries.filter((entry) => {
         if (!entry.id) {
           console.warn('⚠️ Skipping entry with missing ID');
           return false;
@@ -65,15 +65,17 @@ export class JournalCacheService {
       const metadata: CacheMetadata = {
         lastUpdated: Date.now(),
         version: this.CACHE_VERSION,
-        entryCount: validEntries.length
+        entryCount: validEntries.length,
       };
 
       await Promise.all([
         AsyncStorage.setItem(this.CACHE_KEY, JSON.stringify(validEntries)),
-        AsyncStorage.setItem(this.METADATA_KEY, JSON.stringify(metadata))
+        AsyncStorage.setItem(this.METADATA_KEY, JSON.stringify(metadata)),
       ]);
 
-      console.log(`📦 Cached ${validEntries.length} journal entries (${entries.length - validEntries.length} invalid entries skipped)`);
+      console.log(
+        `📦 Cached ${validEntries.length} journal entries (${entries.length - validEntries.length} invalid entries skipped)`,
+      );
     } catch (error) {
       console.error('❌ Error caching journal entries:', error);
     }
@@ -86,8 +88,8 @@ export class JournalCacheService {
     try {
       const cachedEntries = await this.getCachedEntries();
       if (cachedEntries) {
-        const updatedEntries = [entry, ...cachedEntries].sort((a, b) => 
-          new Date(b.date).getTime() - new Date(a.date).getTime()
+        const updatedEntries = [entry, ...cachedEntries].sort(
+          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
         );
         await this.cacheEntries(updatedEntries);
         console.log('📦 Added new entry to cache');
@@ -104,8 +106,8 @@ export class JournalCacheService {
     try {
       const cachedEntries = await this.getCachedEntries();
       if (cachedEntries) {
-        const updatedEntries = cachedEntries.map(entry => 
-          entry.id === updatedEntry.id ? updatedEntry : entry
+        const updatedEntries = cachedEntries.map((entry) =>
+          entry.id === updatedEntry.id ? updatedEntry : entry,
         );
         await this.cacheEntries(updatedEntries);
         console.log('📦 Updated entry in cache');
@@ -122,7 +124,7 @@ export class JournalCacheService {
     try {
       const cachedEntries = await this.getCachedEntries();
       if (cachedEntries) {
-        const updatedEntries = cachedEntries.filter(entry => entry.id !== entryId);
+        const updatedEntries = cachedEntries.filter((entry) => entry.id !== entryId);
         await this.cacheEntries(updatedEntries);
         console.log('📦 Removed entry from cache');
       }
@@ -138,7 +140,7 @@ export class JournalCacheService {
     try {
       await Promise.all([
         AsyncStorage.removeItem(this.CACHE_KEY),
-        AsyncStorage.removeItem(this.METADATA_KEY)
+        AsyncStorage.removeItem(this.METADATA_KEY),
       ]);
       console.log('📦 Journal cache cleared');
     } catch (error) {
@@ -197,7 +199,7 @@ export class JournalCacheService {
         hasCache: !!metadata,
         entryCount: metadata?.entryCount || 0,
         lastUpdated: metadata?.lastUpdated || null,
-        isExpired: metadata ? this.isCacheExpired(metadata.lastUpdated) : true
+        isExpired: metadata ? this.isCacheExpired(metadata.lastUpdated) : true,
       };
     } catch (error) {
       console.error('❌ Error getting cache stats:', error);
@@ -205,7 +207,7 @@ export class JournalCacheService {
         hasCache: false,
         entryCount: 0,
         lastUpdated: null,
-        isExpired: true
+        isExpired: true,
       };
     }
   }

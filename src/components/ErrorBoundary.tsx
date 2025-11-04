@@ -35,10 +35,10 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     // Log the error details
     console.error('🚨 ErrorBoundary componentDidCatch:', error, errorInfo);
-    
+
     // Check for environment variable issues
     this.checkEnvironmentVariables();
-    
+
     this.setState({
       error,
       errorInfo: errorInfo.componentStack,
@@ -55,7 +55,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
     ];
 
     console.log('🔍 Checking environment variables:');
-    requiredVars.forEach(varName => {
+    requiredVars.forEach((varName) => {
       const value = process.env[varName];
       console.log(`  ${varName}: ${value ? '✅ Set' : '❌ Missing'}`);
       if (!value) {
@@ -92,7 +92,8 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
             <Ionicons name="warning" size={48} color="#DC851F" style={styles.icon} />
             <Text style={styles.title}>App Initialization Error</Text>
             <Text style={styles.subtitle}>
-              The app encountered an error during startup. This usually indicates missing configuration.
+              The app encountered an error during startup. This usually indicates missing
+              configuration.
             </Text>
 
             <ScrollView style={styles.errorContainer} showsVerticalScrollIndicator={true}>
@@ -100,7 +101,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               <Text style={styles.errorText}>
                 {this.state.error?.name}: {this.state.error?.message}
               </Text>
-              
+
               {this.state.errorInfo && (
                 <>
                   <Text style={styles.errorTitle}>Component Stack:</Text>
@@ -110,19 +111,21 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
 
               <Text style={styles.errorTitle}>Common Causes:</Text>
               <Text style={styles.troubleshootText}>
-                • Missing environment variables (Supabase, API keys){'\n'}
-                • Network connectivity issues{'\n'}
-                • Invalid Supabase configuration{'\n'}
-                • Missing RevenueCat configuration{'\n'}
-                • Build configuration problems
+                • Missing environment variables (Supabase, API keys){'\n'}• Network connectivity
+                issues{'\n'}• Invalid Supabase configuration{'\n'}• Missing RevenueCat configuration
+                {'\n'}• Build configuration problems
               </Text>
 
               <Text style={styles.errorTitle}>Environment Check:</Text>
               <Text style={styles.troubleshootText}>
-                Supabase URL: {process.env.EXPO_PUBLIC_SUPABASE_URL ? '✅' : '❌'}{'\n'}
-                Supabase Key: {process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? '✅' : '❌'}{'\n'}
-                OpenAI Key: {process.env.EXPO_PUBLIC_OPENAI_API_KEY ? '✅' : '❌'}{'\n'}
-                Perplexity Key: {process.env.EXPO_PUBLIC_PERPLEXITY_API_KEY ? '✅' : '❌'}{'\n'}
+                Supabase URL: {process.env.EXPO_PUBLIC_SUPABASE_URL ? '✅' : '❌'}
+                {'\n'}
+                Supabase Key: {process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? '✅' : '❌'}
+                {'\n'}
+                OpenAI Key: {process.env.EXPO_PUBLIC_OPENAI_API_KEY ? '✅' : '❌'}
+                {'\n'}
+                Perplexity Key: {process.env.EXPO_PUBLIC_PERPLEXITY_API_KEY ? '✅' : '❌'}
+                {'\n'}
                 RevenueCat iOS Key: {process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ? '✅' : '❌'}
               </Text>
             </ScrollView>

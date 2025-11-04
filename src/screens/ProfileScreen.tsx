@@ -1,13 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  Linking,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
@@ -74,14 +66,17 @@ export default function ProfileScreen() {
                   style: 'destructive',
                   onPress: () => {
                     // TODO: Implement account deletion
-                    Alert.alert('Coming Soon', 'Account deletion will be available in a future update.');
+                    Alert.alert(
+                      'Coming Soon',
+                      'Account deletion will be available in a future update.',
+                    );
                   },
                 },
-              ]
+              ],
             );
           },
         },
-      ]
+      ],
     );
   };
 
@@ -92,7 +87,7 @@ export default function ProfileScreen() {
     console.log('🔍 ProfileScreen - isTrialActive:', subscriptionStatus?.isTrialActive);
     console.log('🔍 ProfileScreen - hasAccess:', subscriptionStatus?.hasAccess);
     console.log('🔍 ProfileScreen - daysRemaining:', subscriptionStatus?.daysRemaining);
-    
+
     if (subscriptionStatus?.isPremium) {
       return {
         status: 'Premium Member',
@@ -117,17 +112,14 @@ export default function ProfileScreen() {
   const memberInfo = getMemberStatus();
 
   return (
-    <CachedBackgroundImage 
+    <CachedBackgroundImage
       style={styles.backgroundImage}
       imageStyle={styles.tobaccoBackgroundImage}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.title}>Profile</Text>
@@ -141,9 +133,7 @@ export default function ProfileScreen() {
               <Text style={[styles.memberStatusText, { color: memberInfo.color }]}>
                 {memberInfo.status}
               </Text>
-              <Text style={styles.memberSubtitle}>
-                {memberInfo.subtitle}
-              </Text>
+              <Text style={styles.memberSubtitle}>{memberInfo.subtitle}</Text>
             </View>
             {subscriptionStatus?.isPremium && (
               <View style={styles.premiumBadge}>
@@ -152,62 +142,66 @@ export default function ProfileScreen() {
               </View>
             )}
           </View>
-          
+
           {/* User Info */}
           <View style={styles.userInfoContainer}>
-            <Text style={styles.userInfoText}>
-              Logged in as: {user?.email}
-            </Text>
+            <Text style={styles.userInfoText}>Logged in as: {user?.email}</Text>
           </View>
 
           {/* Upgrade Button - Show for trial or expired users, not for premium */}
           {(() => {
             console.log('🔍 ProfileScreen - Upgrade button logic:');
             console.log('🔍 ProfileScreen - subscriptionStatus:', subscriptionStatus);
-            console.log('🔍 ProfileScreen - !subscriptionStatus?.isPremium:', !subscriptionStatus?.isPremium);
-            console.log('🔍 ProfileScreen - subscriptionStatus?.isTrialActive:', subscriptionStatus?.isTrialActive);
-            console.log('🔍 ProfileScreen - Should show upgrade button:', !subscriptionStatus?.isPremium);
-            
+            console.log(
+              '🔍 ProfileScreen - !subscriptionStatus?.isPremium:',
+              !subscriptionStatus?.isPremium,
+            );
+            console.log(
+              '🔍 ProfileScreen - subscriptionStatus?.isTrialActive:',
+              subscriptionStatus?.isTrialActive,
+            );
+            console.log(
+              '🔍 ProfileScreen - Should show upgrade button:',
+              !subscriptionStatus?.isPremium,
+            );
+
             // Show upgrade button for all non-premium users
             // This ensures the button always appears for trial users and expired users
             // If subscriptionStatus is null/undefined, assume user is on trial (new user)
             const shouldShowUpgrade = !subscriptionStatus?.isPremium;
-            
-            console.log('🔍 ProfileScreen - Final decision - shouldShowUpgrade:', shouldShowUpgrade);
-            
+
+            console.log(
+              '🔍 ProfileScreen - Final decision - shouldShowUpgrade:',
+              shouldShowUpgrade,
+            );
+
             // Additional fallback: if subscriptionStatus is null/undefined, show upgrade button
             // This handles cases where subscription data hasn't loaded yet
             if (subscriptionStatus === null || subscriptionStatus === undefined) {
-              console.log('🔍 ProfileScreen - Subscription status is null/undefined, showing upgrade button as fallback');
+              console.log(
+                '🔍 ProfileScreen - Subscription status is null/undefined, showing upgrade button as fallback',
+              );
               return (
-                <TouchableOpacity 
-                  style={styles.upgradeButton}
-                  onPress={handleUpgrade}
-                >
+                <TouchableOpacity style={styles.upgradeButton} onPress={handleUpgrade}>
                   <Ionicons name="arrow-up-circle" size={20} color="#FFFFFF" />
-                  <Text style={styles.upgradeButtonText}>
-                    Subscribe to Premium
-                  </Text>
+                  <Text style={styles.upgradeButtonText}>Subscribe to Premium</Text>
                 </TouchableOpacity>
               );
             }
-            
+
             if (shouldShowUpgrade) {
               return (
-                <TouchableOpacity 
-                  style={styles.upgradeButton}
-                  onPress={handleUpgrade}
-                >
+                <TouchableOpacity style={styles.upgradeButton} onPress={handleUpgrade}>
                   <Ionicons name="arrow-up-circle" size={20} color="#FFFFFF" />
                   <Text style={styles.upgradeButtonText}>
-                    {subscriptionStatus?.isTrialActive 
-                      ? 'Upgrade to Premium' 
+                    {subscriptionStatus?.isTrialActive
+                      ? 'Upgrade to Premium'
                       : 'Subscribe to Premium'}
                   </Text>
                 </TouchableOpacity>
               );
             }
-            
+
             return null;
           })()}
         </View>
@@ -216,56 +210,38 @@ export default function ProfileScreen() {
         <View style={styles.actionsContainer}>
           {/* Only show Manage Subscription for premium users */}
           {subscriptionStatus?.isPremium && (
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={handleManageSubscription}
-            >
+            <TouchableOpacity style={styles.actionButton} onPress={handleManageSubscription}>
               <Ionicons name="card" size={20} color="#FFFFFF" />
               <Text style={styles.actionButtonText}>Manage Subscription</Text>
               <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handlePrivacyPolicy}
-          >
+          <TouchableOpacity style={styles.actionButton} onPress={handlePrivacyPolicy}>
             <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
             <Text style={styles.actionButtonText}>Privacy Policy</Text>
             <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleUserLicense}
-          >
+          <TouchableOpacity style={styles.actionButton} onPress={handleUserLicense}>
             <Ionicons name="document-text" size={20} color="#FFFFFF" />
             <Text style={styles.actionButtonText}>End User License</Text>
             <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleOpenSourceLicenses}
-          >
+          <TouchableOpacity style={styles.actionButton} onPress={handleOpenSourceLicenses}>
             <Ionicons name="code-slash" size={20} color="#FFFFFF" />
             <Text style={styles.actionButtonText}>Open Source Licenses</Text>
             <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleSignOut}
-            disabled={loading}
-          >
+          <TouchableOpacity style={styles.actionButton} onPress={handleSignOut} disabled={loading}>
             <Ionicons name="log-out" size={20} color="#FFFFFF" />
-            <Text style={styles.actionButtonText}>
-              {loading ? 'Signing Out...' : 'Sign Out'}
-            </Text>
+            <Text style={styles.actionButtonText}>{loading ? 'Signing Out...' : 'Sign Out'}</Text>
             <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.actionButton, styles.dangerButton]}
             onPress={handleDeleteAccount}
           >
@@ -274,7 +250,6 @@ export default function ProfileScreen() {
             <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
           </TouchableOpacity>
         </View>
-
       </ScrollView>
     </CachedBackgroundImage>
   );

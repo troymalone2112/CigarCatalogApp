@@ -12,6 +12,7 @@ import {
   StatusBar,
   ImageBackground,
 } from 'react-native';
+import { RefreshControl } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -22,6 +23,11 @@ import SubscriptionBanner from '../components/SubscriptionBanner';
 import { useScreenLoading } from '../hooks/useScreenLoading';
 import { useAuth } from '../contexts/AuthContext';
 import { useAccessControl } from '../hooks/useAccessControl';
+import { DashboardCacheService } from '../services/dashboardCacheService';
+import { OptimizedHumidorService } from '../services/optimizedHumidorService';
+import { AgingAlertService } from '../services/agingAlertService';
+import { BackfillService } from '../services/backfillService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type HomeScreenNavigationProp = BottomTabNavigationProp<TabParamList, 'Home'> & {
   navigate: (screen: string, params?: any) => void;
@@ -38,13 +44,49 @@ export default function HomeScreen() {
   const [latestJournalEntries, setLatestJournalEntries] = useState<any[]>([]);
   const { loading, setLoading } = useScreenLoading(true);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      if (!isLoadingData) {
-        loadDashboardData();
-      }
-    }, []) // Remove isLoadingData from dependencies to prevent infinite loop
+      // 1) Show cached dashboard instantly if available
+      const showCacheThenLoad = async () => {
+        try {
+          if (user?.id) {
+            // One-time backfill for specified account
+            try {
+              const targetEmail = 'troymalone105@gmail.com';
+              const key = `backfill_done_${targetEmail}`;
+              if (user.email === targetEmail) {
+                // Force a re-run for verification and log results
+                await AsyncStorage.removeItem(key);
+                const result = await BackfillService.runForEmail(targetEmail);
+                console.log('[Backfill] Completed for', targetEmail, result);
+                await AsyncStorage.setItem(key, '1');
+              }
+            } catch (e) {
+              console.log('[Backfill] Error', e);
+            }
+
+            const cached = await DashboardCacheService.getCachedDashboardData(user.id);
+            if (cached) {
+              setInventoryCount(cached.inventoryCount);
+              setJournalCount(cached.journalCount);
+              setLatestJournalEntries(cached.latestJournalEntries);
+              setLoading(false); // UI ready while fresh data loads in background
+            }
+            // Warm humidor cache in background
+            OptimizedHumidorService.preloadHumidorData(user.id).catch(() => {});
+            // Run aging alerts daily (non-blocking)
+            AgingAlertService.runDailyCheck(user.id).catch(() => {});
+          }
+        } catch {}
+        // 2) Load fresh in background
+        if (!isLoadingData) {
+          loadDashboardData();
+        }
+      };
+      showCacheThenLoad();
+    }, []),
   );
 
   const loadDashboardData = async () => {
@@ -52,46 +94,62 @@ export default function HomeScreen() {
       console.log('🚨 HomeScreen - Already loading data, skipping...');
       return;
     }
-    
+
     try {
       setIsLoadingData(true);
       console.log('🚨 HomeScreen - Starting loadDashboardData');
-      
+
       // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Dashboard data load timeout')), 10000)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Dashboard data load timeout')), 15000),
       );
-      
+
       const dataPromise = Promise.all([
-        StorageService.getInventory().catch(err => {
+        StorageService.getInventory().catch((err) => {
           console.log('⚠️ Inventory load failed:', err);
           return []; // Return empty array on error
         }),
-        StorageService.getJournalEntries().catch(err => {
+        StorageService.getJournalEntries().catch((err) => {
           console.log('⚠️ Journal load failed:', err);
           return []; // Return empty array on error
         }),
       ]);
-      
-      const [inventory, journal] = await Promise.race([dataPromise, timeoutPromise]) as any[];
+
+      const [inventory, journal] = (await Promise.race([dataPromise, timeoutPromise])) as any[];
 
       console.log('🚨 HomeScreen - Got inventory:', inventory.length, 'journal:', journal.length);
 
       setInventoryCount(inventory.reduce((sum: number, item: any) => sum + item.quantity, 0));
       setJournalCount(journal.length);
-      
+
       // Get latest 3 journal entries (already sorted by getJournalEntries, but ensure proper order)
       const sortedJournal = journal.sort((a: any, b: any) => {
         // Sort by date first (most recent first)
         const dateComparison = new Date(b.date).getTime() - new Date(a.date).getTime();
         if (dateComparison !== 0) return dateComparison;
-        
+
         // If dates are the same, sort by ID (most recent first - assuming newer entries have higher IDs)
         return b.id.localeCompare(a.id);
       });
       setLatestJournalEntries(sortedJournal.slice(0, 3));
+      // Cache the fresh results for instant next-launch display
+      if (user?.id) {
+        try {
+          await DashboardCacheService.cacheDashboardData(
+            user.id,
+            inventory.reduce((sum: number, item: any) => sum + item.quantity, 0),
+            journal.length,
+            sortedJournal.slice(0, 3),
+          );
+        } catch {}
+      }
     } catch (error) {
-      console.error('🚨 HomeScreen - Error loading dashboard data:', error);
+      const msg = String((error as any)?.message || '').toLowerCase();
+      if (msg.includes('timeout')) {
+        console.warn('⚠️ HomeScreen - Dashboard load timed out; showing cached/defaults');
+      } else {
+        console.warn('⚠️ HomeScreen - Error loading dashboard data:', error);
+      }
       // Set default values on error
       setInventoryCount(0);
       setJournalCount(0);
@@ -100,8 +158,14 @@ export default function HomeScreen() {
       console.log('🚨 HomeScreen - Setting loading to false');
       setIsLoadingData(false);
       setLoading(false);
+      setRefreshing(false);
     }
   };
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadDashboardData();
+  }, [loadDashboardData]);
 
   const handleCigarRecognition = () => {
     if (canScan()) {
@@ -126,18 +190,21 @@ export default function HomeScreen() {
   }
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.container}
       imageStyle={styles.backgroundImage}
     >
       <StatusBar barStyle="light-content" backgroundColor="#343330" />
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
         {/* Logo */}
         <View style={styles.logoContainer}>
-          <Image 
-            source={require('../../assets/logo.png')} 
+          <Image
+            source={require('../../assets/logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -152,7 +219,7 @@ export default function HomeScreen() {
             <Ionicons name="camera" size={20} color="#FFFFFF" />
             <Text style={styles.actionButtonText}>Scan</Text>
           </Pressable>
-          
+
           <Pressable style={styles.actionButton} onPress={handleSearch}>
             <Ionicons name="search" size={20} color="#FFFFFF" />
             <Text style={styles.actionButtonText}>Search</Text>
@@ -161,16 +228,16 @@ export default function HomeScreen() {
 
         {/* Stats */}
         <View style={styles.statsContainer}>
-          <Pressable 
-            style={styles.statItem} 
+          <Pressable
+            style={styles.statItem}
             onPress={() => navigation.navigate('MainTabs', { screen: 'HumidorList' })}
           >
             <Text style={styles.statNumber}>{inventoryCount}</Text>
             <Text style={styles.statLabel}>Humidor</Text>
           </Pressable>
-          
-          <Pressable 
-            style={styles.statItem} 
+
+          <Pressable
+            style={styles.statItem}
             onPress={() => navigation.navigate('MainTabs', { screen: 'Journal' })}
           >
             <Text style={styles.statNumber}>{journalCount}</Text>
@@ -183,18 +250,14 @@ export default function HomeScreen() {
           <View style={styles.latestJournalSection}>
             <Text style={styles.sectionTitle}>Journal Entries</Text>
             {latestJournalEntries.map((entry, index) => (
-              <Pressable 
+              <Pressable
                 key={entry.id || index}
                 style={styles.journalEntryItem}
                 onPress={() => navigation.navigate('JournalEntryDetails', { entry })}
               >
                 <View style={styles.journalEntryContent}>
-                  <Text style={styles.journalEntryBrand}>
-                    {entry.cigar.brand}
-                  </Text>
-                  <Text style={styles.journalEntryLine}>
-                    {entry.cigar.line}
-                  </Text>
+                  <Text style={styles.journalEntryBrand}>{entry.cigar.brand}</Text>
+                  <Text style={styles.journalEntryLine}>{entry.cigar.line}</Text>
                   <Text style={styles.journalEntryDate}>
                     {new Date(entry.date).toLocaleDateString()}
                   </Text>

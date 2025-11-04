@@ -9,18 +9,18 @@ export const useFeatureAccess = () => {
 
   const hasAccess = (feature: string): boolean => {
     if (!subscriptionStatus) return false;
-    
+
     // During trial or premium, all features are available
     if (subscriptionStatus.hasAccess) return true;
-    
+
     // Define features that are always free (read-only access)
     const freeFeatures = [
       'journal_viewing',
-      'humidor_viewing', 
+      'humidor_viewing',
       'inventory_viewing',
-      'basic_navigation'
+      'basic_navigation',
     ];
-    
+
     return freeFeatures.includes(feature);
   };
 

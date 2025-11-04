@@ -14,8 +14,13 @@ export const useScreenLoading = (initialLoading = true) => {
   // Handle app state changes
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      console.log('🔄 Screen loading - App state changed:', appStateRef.current, '->', nextAppState);
-      
+      console.log(
+        '🔄 Screen loading - App state changed:',
+        appStateRef.current,
+        '->',
+        nextAppState,
+      );
+
       if (appStateRef.current.match(/inactive|background/) && nextAppState === 'active') {
         console.log('📱 App resumed - clearing stuck loading states');
         // Clear any stuck loading states when app resumes
@@ -28,7 +33,7 @@ export const useScreenLoading = (initialLoading = true) => {
           setRefreshing(false);
         }
       }
-      
+
       appStateRef.current = nextAppState;
     };
 
@@ -63,9 +68,9 @@ export const useScreenLoading = (initialLoading = true) => {
       if (loadingTimeoutRef.current) {
         clearTimeout(loadingTimeoutRef.current);
       }
-      
+
       setRefreshing(isRefreshing);
-      
+
       // Set timeout to prevent infinite refreshing
       loadingTimeoutRef.current = setTimeout(() => {
         console.log('⏰ Screen refreshing timeout - forcing refreshing to false');
@@ -98,10 +103,3 @@ export const useScreenLoading = (initialLoading = true) => {
     stopRefreshing: () => setRefreshingWithTimeout(false),
   };
 };
-
-
-
-
-
-
-

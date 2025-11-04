@@ -50,13 +50,12 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
   const { startRecognitionFlow } = useRecognitionFlow();
   const humidorId = route?.params?.humidorId;
 
-  
   // Camera states
   const [permission, requestPermission] = useCameraPermissions();
   const [type, setType] = useState<CameraType>('back');
   const [camera, setCamera] = useState<CameraView | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
-  
+
   // Recognition states
   const [isProcessing, setIsProcessing] = useState(false);
   const [recognitionResult, setRecognitionResult] = useState<RecognitionResult | null>(null);
@@ -65,13 +64,13 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
 
   // Processing messages to display during cigar identification
   const processingMessages = [
-    "Identifying brand, tobacco, aging, and origin...",
-    "Analyzing cigar band details...",
-    "Pulling flavor profiles and tasting notes...",
-    "Fetching ratings from Cigar Aficionado...",
-    "Compiling manufacturer info...",
-    "Gathering user reviews...",
-    "Finalizing your cigar profile..."
+    'Identifying brand, tobacco, aging, and origin...',
+    'Analyzing cigar band details...',
+    'Pulling flavor profiles and tasting notes...',
+    'Fetching ratings from Cigar Aficionado...',
+    'Compiling manufacturer info...',
+    'Gathering user reviews...',
+    'Finalizing your cigar profile...',
   ];
 
   // Cycle through processing messages when processing
@@ -79,8 +78,8 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
     if (isProcessing) {
       setCurrentProcessingMessage(0);
       const interval = setInterval(() => {
-        setCurrentProcessingMessage(prev => 
-          prev < processingMessages.length - 1 ? prev + 1 : 0
+        setCurrentProcessingMessage((prev) =>
+          prev < processingMessages.length - 1 ? prev + 1 : 0,
         );
       }, 3000); // Change message every 3 seconds
 
@@ -106,33 +105,33 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         console.log('📷 Permission request result:', result);
       }
     };
-    
+
     // Small delay to ensure component is fully mounted and permission state is loaded
     const timer = setTimeout(requestInitialPermission, 500);
     return () => clearTimeout(timer);
   }, [permission, requestPermission]);
-  
+
   // Manual entry states
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualBrand, setManualBrand] = useState('');
   const [manualLine, setManualLine] = useState('');
   const [manualName, setManualName] = useState('');
   const [manualSize, setManualSize] = useState('');
-  
+
   // Humidor selection modal states
   const [showHumidorSelection, setShowHumidorSelection] = useState(false);
   const [availableHumidors, setAvailableHumidors] = useState<any[]>([]);
-  
+
   // Simple search states
   const [showSimpleSearch, setShowSimpleSearch] = useState(false);
   const [searchDescription, setSearchDescription] = useState('');
-  
+
   // Duplicate detection states
   const [inventory, setInventory] = useState<any[]>([]);
   const [duplicateItem, setDuplicateItem] = useState<any>(null);
   const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
   const [manualDescription, setManualDescription] = useState('');
-  
+
   // Loading states
   const [showLoadingHumidors, setShowLoadingHumidors] = useState(false);
 
@@ -147,7 +146,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
   useFocusEffect(
     React.useCallback(() => {
       setShowLoadingHumidors(false);
-    }, [])
+    }, []),
   );
 
   // Early return for permission loading state
@@ -162,7 +161,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
 
   if (!permission.granted) {
     return (
-      <ImageBackground 
+      <ImageBackground
         source={require('../../assets/tobacco-leaves-bg.jpg')}
         style={styles.errorContainer}
         imageStyle={styles.tobaccoBackgroundImage}
@@ -180,9 +179,9 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       </ImageBackground>
     );
   }
-  
+
   // Quantity input for adding to inventory
-  
+
   // Settings
 
   // Permission is now handled by useCameraPermissions hook
@@ -194,11 +193,14 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         'This app needs camera access to identify cigars. Please go to Settings > Privacy & Security > Camera and enable access for this app.',
         [
           { text: 'Cancel', style: 'cancel' },
-          { text: 'Open Settings', onPress: () => {
-            // On iOS, this will open the app settings
-            Linking.openSettings();
-          }}
-        ]
+          {
+            text: 'Open Settings',
+            onPress: () => {
+              // On iOS, this will open the app settings
+              Linking.openSettings();
+            },
+          },
+        ],
       );
     }
   };
@@ -208,112 +210,128 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       console.log('Camera not available');
       return;
     }
-    
+
     try {
       // Take the full picture first
       const photo = await camera.takePictureAsync({
         quality: 0.8,
       });
-      
+
       // Check if camera is still mounted after taking picture
       if (!camera) {
         console.log('Camera unmounted during photo process');
         return;
       }
-        
-        // Get the actual image dimensions
-        const imageInfo = await ImageManipulator.manipulateAsync(
-          photo.uri,
-          [], // No manipulations, just get info
-          { format: ImageManipulator.SaveFormat.JPEG }
-        );
-        
-        // Get screen dimensions for our overlay layout
-        const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-        
-        // Define our overlay layout (matching the styles)
-        const topOverlayHeight = 120; // overlayTop height
-        const captureAreaHeight = 200; // cigarGuideArea height
-        const bottomOverlayHeight = screenHeight - topOverlayHeight - captureAreaHeight - 100; // controls area
-        
-        // Calculate the scale factors between screen and image
-        const scaleX = imageInfo.width / screenWidth;
-        const scaleY = imageInfo.height / screenHeight;
-        
-        // Adjust crop to center the cigar better in the result view
-        const cropOffset = 0; // Start with exact capture area, then adjust
-        
-        // Calculate crop coordinates in image pixels, ensuring they stay within image bounds
-        const desiredCropX = Math.round(screenWidth * scaleX * -0.3); // Start 30% before the left edge
-        const desiredCropWidth = Math.round(screenWidth * scaleX * 1.6); // Use 160% of width
-        
-        // Ensure crop stays within image boundaries
-        const cropX = Math.max(0, desiredCropX); // Don't go negative
-        const cropWidth = Math.min(desiredCropWidth, imageInfo.width - cropX); // Don't exceed image width
-        let cropY = Math.round((topOverlayHeight - cropOffset) * scaleY);
-        let cropHeight = Math.round((captureAreaHeight + (cropOffset * 2)) * scaleY);
-        
-        // Let's try a different approach - center the crop on the capture area
-        // The capture area should be roughly in the middle of the image
-        const captureAreaCenter = (topOverlayHeight + captureAreaHeight / 2) * scaleY;
-        const cropAroundCapture = Math.round(captureAreaHeight * scaleY * 3.0); // Increase height by 200%
-        
-        console.log('Capture area center:', captureAreaCenter);
-        console.log('Crop around capture:', cropAroundCapture);
-        
-        // Center the crop around where the capture area should be, but move it down a bit
-        const cropAdjustment = Math.round(100 * scaleY); // Move crop down by ~100 screen pixels (doubled)
-        cropY = Math.max(0, Math.round(captureAreaCenter - (cropAroundCapture / 2) + cropAdjustment));
-        cropHeight = Math.min(cropAroundCapture, imageInfo.height - cropY);
-        
-        console.log('Crop adjustment:', cropAdjustment);
-        
-        console.log('Image dimensions:', imageInfo.width, 'x', imageInfo.height);
-        console.log('Screen dimensions:', screenWidth, 'x', screenHeight);
-        console.log('Scale factors:', scaleX, scaleY);
-        console.log('Overlay layout - top:', topOverlayHeight, 'capture:', captureAreaHeight);
-        console.log('Crop coordinates:', cropX, cropY, cropWidth, cropHeight);
-        console.log('Crop boundaries check - X:', cropX, 'to', cropX + cropWidth, '(max:', imageInfo.width, ')');
-        console.log('Crop boundaries check - Y:', cropY, 'to', cropY + cropHeight, '(max:', imageInfo.height, ')');
-        console.log('Crop offset:', cropOffset);
-        
-        // Crop the image using expo-image-manipulator
-        const croppedPhoto = await ImageManipulator.manipulateAsync(
-          photo.uri,
-          [
-            {
-              crop: {
-                originX: cropX,
-                originY: cropY,
-                width: cropWidth,
-                height: cropHeight,
-              },
-            },
-          ],
+
+      // Get the actual image dimensions
+      const imageInfo = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [], // No manipulations, just get info
+        { format: ImageManipulator.SaveFormat.JPEG },
+      );
+
+      // Get screen dimensions for our overlay layout
+      const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+      // Define our overlay layout (matching the styles)
+      const topOverlayHeight = 120; // overlayTop height
+      const captureAreaHeight = 200; // cigarGuideArea height
+      const bottomOverlayHeight = screenHeight - topOverlayHeight - captureAreaHeight - 100; // controls area
+
+      // Calculate the scale factors between screen and image
+      const scaleX = imageInfo.width / screenWidth;
+      const scaleY = imageInfo.height / screenHeight;
+
+      // Adjust crop to center the cigar better in the result view
+      const cropOffset = 0; // Start with exact capture area, then adjust
+
+      // Calculate crop coordinates in image pixels, ensuring they stay within image bounds
+      const desiredCropX = Math.round(screenWidth * scaleX * -0.3); // Start 30% before the left edge
+      const desiredCropWidth = Math.round(screenWidth * scaleX * 1.6); // Use 160% of width
+
+      // Ensure crop stays within image boundaries
+      const cropX = Math.max(0, desiredCropX); // Don't go negative
+      const cropWidth = Math.min(desiredCropWidth, imageInfo.width - cropX); // Don't exceed image width
+      let cropY = Math.round((topOverlayHeight - cropOffset) * scaleY);
+      let cropHeight = Math.round((captureAreaHeight + cropOffset * 2) * scaleY);
+
+      // Let's try a different approach - center the crop on the capture area
+      // The capture area should be roughly in the middle of the image
+      const captureAreaCenter = (topOverlayHeight + captureAreaHeight / 2) * scaleY;
+      const cropAroundCapture = Math.round(captureAreaHeight * scaleY * 3.0); // Increase height by 200%
+
+      console.log('Capture area center:', captureAreaCenter);
+      console.log('Crop around capture:', cropAroundCapture);
+
+      // Center the crop around where the capture area should be, but move it down a bit
+      const cropAdjustment = Math.round(100 * scaleY); // Move crop down by ~100 screen pixels (doubled)
+      cropY = Math.max(0, Math.round(captureAreaCenter - cropAroundCapture / 2 + cropAdjustment));
+      cropHeight = Math.min(cropAroundCapture, imageInfo.height - cropY);
+
+      console.log('Crop adjustment:', cropAdjustment);
+
+      console.log('Image dimensions:', imageInfo.width, 'x', imageInfo.height);
+      console.log('Screen dimensions:', screenWidth, 'x', screenHeight);
+      console.log('Scale factors:', scaleX, scaleY);
+      console.log('Overlay layout - top:', topOverlayHeight, 'capture:', captureAreaHeight);
+      console.log('Crop coordinates:', cropX, cropY, cropWidth, cropHeight);
+      console.log(
+        'Crop boundaries check - X:',
+        cropX,
+        'to',
+        cropX + cropWidth,
+        '(max:',
+        imageInfo.width,
+        ')',
+      );
+      console.log(
+        'Crop boundaries check - Y:',
+        cropY,
+        'to',
+        cropY + cropHeight,
+        '(max:',
+        imageInfo.height,
+        ')',
+      );
+      console.log('Crop offset:', cropOffset);
+
+      // Crop the image using expo-image-manipulator
+      const croppedPhoto = await ImageManipulator.manipulateAsync(
+        photo.uri,
+        [
           {
-            compress: 0.8,
-            format: ImageManipulator.SaveFormat.JPEG,
-            base64: true,
-          }
-        );
-        
-        setImageUri(croppedPhoto.uri);
-        
-        // Check if camera is still mounted before processing
-        if (!camera) {
-          console.log('Camera unmounted before image processing');
-          return;
-        }
-        
-        // Process the image separately to avoid misleading error messages
-        try {
-          // Use base64 data for API calls
-          const base64Image = `data:image/jpeg;base64,${croppedPhoto.base64}`;
-          await processCigarImage(base64Image);
-        } catch (processError) {
-          console.error('Error processing image:', processError);
-          Alert.alert('Error', 'Failed to process image for recognition. Please try again.');
-        }
+            crop: {
+              originX: cropX,
+              originY: cropY,
+              width: cropWidth,
+              height: cropHeight,
+            },
+          },
+        ],
+        {
+          compress: 0.8,
+          format: ImageManipulator.SaveFormat.JPEG,
+          base64: true,
+        },
+      );
+
+      setImageUri(croppedPhoto.uri);
+
+      // Check if camera is still mounted before processing
+      if (!camera) {
+        console.log('Camera unmounted before image processing');
+        return;
+      }
+
+      // Process the image separately to avoid misleading error messages
+      try {
+        // Use base64 data for API calls
+        const base64Image = `data:image/jpeg;base64,${croppedPhoto.base64}`;
+        await processCigarImage(base64Image);
+      } catch (processError) {
+        console.error('Error processing image:', processError);
+        Alert.alert('Error', 'Failed to process image for recognition. Please try again.');
+      }
     } catch (error) {
       console.error('Error taking picture:', error);
       Alert.alert('Error', 'Failed to take picture');
@@ -348,7 +366,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
 
     try {
       const mode = RecognitionMode.HYBRID;
-      
+
       const result = await APIService.recognizeCigar(mode, {
         imageUri: uri,
       });
@@ -362,10 +380,10 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       console.log('💰 Single stick price data:', result.enrichedCigar.singleStickPrice);
     } catch (error) {
       console.error('Error processing cigar image:', error);
-      
+
       // Parse the error and show appropriate dialog
       const recognitionError = RecognitionErrorHandler.parseError(error);
-      
+
       RecognitionErrorHandler.showErrorDialog(
         recognitionError,
         () => processCigarImage(uri), // Retry
@@ -375,7 +393,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
           // Try different photo - go back to camera
           setIsProcessing(false);
           setRecognitionResult(null);
-        }
+        },
       );
     } finally {
       setIsProcessing(false);
@@ -389,7 +407,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
     }
 
     setShowManualEntry(false);
-    
+
     // Create a basic cigar object from manual entry (no API research)
     const cigar: Cigar = {
       id: Date.now().toString(),
@@ -418,10 +436,10 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
     };
 
     // Navigate directly to AddToInventory for manual entry
-    navigation.navigate('AddToInventory', { 
+    navigation.navigate('AddToInventory', {
       cigar,
       singleStickPrice: null,
-      humidorId
+      humidorId,
     });
   };
 
@@ -431,7 +449,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
 
   const handleHumidorSelection = (humidorId: string) => {
     setShowHumidorSelection(false);
-    
+
     // Create cigar object from recognition result
     const cigar: Cigar = {
       id: Date.now().toString(),
@@ -459,7 +477,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       flavorTags: recognitionResult?.enrichedCigar.flavorTags,
       cigarAficionadoRating: recognitionResult?.enrichedCigar.cigarAficionadoRating,
     };
-    
+
     // Navigate through MainTabs to ensure proper stack context
     navigation.navigate('MainTabs', {
       screen: 'HumidorList',
@@ -468,9 +486,9 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         params: {
           cigar,
           singleStickPrice: recognitionResult?.enrichedCigar.singleStickPrice,
-          humidorId
-        }
-      }
+          humidorId,
+        },
+      },
     });
   };
 
@@ -486,17 +504,17 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
 
     try {
       const result = await APIService.recognizeCigar(RecognitionMode.PERPLEXITY_ONLY, {
-        userDescription: searchDescription
+        userDescription: searchDescription,
       });
 
       setRecognitionResult(result);
       console.log('🎯 Search result:', result);
     } catch (error) {
       console.error('Error processing simple search:', error);
-      
+
       // Parse the error and show appropriate dialog
       const recognitionError = RecognitionErrorHandler.parseError(error);
-      
+
       RecognitionErrorHandler.showErrorDialog(
         recognitionError,
         () => processSimpleSearch(), // Retry
@@ -506,7 +524,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
           // Try different search terms
           setIsProcessing(false);
           setShowSimpleSearch(true);
-        }
+        },
       );
     } finally {
       setIsProcessing(false);
@@ -517,7 +535,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
     try {
       // Load current inventory for duplicate detection
       const currentInventory = await StorageService.getInventory();
-      
+
       const cigar: Cigar = {
         id: Date.now().toString(),
         brand: result.enrichedCigar.brand || 'Unknown Brand',
@@ -547,17 +565,17 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
 
       // Check for duplicates
       const duplicate = findDuplicateCigar(cigar, currentInventory);
-      
+
       if (duplicate) {
         // Show duplicate dialog
         setDuplicateItem(duplicate);
         setShowDuplicateDialog(true);
       } else {
         // No duplicate found, proceed normally
-        navigation.navigate('AddToInventory', { 
-          cigar, 
+        navigation.navigate('AddToInventory', {
+          cigar,
           singleStickPrice: result.enrichedCigar.singleStickPrice,
-          humidorId
+          humidorId,
         });
       }
     } catch (error) {
@@ -570,7 +588,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
     console.log('🔍 Add to Humidor button pressed!');
     console.log('🔍 Current humidorId:', humidorId);
     console.log('🔍 Recognition result:', recognitionResult);
-    
+
     if (!recognitionResult) {
       console.error('No recognition result available');
       return;
@@ -623,81 +641,81 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       // For now, skip duplicate detection to speed up the flow
       // TODO: Implement background duplicate detection if needed
       if (humidorId) {
-          // If we have a specific humidor, go directly to AddToInventory
+        // If we have a specific humidor, go directly to AddToInventory
+        navigation.navigate('MainTabs', {
+          screen: 'HumidorList',
+          params: {
+            screen: 'AddToInventory',
+            params: {
+              cigar,
+              singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
+              humidorId,
+            },
+          },
+        });
+      } else {
+        // If no humidor specified, navigate to HumidorList with recognition flow parameters
+        try {
+          console.log('🚀 Navigating to HumidorList with recognition flow');
+          console.log('🚀 Navigation params:', {
+            fromRecognition: true,
+            cigar: cigar.brand,
+            singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0',
+          });
+
+          // Start recognition flow
+          startRecognitionFlow(cigar, recognitionResult.enrichedCigar.singleStickPrice || '0');
+
+          // Navigate immediately (loading screen is already shown)
+          console.log('🚀 About to navigate with params:', {
+            fromRecognition: true,
+            cigar: cigar.brand,
+            singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0',
+          });
+
+          console.log('🚀 Full navigation object:', {
+            screen: 'HumidorList',
+            params: {
+              screen: 'HumidorListMain',
+              params: {
+                fromRecognition: true,
+                cigar,
+                singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0',
+              },
+            },
+          });
+
           navigation.navigate('MainTabs', {
             screen: 'HumidorList',
             params: {
-              screen: 'AddToInventory',
+              screen: 'HumidorListMain',
               params: {
+                fromRecognition: true,
                 cigar,
-                singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
-                humidorId
-              }
-            }
+                singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0',
+              },
+            },
           });
-        } else {
-          // If no humidor specified, navigate to HumidorList with recognition flow parameters
-          try {
-            console.log('🚀 Navigating to HumidorList with recognition flow');
-            console.log('🚀 Navigation params:', {
-              fromRecognition: true,
-              cigar: cigar.brand,
-              singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0'
-            });
-            
-            // Start recognition flow
-            startRecognitionFlow(cigar, recognitionResult.enrichedCigar.singleStickPrice || '0');
-            
-            // Navigate immediately (loading screen is already shown)
-            console.log('🚀 About to navigate with params:', {
-              fromRecognition: true,
-              cigar: cigar.brand,
-              singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0'
-            });
-            
-            console.log('🚀 Full navigation object:', {
-              screen: 'HumidorList',
+        } catch (error) {
+          console.error('Error in add to inventory flow:', error);
+          // Hide loading screen on error
+          setShowLoadingHumidors(false);
+          // Fallback - still go to HumidorList with recognition flow
+          startRecognitionFlow(cigar, recognitionResult.enrichedCigar.singleStickPrice || '0');
+
+          navigation.navigate('MainTabs', {
+            screen: 'HumidorList',
+            params: {
+              screen: 'HumidorListMain',
               params: {
-                screen: 'HumidorListMain',
-                params: {
-                  fromRecognition: true,
-                  cigar,
-                  singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0'
-                }
-              }
-            });
-            
-            navigation.navigate('MainTabs', {
-              screen: 'HumidorList',
-              params: {
-                screen: 'HumidorListMain',
-                params: {
-                  fromRecognition: true,
-                  cigar,
-                  singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0'
-                }
-              }
-            });
-          } catch (error) {
-            console.error('Error in add to inventory flow:', error);
-            // Hide loading screen on error
-            setShowLoadingHumidors(false);
-            // Fallback - still go to HumidorList with recognition flow
-            startRecognitionFlow(cigar, recognitionResult.enrichedCigar.singleStickPrice || '0');
-            
-            navigation.navigate('MainTabs', {
-              screen: 'HumidorList',
-              params: {
-                screen: 'HumidorListMain',
-                params: {
-                  fromRecognition: true,
-                  cigar,
-                  singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0'
-                }
-              }
-            });
-          }
+                fromRecognition: true,
+                cigar,
+                singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0',
+              },
+            },
+          });
         }
+      }
     } catch (error) {
       console.error('Error in addToInventory:', error);
       Alert.alert('Error', 'Failed to add cigar to inventory. Please try again.');
@@ -719,7 +737,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
     console.log('🔍 Opening Famous Smoke Shop search:', searchUrl);
 
     // Open in browser
-    Linking.openURL(searchUrl).catch(error => {
+    Linking.openURL(searchUrl).catch((error) => {
       console.error('Failed to open URL:', error);
       Alert.alert('Error', 'Failed to open browser. Please try again.');
     });
@@ -742,9 +760,10 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       flavorProfile: recognitionResult.enrichedCigar.flavorTags || [],
       tobaccoOrigins: recognitionResult.enrichedCigar.tobaccoOrigins || [],
       smokingExperience: {
-        first: recognitionResult.enrichedCigar.smokingExperience?.first || 'Smooth and approachable',
+        first:
+          recognitionResult.enrichedCigar.smokingExperience?.first || 'Smooth and approachable',
         second: recognitionResult.enrichedCigar.smokingExperience?.second || 'Develops complexity',
-        final: recognitionResult.enrichedCigar.smokingExperience?.final || 'Satisfying finish'
+        final: recognitionResult.enrichedCigar.smokingExperience?.final || 'Satisfying finish',
       },
       drinkPairings: recognitionResult.enrichedCigar.drinkPairings,
       imageUrl: imageUri || 'placeholder',
@@ -760,13 +779,13 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       overview: recognitionResult.enrichedCigar.overview,
       tobaccoOrigin: recognitionResult.enrichedCigar.tobaccoOrigin,
       flavorTags: recognitionResult.enrichedCigar.flavorTags,
-      cigarAficionadoRating: recognitionResult.enrichedCigar.cigarAficionadoRating
+      cigarAficionadoRating: recognitionResult.enrichedCigar.cigarAficionadoRating,
     };
 
     // Navigate to new single journal entry screen with the recognition image
-    navigation.navigate('NewJournalEntry', { 
-      cigar, 
-      recognitionImageUrl: imageUri 
+    navigation.navigate('NewJournalEntry', {
+      cigar,
+      recognitionImageUrl: imageUri,
     });
   };
 
@@ -785,7 +804,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
 
   const handleAddToExisting = () => {
     if (!recognitionResult || !duplicateItem) return;
-    
+
     const cigar: Cigar = {
       id: Date.now().toString(),
       brand: recognitionResult.enrichedCigar.brand || 'Unknown Brand',
@@ -831,18 +850,18 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
           singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
           existingItem: duplicateItem,
           mode: 'addMore',
-          humidorId
-        }
-      }
+          humidorId,
+        },
+      },
     });
-    
+
     setShowDuplicateDialog(false);
     setDuplicateItem(null);
   };
 
   const handleCreateNewEntry = () => {
     if (!recognitionResult) return;
-    
+
     const cigar: Cigar = {
       id: Date.now().toString(),
       brand: recognitionResult.enrichedCigar.brand || 'Unknown Brand',
@@ -886,11 +905,11 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
         params: {
           cigar,
           singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice,
-          humidorId
-        }
-      }
+          humidorId,
+        },
+      },
     });
-    
+
     setShowDuplicateDialog(false);
     setDuplicateItem(null);
   };
@@ -901,10 +920,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
     <View style={styles.container}>
       {/* Search Button */}
       <View style={styles.settingsHeader}>
-        <TouchableOpacity
-          style={styles.searchButton}
-          onPress={() => setShowSimpleSearch(true)}
-        >
+        <TouchableOpacity style={styles.searchButton} onPress={() => setShowSimpleSearch(true)}>
           <Text style={styles.searchButtonText}>Search</Text>
         </TouchableOpacity>
       </View>
@@ -912,22 +928,18 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       {!imageUri && !isProcessing && !recognitionResult ? (
         // Camera View
         <View style={styles.cameraContainer}>
-          <CameraView
-            style={styles.camera}
-            facing={type}
-            ref={(ref) => setCamera(ref)}
-          />
-          
+          <CameraView style={styles.camera} facing={type} ref={(ref) => setCamera(ref)} />
+
           {/* Visual Guide Overlay */}
           <View style={styles.cameraOverlay}>
             {/* Instruction text at the top */}
             <View style={styles.instructionArea}>
               <Text style={styles.guideText}>Hold cigar horizontally with band visible</Text>
             </View>
-            
+
             {/* Top grayed out area */}
             <View style={styles.overlayTop} />
-            
+
             {/* Clear horizontal band for cigar */}
             <View style={styles.cigarGuideArea}>
               {/* Corner brackets */}
@@ -938,20 +950,20 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
                 <View style={styles.bracketBottomRight} />
               </View>
             </View>
-            
+
             {/* Bottom grayed out area */}
             <View style={styles.overlayBottom} />
           </View>
-          
+
           <View style={styles.cameraControls}>
             <TouchableOpacity style={styles.controlButton} onPress={pickImage}>
               <Ionicons name="images" size={24} color="#CCCCCC" />
             </TouchableOpacity>
-            
+
             <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
               <View style={styles.captureButtonInner} />
             </TouchableOpacity>
-            
+
             <TouchableOpacity
               style={styles.controlButton}
               onPress={() => setType(type === 'back' ? 'front' : 'back')}
@@ -967,7 +979,10 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
             {imageUri ? (
               <Image source={{ uri: imageUri }} style={styles.previewImage} />
             ) : (
-              <Image source={require('../../assets/cigar-placeholder.jpg')} style={styles.previewImage} />
+              <Image
+                source={require('../../assets/cigar-placeholder.jpg')}
+                style={styles.previewImage}
+              />
             )}
             <TouchableOpacity style={styles.retakeButton} onPress={resetRecognition}>
               <Ionicons name="camera" size={20} color="#CCCCCC" />
@@ -985,17 +1000,16 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
           ) : recognitionResult ? (
             <View style={styles.resultCard}>
               <View style={styles.resultHeader}>
-                <Text style={styles.sectionTitle}>
-                  {recognitionResult.enrichedCigar.brand}
-                </Text>
+                <Text style={styles.sectionTitle}>{recognitionResult.enrichedCigar.brand}</Text>
                 <View style={styles.confidenceBadge}>
                   <Text style={styles.confidenceText}>{recognitionResult.confidence}%</Text>
                 </View>
               </View>
 
               <Text style={styles.resultSubtitle}>
-                {recognitionResult.enrichedCigar.name && recognitionResult.enrichedCigar.name !== 'Unknown Name' 
-                  ? recognitionResult.enrichedCigar.name 
+                {recognitionResult.enrichedCigar.name &&
+                recognitionResult.enrichedCigar.name !== 'Unknown Name'
+                  ? recognitionResult.enrichedCigar.name
                   : recognitionResult.enrichedCigar.line}
               </Text>
 
@@ -1006,12 +1020,18 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
                 </Text>
               )}
 
-              {((recognitionResult.enrichedCigar.flavorTags && recognitionResult.enrichedCigar.flavorTags.length > 0) || 
-                (recognitionResult.enrichedCigar.flavorProfile && recognitionResult.enrichedCigar.flavorProfile.length > 0)) && (
+              {((recognitionResult.enrichedCigar.flavorTags &&
+                recognitionResult.enrichedCigar.flavorTags.length > 0) ||
+                (recognitionResult.enrichedCigar.flavorProfile &&
+                  recognitionResult.enrichedCigar.flavorProfile.length > 0)) && (
                 <View style={styles.flavorSection}>
                   <Text style={styles.sectionTitle}>Flavor Profile</Text>
                   <View style={styles.flavorTags}>
-                    {(recognitionResult.enrichedCigar.flavorTags || recognitionResult.enrichedCigar.flavorProfile || []).map((flavor, index) => (
+                    {(
+                      recognitionResult.enrichedCigar.flavorTags ||
+                      recognitionResult.enrichedCigar.flavorProfile ||
+                      []
+                    ).map((flavor, index) => (
                       <View key={index} style={styles.flavorTag}>
                         <Text style={styles.flavorText}>{flavor}</Text>
                       </View>
@@ -1025,104 +1045,128 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
                 <View style={styles.strengthSection}>
                   <Text style={styles.sectionTitle}>Strength</Text>
                   <View style={styles.flavorTags}>
-                    <View style={[styles.flavorTag, { backgroundColor: getStrengthInfo(recognitionResult.enrichedCigar.strength).color }]}>
-                      <Text style={styles.flavorText}>{getStrengthInfo(recognitionResult.enrichedCigar.strength).label}</Text>
+                    <View
+                      style={[
+                        styles.flavorTag,
+                        {
+                          backgroundColor: getStrengthInfo(recognitionResult.enrichedCigar.strength)
+                            .color,
+                        },
+                      ]}
+                    >
+                      <Text style={styles.flavorText}>
+                        {getStrengthInfo(recognitionResult.enrichedCigar.strength).label}
+                      </Text>
                     </View>
                   </View>
                 </View>
               )}
 
               {/* Drink Pairings Section */}
-              {recognitionResult.enrichedCigar.drinkPairings && (
-                (recognitionResult.enrichedCigar.drinkPairings.alcoholic?.length > 0) || 
-                (recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic?.length > 0)
-              ) ? (
+              {recognitionResult.enrichedCigar.drinkPairings &&
+              (recognitionResult.enrichedCigar.drinkPairings.alcoholic?.length > 0 ||
+                recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic?.length > 0) ? (
                 <View style={styles.drinkPairingsSection}>
                   <Text style={styles.sectionTitle}>Drink Pairings</Text>
-                  
-                  {recognitionResult.enrichedCigar.drinkPairings.alcoholic && recognitionResult.enrichedCigar.drinkPairings.alcoholic.length > 0 && (
-                    <View style={styles.pairingCategory}>
-                      <Text style={styles.pairingCategoryTitle}>Alcoholic</Text>
-                      <View style={styles.flavorTags}>
-                        {recognitionResult.enrichedCigar.drinkPairings.alcoholic.map((drink, index) => (
-                          <View key={`alc-${index}`} style={styles.pairingTag}>
-                            <Ionicons name="wine" size={14} color="#DC851F" />
-                            <Text style={styles.pairingText}>{drink}</Text>
-                          </View>
-                        ))}
+
+                  {recognitionResult.enrichedCigar.drinkPairings.alcoholic &&
+                    recognitionResult.enrichedCigar.drinkPairings.alcoholic.length > 0 && (
+                      <View style={styles.pairingCategory}>
+                        <Text style={styles.pairingCategoryTitle}>Alcoholic</Text>
+                        <View style={styles.flavorTags}>
+                          {recognitionResult.enrichedCigar.drinkPairings.alcoholic.map(
+                            (drink, index) => (
+                              <View key={`alc-${index}`} style={styles.pairingTag}>
+                                <Ionicons name="wine" size={14} color="#DC851F" />
+                                <Text style={styles.pairingText}>{drink}</Text>
+                              </View>
+                            ),
+                          )}
+                        </View>
                       </View>
-                    </View>
-                  )}
-                  
-                  {recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic && recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic.length > 0 && (
-                    <View style={styles.pairingCategory}>
-                      <Text style={styles.pairingCategoryTitle}>Non-Alcoholic</Text>
-                      <View style={styles.flavorTags}>
-                        {recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic.map((drink, index) => (
-                          <View key={`non-${index}`} style={styles.pairingTag}>
-                            <Ionicons name="cafe" size={14} color="#DC851F" />
-                            <Text style={styles.pairingText}>{drink}</Text>
-                          </View>
-                        ))}
+                    )}
+
+                  {recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic &&
+                    recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic.length > 0 && (
+                      <View style={styles.pairingCategory}>
+                        <Text style={styles.pairingCategoryTitle}>Non-Alcoholic</Text>
+                        <View style={styles.flavorTags}>
+                          {recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic.map(
+                            (drink, index) => (
+                              <View key={`non-${index}`} style={styles.pairingTag}>
+                                <Ionicons name="cafe" size={14} color="#DC851F" />
+                                <Text style={styles.pairingText}>{drink}</Text>
+                              </View>
+                            ),
+                          )}
+                        </View>
                       </View>
-                    </View>
-                  )}
+                    )}
                 </View>
               ) : null}
 
               {/* Tobacco Section */}
-              {(recognitionResult.enrichedCigar.tobacco || recognitionResult.enrichedCigar.wrapper) && (
+              {(recognitionResult.enrichedCigar.tobacco ||
+                recognitionResult.enrichedCigar.wrapper) && (
                 <View style={styles.detailsGrid}>
                   <View style={styles.detailItem}>
                     <Text style={styles.sectionTitle}>Tobacco</Text>
                     <Text style={styles.detailValue}>
-                      {recognitionResult.enrichedCigar.tobacco || recognitionResult.enrichedCigar.wrapper}
+                      {recognitionResult.enrichedCigar.tobacco ||
+                        recognitionResult.enrichedCigar.wrapper}
                     </Text>
                   </View>
                 </View>
               )}
 
               {/* Box Pricing */}
-              {recognitionResult.enrichedCigar.msrp && recognitionResult.enrichedCigar.msrp.trim() !== '' && (
-                <View style={styles.detailsGrid}>
-                  <View style={styles.detailItem}>
-                    <Text style={styles.sectionTitle}>Box Price</Text>
-                    <Text style={styles.detailValue}>
-                      {recognitionResult.enrichedCigar.msrp.split('\n').map((line, index) => (
-                        <Text key={index}>
-                          {line.trim()}
-                          {index < recognitionResult.enrichedCigar.msrp.split('\n').length - 1 && '\n'}
-                        </Text>
-                      ))}
-                    </Text>
+              {recognitionResult.enrichedCigar.msrp &&
+                recognitionResult.enrichedCigar.msrp.trim() !== '' && (
+                  <View style={styles.detailsGrid}>
+                    <View style={styles.detailItem}>
+                      <Text style={styles.sectionTitle}>Box Price</Text>
+                      <Text style={styles.detailValue}>
+                        {recognitionResult.enrichedCigar.msrp.split('\n').map((line, index) => (
+                          <Text key={index}>
+                            {line.trim()}
+                            {index < recognitionResult.enrichedCigar.msrp.split('\n').length - 1 &&
+                              '\n'}
+                          </Text>
+                        ))}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              )}
+                )}
 
               {/* Stick Pricing */}
-              {recognitionResult.enrichedCigar.singleStickPrice && recognitionResult.enrichedCigar.singleStickPrice.trim() !== '' && (
-                <View style={styles.detailsGrid}>
-                  <View style={styles.detailItem}>
-                    <Text style={styles.sectionTitle}>Per Stick</Text>
-                    <Text style={styles.detailValue}>
-                      {recognitionResult.enrichedCigar.singleStickPrice.split('\n').map((line, index) => (
-                        <Text key={index}>
-                          {line.trim()}
-                          {index < recognitionResult.enrichedCigar.singleStickPrice.split('\n').length - 1 && '\n'}
-                        </Text>
-                      ))}
-                    </Text>
+              {recognitionResult.enrichedCigar.singleStickPrice &&
+                recognitionResult.enrichedCigar.singleStickPrice.trim() !== '' && (
+                  <View style={styles.detailsGrid}>
+                    <View style={styles.detailItem}>
+                      <Text style={styles.sectionTitle}>Per Stick</Text>
+                      <Text style={styles.detailValue}>
+                        {recognitionResult.enrichedCigar.singleStickPrice
+                          .split('\n')
+                          .map((line, index) => (
+                            <Text key={index}>
+                              {line.trim()}
+                              {index <
+                                recognitionResult.enrichedCigar.singleStickPrice.split('\n')
+                                  .length -
+                                  1 && '\n'}
+                            </Text>
+                          ))}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              )}
-
+                )}
 
               <View style={styles.actionButtons}>
                 <TouchableOpacity style={styles.addButton} onPress={addToInventory}>
                   <Ionicons name="add" size={20} color="#FFFFFF" />
                   <Text style={styles.addButtonText}>Add to Humidor</Text>
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity style={styles.smokeButton} onPress={startJournaling}>
                   <Ionicons name="create" size={20} color="#DC851F" />
                   <Text style={styles.smokeButtonText}>Let's Journal!</Text>
@@ -1136,8 +1180,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
               </TouchableOpacity>
 
               <View style={styles.modeIndicator}>
-                <Text style={styles.modeText}>
-                </Text>
+                <Text style={styles.modeText}></Text>
               </View>
             </View>
           ) : null}
@@ -1145,11 +1188,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       )}
 
       {/* Custom Entry Modal */}
-      <Modal
-        visible={showManualEntry}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
+      <Modal visible={showManualEntry} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowManualEntry(false)}>
@@ -1182,7 +1221,6 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
               />
             </View>
 
-
             <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>Size/Vitola</Text>
               <TextInput
@@ -1206,19 +1244,16 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
               />
             </View>
           </ScrollView>
-          
+
           {/* Submit Button */}
           <View style={styles.modalButtonContainer}>
-            <TouchableOpacity 
-              style={styles.cancelModalButton} 
+            <TouchableOpacity
+              style={styles.cancelModalButton}
               onPress={() => setShowManualEntry(false)}
             >
               <Text style={styles.cancelModalButtonText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.submitModalButton} 
-              onPress={handleManualSubmit}
-            >
+            <TouchableOpacity style={styles.submitModalButton} onPress={handleManualSubmit}>
               <Text style={styles.submitModalButtonText}>Submit</Text>
             </TouchableOpacity>
           </View>
@@ -1226,11 +1261,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       </Modal>
 
       {/* Simple Search Modal */}
-      <Modal
-        visible={showSimpleSearch}
-        animationType="slide"
-        presentationStyle="pageSheet"
-      >
+      <Modal visible={showSimpleSearch} animationType="slide" presentationStyle="pageSheet">
         <View style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setShowSimpleSearch(false)}>
@@ -1241,9 +1272,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
           </View>
 
           <View style={styles.modalContent}>
-            <Text style={styles.searchSubtitle}>
-              Search by brand and cigar name
-            </Text>
+            <Text style={styles.searchSubtitle}>Search by brand and cigar name</Text>
 
             <TextInput
               style={styles.searchTextInput}
@@ -1257,19 +1286,16 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
               blurOnSubmit={true}
               returnKeyType="done"
             />
-            
+
             {/* Submit Buttons */}
             <View style={styles.modalButtonContainer}>
-              <TouchableOpacity 
-                style={styles.cancelModalButton} 
+              <TouchableOpacity
+                style={styles.cancelModalButton}
                 onPress={() => setShowSimpleSearch(false)}
               >
                 <Text style={styles.cancelModalButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={styles.submitModalButton} 
-                onPress={processSimpleSearch}
-              >
+              <TouchableOpacity style={styles.submitModalButton} onPress={processSimpleSearch}>
                 <Text style={styles.submitModalButtonText}>Search</Text>
               </TouchableOpacity>
             </View>
@@ -1290,15 +1316,16 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
               <Ionicons name="warning" size={32} color="#DC851F" />
               <Text style={styles.duplicateTitle}>Cigar Already in Humidor</Text>
             </View>
-            
+
             <Text style={styles.duplicateMessage}>
-              {duplicateItem && getCigarDisplayName(duplicateItem.cigar)} is already in your humidor with {duplicateItem?.quantity} cigars.
+              {duplicateItem && getCigarDisplayName(duplicateItem.cigar)} is already in your humidor
+              with {duplicateItem?.quantity} cigars.
             </Text>
-            
+
             <Text style={styles.duplicateSubtext}>
               Would you like to add more to this existing entry or create a separate entry?
             </Text>
-            
+
             <View style={styles.duplicateButtons}>
               <TouchableOpacity
                 style={[styles.duplicateButton, styles.addToExistingButton]}
@@ -1307,7 +1334,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
                 <Ionicons name="add-circle" size={20} color="#FFFFFF" />
                 <Text style={styles.addToExistingButtonText}>Add to Existing</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[styles.duplicateButton, styles.createNewButton]}
                 onPress={handleCreateNewEntry}
@@ -1316,7 +1343,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
                 <Text style={styles.createNewButtonText}>Create New Entry</Text>
               </TouchableOpacity>
             </View>
-            
+
             <TouchableOpacity
               style={styles.cancelButton}
               onPress={() => setShowDuplicateDialog(false)}
@@ -1344,9 +1371,9 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
               <Ionicons name="close" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
-          
+
           <Text style={styles.modalSubtitle}>Choose which humidor to add this cigar to</Text>
-          
+
           <ScrollView style={styles.humidorList}>
             {availableHumidors.map((humidor) => (
               <TouchableOpacity

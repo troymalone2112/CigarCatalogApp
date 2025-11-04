@@ -82,10 +82,3 @@ console.log('- No more infinite onboarding loops');
 console.log('- Proper onboarding completion tracking');
 console.log('');
 console.log('🎉 All onboarding issues should now be resolved!');
-
-
-
-
-
-
-

@@ -21,7 +21,10 @@ import { APIService } from '../services/apiService';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import StrengthButton from '../components/StrengthButton';
 
-type JournalCigarRecognitionScreenNavigationProp = StackNavigationProp<RootStackParamList, 'JournalCigarRecognition'>;
+type JournalCigarRecognitionScreenNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'JournalCigarRecognition'
+>;
 
 interface RecognitionResult {
   recognition?: any;
@@ -34,13 +37,13 @@ interface RecognitionResult {
 
 export default function JournalCigarRecognitionScreen() {
   const navigation = useNavigation<JournalCigarRecognitionScreenNavigationProp>();
-  
+
   // Camera states
   const [permission, requestPermission] = useCameraPermissions();
   const [type, setType] = useState<CameraType>('back');
   const [camera, setCamera] = useState<CameraView | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
-  
+
   // Recognition states
   const [isProcessing, setIsProcessing] = useState(false);
   const [recognitionResult, setRecognitionResult] = useState<RecognitionResult | null>(null);
@@ -49,13 +52,13 @@ export default function JournalCigarRecognitionScreen() {
 
   // Processing messages to display during cigar identification
   const processingMessages = [
-    "Identifying brand, tobacco, aging, and origin...",
-    "Analyzing cigar band details...",
-    "Pulling flavor profiles and tasting notes...",
-    "Fetching ratings from Cigar Aficionado...",
-    "Compiling manufacturer info...",
-    "Gathering user reviews...",
-    "Finalizing your cigar profile..."
+    'Identifying brand, tobacco, aging, and origin...',
+    'Analyzing cigar band details...',
+    'Pulling flavor profiles and tasting notes...',
+    'Fetching ratings from Cigar Aficionado...',
+    'Compiling manufacturer info...',
+    'Gathering user reviews...',
+    'Finalizing your cigar profile...',
   ];
 
   // Cycle through processing messages when processing
@@ -63,15 +66,15 @@ export default function JournalCigarRecognitionScreen() {
     if (isProcessing) {
       setCurrentProcessingMessage(0);
       const interval = setInterval(() => {
-        setCurrentProcessingMessage(prev => 
-          prev < processingMessages.length - 1 ? prev + 1 : 0
+        setCurrentProcessingMessage((prev) =>
+          prev < processingMessages.length - 1 ? prev + 1 : 0,
         );
       }, 3000); // Change message every 3 seconds
 
       return () => clearInterval(interval);
     }
   }, [isProcessing, processingMessages.length]);
-  
+
   const [showCamera, setShowCamera] = useState(false);
 
   const handleCameraCapture = async () => {
@@ -98,7 +101,7 @@ export default function JournalCigarRecognitionScreen() {
         });
         setImageUri(photo.uri);
         setShowCamera(false);
-        
+
         // Process the image separately to avoid misleading error messages
         try {
           // Use base64 data for API calls instead of file URI
@@ -141,7 +144,7 @@ export default function JournalCigarRecognitionScreen() {
     try {
       setIsProcessing(true);
       const result = await APIService.recognizeCigar(recognitionMode, {
-        imageUri: uri
+        imageUri: uri,
       });
       setRecognitionResult(result);
     } catch (error) {
@@ -151,7 +154,6 @@ export default function JournalCigarRecognitionScreen() {
       setIsProcessing(false);
     }
   };
-
 
   const handleLogExperience = () => {
     if (recognitionResult) {
@@ -192,7 +194,7 @@ export default function JournalCigarRecognitionScreen() {
 
   if (isProcessing) {
     return (
-      <ImageBackground 
+      <ImageBackground
         source={require('../../assets/tobacco-leaves-bg.jpg')}
         style={styles.fullScreenBackground}
         imageStyle={styles.tobaccoBackgroundImage}
@@ -211,26 +213,35 @@ export default function JournalCigarRecognitionScreen() {
 
   if (recognitionResult) {
     return (
-      <ImageBackground 
+      <ImageBackground
         source={require('../../assets/tobacco-leaves-bg.jpg')}
         style={styles.fullScreenBackground}
         imageStyle={styles.tobaccoBackgroundImage}
       >
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
           <View style={styles.cigarCard}>
-            {imageUri && (
-              <Image source={{ uri: imageUri }} style={styles.cigarImage} />
-            )}
-            
+            {imageUri && <Image source={{ uri: imageUri }} style={styles.cigarImage} />}
+
             <View style={styles.cigarInfo}>
               <Text style={styles.cigarBrand}>{recognitionResult.enrichedCigar.brand}</Text>
               <Text style={styles.cigarLine}>{recognitionResult.enrichedCigar.line}</Text>
               <Text style={styles.cigarName}>{recognitionResult.enrichedCigar.name}</Text>
-              
+
               <View style={styles.strengthContainer}>
                 <View style={styles.flavorTags}>
-                  <View style={[styles.flavorTag, { backgroundColor: getStrengthInfo(recognitionResult.enrichedCigar.strength || 'Medium').color }]}>
-                    <Text style={styles.flavorText}>{getStrengthInfo(recognitionResult.enrichedCigar.strength || 'Medium').label}</Text>
+                  <View
+                    style={[
+                      styles.flavorTag,
+                      {
+                        backgroundColor: getStrengthInfo(
+                          recognitionResult.enrichedCigar.strength || 'Medium',
+                        ).color,
+                      },
+                    ]}
+                  >
+                    <Text style={styles.flavorText}>
+                      {getStrengthInfo(recognitionResult.enrichedCigar.strength || 'Medium').label}
+                    </Text>
                   </View>
                 </View>
               </View>
@@ -238,23 +249,24 @@ export default function JournalCigarRecognitionScreen() {
               {recognitionResult.enrichedCigar.overview && (
                 <View style={styles.overviewSection}>
                   <Text style={styles.sectionTitle}>Overview</Text>
-                  <Text style={styles.overviewText}>{recognitionResult.enrichedCigar.overview}</Text>
+                  <Text style={styles.overviewText}>
+                    {recognitionResult.enrichedCigar.overview}
+                  </Text>
                 </View>
               )}
 
               {recognitionResult.enrichedCigar.tobaccoOrigin && (
                 <View style={styles.tobaccoSection}>
                   <Text style={styles.sectionTitle}>Tobacco Origin</Text>
-                  <Text style={styles.tobaccoText}>{recognitionResult.enrichedCigar.tobaccoOrigin}</Text>
+                  <Text style={styles.tobaccoText}>
+                    {recognitionResult.enrichedCigar.tobaccoOrigin}
+                  </Text>
                 </View>
               )}
             </View>
           </View>
 
-          <TouchableOpacity 
-            style={styles.logButton}
-            onPress={handleLogExperience}
-          >
+          <TouchableOpacity style={styles.logButton} onPress={handleLogExperience}>
             <Ionicons name="create" size={20} color="white" />
             <Text style={styles.logButtonText}>Let's Smoke!</Text>
           </TouchableOpacity>
@@ -264,7 +276,7 @@ export default function JournalCigarRecognitionScreen() {
   }
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.fullScreenBackground}
       imageStyle={styles.tobaccoBackgroundImage}
@@ -274,13 +286,13 @@ export default function JournalCigarRecognitionScreen() {
           <View style={styles.iconContainer}>
             <Ionicons name="camera" size={80} color="#DC851F" />
           </View>
-          
+
           <Text style={styles.subtitle}>
             Take a photo or enter details manually to identify the cigar you're about to enjoy
           </Text>
 
           <View style={styles.buttonContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.primaryButton}
               onPress={handleCameraCapture}
               disabled={isProcessing}
@@ -290,10 +302,7 @@ export default function JournalCigarRecognitionScreen() {
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.secondaryButton}
-              onPress={handleManualEntry}
-            >
+            <TouchableOpacity style={styles.secondaryButton} onPress={handleManualEntry}>
               <Ionicons name="create" size={24} color="#7C2D12" />
               <Text style={styles.secondaryButtonText}>Search</Text>
             </TouchableOpacity>
@@ -303,34 +312,21 @@ export default function JournalCigarRecognitionScreen() {
         {/* Camera Modal */}
         <Modal visible={showCamera} animationType="slide">
           <View style={styles.cameraContainer}>
-            <CameraView
-              style={styles.camera}
-              facing={type}
-              ref={setCamera}
-            >
+            <CameraView style={styles.camera} facing={type} ref={setCamera}>
               <View style={styles.cameraControls}>
-                <TouchableOpacity
-                  style={styles.cameraButton}
-                  onPress={() => setShowCamera(false)}
-                >
+                <TouchableOpacity style={styles.cameraButton} onPress={() => setShowCamera(false)}>
                   <Ionicons name="close" size={24} color="white" />
                 </TouchableOpacity>
-                
+
                 <View style={styles.cameraButtonRow}>
-                  <TouchableOpacity
-                    style={styles.galleryButton}
-                    onPress={pickImageFromGallery}
-                  >
+                  <TouchableOpacity style={styles.galleryButton} onPress={pickImageFromGallery}>
                     <Ionicons name="images" size={24} color="white" />
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity
-                    style={styles.captureButton}
-                    onPress={takePicture}
-                  >
+
+                  <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
                     <Ionicons name="camera" size={32} color="white" />
                   </TouchableOpacity>
-                  
+
                   <TouchableOpacity
                     style={styles.flipButton}
                     onPress={() => setType(type === 'back' ? 'front' : 'back')}
@@ -342,7 +338,6 @@ export default function JournalCigarRecognitionScreen() {
             </CameraView>
           </View>
         </Modal>
-
       </View>
     </ImageBackground>
   );

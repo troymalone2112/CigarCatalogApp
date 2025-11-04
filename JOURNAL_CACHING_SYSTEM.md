@@ -7,12 +7,14 @@ The journal caching system provides intelligent caching for journal entries to r
 ## Key Features
 
 ### 🚀 **Performance Benefits**
+
 - **Faster App Startup**: Journal entries load instantly from cache
 - **Reduced Database Calls**: Only fetches from DB when cache is expired or missing
 - **Offline Support**: Cached entries available even without network
 - **Smart Refresh**: Pull-to-refresh forces database reload
 
 ### 📦 **Cache Management**
+
 - **Automatic Caching**: New entries automatically added to cache
 - **Cache Updates**: Modified entries update cache in real-time
 - **Cache Cleanup**: Deleted entries removed from cache
@@ -54,11 +56,13 @@ const entries = await StorageService.getJournalEntries(true);
 ### Screen Integration
 
 #### HomeScreen
+
 - Uses cache for dashboard data
 - Faster loading of latest journal entries
 - Optional force refresh parameter
 
 #### JournalScreen
+
 - Cache-first loading for instant display
 - Pull-to-refresh forces database reload
 - Automatic cache updates on changes
@@ -74,6 +78,7 @@ const entries = await StorageService.getJournalEntries(true);
 ## Cache Configuration
 
 ### Cache Settings
+
 ```typescript
 // Cache expires after 5 minutes
 CACHE_EXPIRY_MS = 5 * 60 * 1000;
@@ -83,12 +88,14 @@ CACHE_VERSION = '1.0.0';
 ```
 
 ### Cache Keys
+
 - `journal_entries_cache`: Main cache data
 - `journal_cache_metadata`: Cache metadata and expiry
 
 ## Debugging and Monitoring
 
 ### Cache Statistics
+
 ```typescript
 import { CacheUtils } from '../utils/cacheUtils';
 
@@ -100,12 +107,14 @@ console.log('Cache Size:', info.cacheSizeKB + ' KB');
 ```
 
 ### Cache Health Check
+
 ```typescript
 // Check if cache is healthy
 const isHealthy = await CacheUtils.isCacheHealthy();
 ```
 
 ### Manual Cache Management
+
 ```typescript
 // Clear all caches
 await CacheUtils.clearAllCaches();
@@ -120,12 +129,14 @@ await CacheUtils.logCacheStats();
 ## Performance Impact
 
 ### Before Caching
+
 - Database call on every app launch
 - Network request for journal entries
 - Slower app startup time
 - Higher database load
 
 ### After Caching
+
 - Instant loading from local cache
 - Database calls only when needed
 - Faster app startup
@@ -154,12 +165,14 @@ The caching system includes comprehensive error handling:
 ## Best Practices
 
 ### For Developers
+
 1. **Use forceRefresh sparingly**: Only when you need the latest data
 2. **Handle cache failures**: Always have database fallback
 3. **Monitor cache health**: Use CacheUtils for debugging
 4. **Test offline scenarios**: Ensure app works with cached data
 
 ### For Users
+
 1. **Pull-to-refresh**: Use when you want the latest data
 2. **App restart**: Clears expired cache automatically
 3. **Network changes**: Cache adapts to connectivity
@@ -167,11 +180,13 @@ The caching system includes comprehensive error handling:
 ## Migration Notes
 
 ### Existing Code
+
 - No changes needed for existing `getJournalEntries()` calls
 - Optional `forceRefresh` parameter added
 - Cache updates happen automatically
 
 ### Database Impact
+
 - Reduced database queries
 - Lower server load
 - Better performance for all users
@@ -186,6 +201,7 @@ The caching system includes comprehensive error handling:
 4. **Sync Issues**: Force refresh resolves data inconsistencies
 
 ### Debug Commands
+
 ```typescript
 // Check cache status
 await CacheUtils.logCacheStats();
@@ -198,12 +214,14 @@ await CacheUtils.refreshCache();
 ## Future Enhancements
 
 ### Planned Features
+
 - **Smart Sync**: Background sync when app becomes active
 - **Selective Caching**: Cache only recent entries
 - **Compression**: Reduce cache storage size
 - **Analytics**: Track cache hit rates and performance
 
 ### Configuration Options
+
 - **Cache Size Limits**: Prevent excessive storage usage
 - **Custom Expiry**: Per-user cache settings
 - **Sync Strategies**: Configurable sync behavior
@@ -213,6 +231,4 @@ await CacheUtils.refreshCache();
 The journal caching system provides significant performance improvements while maintaining data consistency. The system is designed to be transparent to existing code while providing powerful debugging and monitoring capabilities.
 
 The caching system reduces database load, improves app performance, and provides a better user experience with faster loading times and offline support.
-
-
 

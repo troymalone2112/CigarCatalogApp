@@ -17,13 +17,16 @@ import { RootStackParamList, RecognitionMode } from '../types';
 import { APIService } from '../services/apiService';
 import { getStrengthInfo } from '../utils/strengthUtils';
 
-type JournalManualEntryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'JournalManualEntry'>;
+type JournalManualEntryScreenNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'JournalManualEntry'
+>;
 type JournalManualEntryScreenRouteProp = RouteProp<RootStackParamList, 'JournalManualEntry'>;
 
 export default function JournalManualEntryScreen() {
   const navigation = useNavigation<JournalManualEntryScreenNavigationProp>();
   const route = useRoute<JournalManualEntryScreenRouteProp>();
-  
+
   const [manualDescription, setManualDescription] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -36,9 +39,9 @@ export default function JournalManualEntryScreen() {
     try {
       setIsProcessing(true);
       const result = await APIService.recognizeCigar(RecognitionMode.PERPLEXITY_ONLY, {
-        userDescription: manualDescription
+        userDescription: manualDescription,
       });
-      
+
       // Convert RecognitionResult to Cigar for navigation
       const cigar = {
         id: Date.now().toString(),
@@ -65,7 +68,7 @@ export default function JournalManualEntryScreen() {
         cigarAficionadoRating: result.enrichedCigar.cigarAficionadoRating,
         imageUrl: 'placeholder', // Use placeholder for manual entries
       };
-      
+
       // Navigate to new single journal entry screen
       navigation.navigate('NewJournalEntry', { cigar });
     } catch (error) {
@@ -78,7 +81,7 @@ export default function JournalManualEntryScreen() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <ImageBackground 
+      <ImageBackground
         source={require('../../assets/tobacco-leaves-bg.jpg')}
         style={styles.fullScreenBackground}
         imageStyle={styles.tobaccoBackgroundImage}
@@ -101,7 +104,7 @@ export default function JournalManualEntryScreen() {
               returnKeyType="done"
             />
 
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.submitButton}
               onPress={processManualEntry}
               disabled={isProcessing}

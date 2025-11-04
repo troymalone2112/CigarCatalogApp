@@ -30,7 +30,9 @@ export class RecommendationService {
   /**
    * Get personalized cigar recommendations based on user data (humidor, journal, preferences)
    */
-  static async getPersonalizedRecommendations(params: RecommendationParams = {}): Promise<CigarRecommendation[]> {
+  static async getPersonalizedRecommendations(
+    params: RecommendationParams = {},
+  ): Promise<CigarRecommendation[]> {
     const {
       userId,
       limit = 5, // Start with 5 recommendations as requested
@@ -39,12 +41,12 @@ export class RecommendationService {
       preferredStrength,
       preferredBrands = [],
       favoriteFlavors = [],
-      excludeBrands = []
+      excludeBrands = [],
     } = params;
 
     try {
       console.log('🧠 Getting smart recommendations based on user data...');
-      
+
       // Get all available cigars first
       const { data: allCigars, error: cigarsError } = await supabase
         .from('cigars')
@@ -68,13 +70,13 @@ export class RecommendationService {
       }
 
       // Score all cigars based on user profile
-      const scoredCigars = allCigars.map(cigar => {
+      const scoredCigars = allCigars.map((cigar) => {
         const scoreResult = this.calculateSmartMatchScore(cigar, userProfile);
         return {
           cigar: this.transformToCigarType(cigar),
           matchScore: scoreResult.score,
           reason: scoreResult.reason,
-          breakdown: scoreResult.breakdown
+          breakdown: scoreResult.breakdown,
         };
       });
 
@@ -85,7 +87,6 @@ export class RecommendationService {
 
       console.log(`🎯 Generated ${recommendations.length} smart recommendations`);
       return recommendations;
-
     } catch (error) {
       console.error('Error getting personalized recommendations:', error);
       return [];
@@ -95,7 +96,10 @@ export class RecommendationService {
   /**
    * Get recommendations based on a specific cigar (similar cigars)
    */
-  static async getSimilarCigars(cigarId: string, limit: number = 5): Promise<CigarRecommendation[]> {
+  static async getSimilarCigars(
+    cigarId: string,
+    limit: number = 5,
+  ): Promise<CigarRecommendation[]> {
     try {
       // Get the reference cigar
       const { data: referenceCigar, error: refError } = await supabase
@@ -126,30 +130,29 @@ export class RecommendationService {
       }
 
       // Score similarity based on flavor overlap
-      const recommendations = similarCigars.map(cigar => {
+      const recommendations = similarCigars.map((cigar) => {
         const flavorSimilarity = this.calculateFlavorSimilarity(
           referenceCigar.flavor_tags || [],
-          cigar.flavor_tags || []
+          cigar.flavor_tags || [],
         );
 
         const priceSimilarity = this.calculatePriceSimilarity(
           referenceCigar.price_usd,
-          cigar.price_usd
+          cigar.price_usd,
         );
 
-        const matchScore = (flavorSimilarity * 0.6) + (priceSimilarity * 0.4);
+        const matchScore = flavorSimilarity * 0.6 + priceSimilarity * 0.4;
 
         return {
           cigar: this.transformToCigarType(cigar),
           matchScore,
-          reason: [`Similar strength and flavor profile to ${referenceCigar.brand_name} ${referenceCigar.cigar_name}`]
+          reason: [
+            `Similar strength and flavor profile to ${referenceCigar.brand_name} ${referenceCigar.cigar_name}`,
+          ],
         };
       });
 
-      return recommendations
-        .sort((a, b) => b.matchScore - a.matchScore)
-        .slice(0, limit);
-
+      return recommendations.sort((a, b) => b.matchScore - a.matchScore).slice(0, limit);
     } catch (error) {
       console.error('Error getting similar cigars:', error);
       return [];
@@ -159,9 +162,12 @@ export class RecommendationService {
   /**
    * Get top-rated cigars by year
    */
-  static async getTopRatedCigars(year?: number, limit: number = 10): Promise<CigarRecommendation[]> {
+  static async getTopRatedCigars(
+    year?: number,
+    limit: number = 10,
+  ): Promise<CigarRecommendation[]> {
     try {
-      let query = supabase
+      const query = supabase
         .from('cigars')
         .select('*')
         .order('recognition_confidence', { ascending: false })
@@ -174,12 +180,13 @@ export class RecommendationService {
         return [];
       }
 
-      return cigars.map(cigar => ({
+      return cigars.map((cigar) => ({
         cigar: this.transformToCigarType(cigar),
         matchScore: cigar.recognition_confidence || 0,
-        reason: [`Top-rated cigar with ${Math.round((cigar.recognition_confidence || 0) * 100)}-point rating`]
+        reason: [
+          `Top-rated cigar with ${Math.round((cigar.recognition_confidence || 0) * 100)}-point rating`,
+        ],
       }));
-
     } catch (error) {
       console.error('Error getting top-rated cigars:', error);
       return [];
@@ -189,7 +196,11 @@ export class RecommendationService {
   /**
    * Get cigars by price range
    */
-  static async getCigarsByPriceRange(minPrice: number, maxPrice: number, limit: number = 10): Promise<CigarRecommendation[]> {
+  static async getCigarsByPriceRange(
+    minPrice: number,
+    maxPrice: number,
+    limit: number = 10,
+  ): Promise<CigarRecommendation[]> {
     try {
       // Since the cigars table doesn't have price fields, we'll just return top-rated cigars
       // This is a simplified implementation
@@ -204,12 +215,11 @@ export class RecommendationService {
         return [];
       }
 
-      return cigars.map(cigar => ({
+      return cigars.map((cigar) => ({
         cigar: this.transformToCigarType(cigar),
         matchScore: 1.0,
-        reason: [`Recommended cigar in your price range ($${minPrice}-$${maxPrice})`]
+        reason: [`Recommended cigar in your price range ($${minPrice}-$${maxPrice})`],
       }));
-
     } catch (error) {
       console.error('Error getting cigars by price range:', error);
       return [];
@@ -219,22 +229,23 @@ export class RecommendationService {
   /**
    * Update user preferences
    */
-  static async updateUserPreferences(userId: string, preferences: Partial<{
-    preferredBrands: string[];
-    preferredStrength: string;
-    minRating: number;
-    maxPriceUsd: number;
-    favoriteFlavors: string[];
-    dislikedBrands: string[];
-  }>): Promise<boolean> {
+  static async updateUserPreferences(
+    userId: string,
+    preferences: Partial<{
+      preferredBrands: string[];
+      preferredStrength: string;
+      minRating: number;
+      maxPriceUsd: number;
+      favoriteFlavors: string[];
+      dislikedBrands: string[];
+    }>,
+  ): Promise<boolean> {
     try {
-      const { error } = await supabase
-        .from('user_cigar_preferences')
-        .upsert({
-          user_id: userId,
-          ...preferences,
-          updated_at: new Date().toISOString()
-        });
+      const { error } = await supabase.from('user_cigar_preferences').upsert({
+        user_id: userId,
+        ...preferences,
+        updated_at: new Date().toISOString(),
+      });
 
       if (error) {
         console.error('Error updating user preferences:', error);
@@ -255,10 +266,10 @@ export class RecommendationService {
     try {
       // Get user's inventory and journal data
       const { StorageService } = await import('../storage/storageService');
-      
+
       const [inventory, journalEntries] = await Promise.all([
         StorageService.getInventory(),
-        StorageService.getJournalEntries()
+        StorageService.getJournalEntries(),
       ]);
 
       // Analyze preferred brands from inventory and journal
@@ -268,19 +279,19 @@ export class RecommendationService {
       const highRatedCigars: any[] = [];
 
       // Analyze inventory
-      inventory.forEach(item => {
+      inventory.forEach((item) => {
         const brand = item.cigar.brand;
         const strength = item.cigar.strength;
-        
+
         brandCounts[brand] = (brandCounts[brand] || 0) + item.quantity;
         strengthCounts[strength] = (strengthCounts[strength] || 0) + item.quantity;
       });
 
       // Analyze journal entries
-      journalEntries.forEach(entry => {
+      journalEntries.forEach((entry) => {
         const brand = entry.cigar.brand;
         const strength = entry.cigar.strength;
-        
+
         // Count brands and strengths from journal
         brandCounts[brand] = (brandCounts[brand] || 0) + 1;
         strengthCounts[strength] = (strengthCounts[strength] || 0) + 1;
@@ -291,24 +302,24 @@ export class RecommendationService {
         }
 
         // Count selected flavors
-        entry.selectedFlavors.forEach(flavor => {
+        entry.selectedFlavors.forEach((flavor) => {
           flavorCounts[flavor] = (flavorCounts[flavor] || 0) + 1;
         });
       });
 
       // Find top preferences
       const topBrands = Object.entries(brandCounts)
-        .sort(([,a], [,b]) => b - a)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, 3)
         .map(([brand]) => brand);
 
       const topStrengths = Object.entries(strengthCounts)
-        .sort(([,a], [,b]) => b - a)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, 2)
         .map(([strength]) => strength);
 
       const topFlavors = Object.entries(flavorCounts)
-        .sort(([,a], [,b]) => b - a)
+        .sort(([, a], [, b]) => b - a)
         .slice(0, 5)
         .map(([flavor]) => flavor);
 
@@ -319,8 +330,11 @@ export class RecommendationService {
         highRatedCigars,
         inventoryCount: inventory.length,
         journalCount: journalEntries.length,
-        averageRating: journalEntries.length > 0 ? 
-          journalEntries.reduce((sum, entry) => sum + entry.rating.overall, 0) / journalEntries.length : 0
+        averageRating:
+          journalEntries.length > 0
+            ? journalEntries.reduce((sum, entry) => sum + entry.rating.overall, 0) /
+              journalEntries.length
+            : 0,
       };
     } catch (error) {
       console.error('Error analyzing user profile:', error);
@@ -331,13 +345,16 @@ export class RecommendationService {
   /**
    * Calculate smart match score based on user profile
    */
-  private static calculateSmartMatchScore(cigar: any, userProfile: any): { score: number; reason: string[]; breakdown: any } {
+  private static calculateSmartMatchScore(
+    cigar: any,
+    userProfile: any,
+  ): { score: number; reason: string[]; breakdown: any } {
     const breakdown = {
       overallQuality: 0,
       brandMatch: 0,
       strengthMatch: 0,
       flavorMatch: 0,
-      similarityToFavorites: 0
+      similarityToFavorites: 0,
     };
     const reasons: string[] = [];
 
@@ -348,7 +365,7 @@ export class RecommendationService {
       return {
         score: baseScore,
         reason: ['Based on overall rating'],
-        breakdown
+        breakdown,
       };
     }
 
@@ -375,13 +392,14 @@ export class RecommendationService {
     // Flavor Match (15% weight)
     let flavorScore = 0;
     const cigarFlavors = Array.isArray(cigar.flavor_profile) ? cigar.flavor_profile : [];
-    const matchingFlavors = userProfile.topFlavors.filter(flavor => 
-      cigarFlavors.some(cigarFlavor => 
-        cigarFlavor.toLowerCase().includes(flavor.toLowerCase()) ||
-        flavor.toLowerCase().includes(cigarFlavor.toLowerCase())
-      )
+    const matchingFlavors = userProfile.topFlavors.filter((flavor) =>
+      cigarFlavors.some(
+        (cigarFlavor) =>
+          cigarFlavor.toLowerCase().includes(flavor.toLowerCase()) ||
+          flavor.toLowerCase().includes(cigarFlavor.toLowerCase()),
+      ),
     );
-    
+
     if (matchingFlavors.length > 0) {
       flavorScore = Math.round((matchingFlavors.length / userProfile.topFlavors.length) * 15);
       reasons.push(`Features your favorite flavors`);
@@ -390,13 +408,15 @@ export class RecommendationService {
 
     // Similarity to Favorites (10% weight)
     let similarityScore = 0;
-    const similarToHighRated = userProfile.highRatedCigars.some(highRated => 
-      highRated.brand === cigar.brand || 
-      highRated.strength === cigar.strength ||
-      (Array.isArray(highRated.flavorProfile) && Array.isArray(cigar.flavor_profile) &&
-       highRated.flavorProfile.some(flavor => cigar.flavor_profile.includes(flavor)))
+    const similarToHighRated = userProfile.highRatedCigars.some(
+      (highRated) =>
+        highRated.brand === cigar.brand ||
+        highRated.strength === cigar.strength ||
+        (Array.isArray(highRated.flavorProfile) &&
+          Array.isArray(cigar.flavor_profile) &&
+          highRated.flavorProfile.some((flavor) => cigar.flavor_profile.includes(flavor))),
     );
-    
+
     if (similarToHighRated) {
       similarityScore = 10;
       reasons.push('Similar to cigars you rated highly');
@@ -411,8 +431,8 @@ export class RecommendationService {
 
     return {
       score: Math.min(totalScore, 100), // Cap at 100%
-      reason: reasonArray, 
-      breakdown 
+      reason: reasonArray,
+      breakdown,
     };
   }
 
@@ -422,10 +442,10 @@ export class RecommendationService {
   private static calculateFlavorSimilarity(flavors1: string[], flavors2: string[]): number {
     if (flavors1.length === 0 || flavors2.length === 0) return 0;
 
-    const set1 = new Set(flavors1.map(f => f.toLowerCase()));
-    const set2 = new Set(flavors2.map(f => f.toLowerCase()));
+    const set1 = new Set(flavors1.map((f) => f.toLowerCase()));
+    const set2 = new Set(flavors2.map((f) => f.toLowerCase()));
 
-    const intersection = new Set([...set1].filter(x => set2.has(x)));
+    const intersection = new Set([...set1].filter((x) => set2.has(x)));
     const union = new Set([...set1, ...set2]);
 
     return intersection.size / union.size;
@@ -437,7 +457,7 @@ export class RecommendationService {
   private static calculatePriceSimilarity(price1: number, price2: number): number {
     const diff = Math.abs(price1 - price2);
     const maxPrice = Math.max(price1, price2);
-    return Math.max(0, 1 - (diff / maxPrice));
+    return Math.max(0, 1 - diff / maxPrice);
   }
 
   /**
@@ -469,7 +489,7 @@ export class RecommendationService {
   private static transformToCigarType(cigar: any): Cigar {
     console.log('🔍 transformToCigarType - raw cigar data:', JSON.stringify(cigar, null, 2));
     console.log('🔍 transformToCigarType - detail_url field:', cigar.detail_url);
-    
+
     const transformedCigar = {
       id: cigar.id,
       brand: cigar.brand || '',
@@ -486,7 +506,7 @@ export class RecommendationService {
       smokingExperience: cigar.smoking_experience || {
         first: '',
         second: '',
-        final: ''
+        final: '',
       },
       imageUrl: cigar.image_url,
       recognitionConfidence: cigar.recognition_confidence || 0,
@@ -498,12 +518,15 @@ export class RecommendationService {
       singleStickPrice: cigar.price_usd ? `$${cigar.price_usd}` : '',
       releaseYear: cigar.releaseYear || '',
       professionalRating: `${Math.round((cigar.recognition_confidence || 0) * 100)}/100`,
-      detailUrl: cigar.detail_url
+      detailUrl: cigar.detail_url,
     };
-    
-    console.log('🔍 transformToCigarType - transformed cigar:', JSON.stringify(transformedCigar, null, 2));
+
+    console.log(
+      '🔍 transformToCigarType - transformed cigar:',
+      JSON.stringify(transformedCigar, null, 2),
+    );
     console.log('🔍 transformToCigarType - detailUrl in transformed:', transformedCigar.detailUrl);
-    
+
     return transformedCigar;
   }
 
@@ -525,7 +548,7 @@ export class RecommendationService {
       return data as DatabaseCigar[];
     } catch (error) {
       console.error('Error in getAllCigars:', error);
-    return [];
+      return [];
     }
   }
 

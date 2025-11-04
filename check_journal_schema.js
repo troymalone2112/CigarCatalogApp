@@ -28,7 +28,7 @@ async function checkJournalSchema() {
     }
 
     console.log('📋 Available columns in journal_entries:');
-    columns.forEach(col => {
+    columns.forEach((col) => {
       console.log(`   ${col.column_name}: ${col.data_type} (nullable: ${col.is_nullable})`);
     });
 
@@ -43,14 +43,13 @@ async function checkJournalSchema() {
       console.error('❌ Error getting sample data:', sampleError);
     } else if (sample && sample.length > 0) {
       console.log('📄 Sample entry fields:');
-      Object.keys(sample[0]).forEach(key => {
+      Object.keys(sample[0]).forEach((key) => {
         const value = sample[0][key];
         console.log(`   ${key}: ${typeof value} = ${value}`);
       });
     } else {
       console.log('📄 No journal entries found in database');
     }
-
   } catch (error) {
     console.error('❌ Error checking schema:', error);
   }
@@ -58,6 +57,4 @@ async function checkJournalSchema() {
 
 // Run the check
 checkJournalSchema();
-
-
 

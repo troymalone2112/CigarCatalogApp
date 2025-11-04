@@ -2,7 +2,7 @@
 
 /**
  * Background Image Update Script
- * 
+ *
  * This script helps identify and update all remaining screens that use
  * the tobacco background image to use the cached version instead.
  */
@@ -35,7 +35,7 @@ const filesToUpdate = [
   'src/screens/EditHumidorScreen.tsx',
   'src/screens/JournalManualEntryScreen.tsx',
   'src/screens/SignUpScreen.tsx',
-  'src/screens/RecommendationsScreen.tsx'
+  'src/screens/RecommendationsScreen.tsx',
 ];
 
 console.log('🖼️ Background Image Caching Update Script');
@@ -47,10 +47,12 @@ filesToUpdate.forEach((file, index) => {
 });
 console.log('');
 console.log('📋 Manual Update Steps:');
-console.log('1. Add import: import CachedBackgroundImage from \'../components/CachedBackgroundImage\';');
+console.log(
+  "1. Add import: import CachedBackgroundImage from '../components/CachedBackgroundImage';",
+);
 console.log('2. Remove ImageBackground from imports');
 console.log('3. Replace ImageBackground with CachedBackgroundImage');
-console.log('4. Remove source={require(\'../../assets/tobacco-leaves-bg.jpg\')} prop');
+console.log("4. Remove source={require('../../assets/tobacco-leaves-bg.jpg')} prop");
 console.log('');
 console.log('✅ Already Updated:');
 console.log('- src/screens/HomeScreen.tsx');
@@ -62,6 +64,4 @@ console.log('- Background image loaded once and cached');
 console.log('- No more lag when switching between screens');
 console.log('- Improved app performance and user experience');
 console.log('- Reduced memory usage from duplicate image loads');
-
-
 

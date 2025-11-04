@@ -27,8 +27,9 @@ Execute the webhook setup SQL in your Supabase SQL editor:
 ```
 
 This creates:
+
 - `handle_revenuecat_webhook()` function
-- `revenuecat_webhook_handler()` function  
+- `revenuecat_webhook_handler()` function
 - Database indexes for performance
 
 ### Step 2: Deploy Webhook Endpoint
@@ -36,12 +37,14 @@ This creates:
 #### Option A: Deploy to Vercel (Recommended)
 
 1. **Create new Vercel project:**
+
    ```bash
    mkdir revenuecat-webhook
    cd revenuecat-webhook
    ```
 
 2. **Copy files:**
+
    ```bash
    cp revenuecat_webhook_endpoint.js index.js
    cp webhook_package.json package.json
@@ -52,6 +55,7 @@ This creates:
    - `SUPABASE_SERVICE_ROLE_KEY` - Your Supabase service role key
 
 4. **Deploy:**
+
    ```bash
    vercel --prod
    ```
@@ -64,11 +68,13 @@ This creates:
 #### Option B: Deploy to Netlify Functions
 
 1. **Create netlify/functions directory:**
+
    ```bash
    mkdir -p netlify/functions
    ```
 
 2. **Create netlify/functions/revenuecat-webhook.js:**
+
    ```javascript
    // Copy contents of revenuecat_webhook_endpoint.js
    // Export as Netlify function
@@ -96,7 +102,7 @@ This creates:
    ```
 4. **Enable Events:**
    - ✅ INITIAL_PURCHASE
-   - ✅ RENEWAL  
+   - ✅ RENEWAL
    - ✅ CANCELLATION
    - ✅ EXPIRATION
    - ✅ BILLING_ISSUE
@@ -107,6 +113,7 @@ This creates:
 ### Step 4: Test the Webhook
 
 1. **Test webhook endpoint:**
+
    ```bash
    curl -X POST https://your-webhook-url.com/webhook/revenuecat \
      -H "Content-Type: application/json" \
@@ -124,16 +131,19 @@ This creates:
 ## 🔄 How It Works
 
 ### 1. User Makes Purchase
+
 ```
 User → App → RevenueCat → Apple → Purchase Complete
 ```
 
 ### 2. RevenueCat Sends Webhook
+
 ```
 RevenueCat → Your Webhook URL → Supabase Database
 ```
 
 ### 3. Database Updates
+
 ```sql
 -- Updates user_subscriptions table
 -- Updates profiles.is_premium field
@@ -141,34 +151,38 @@ RevenueCat → Your Webhook URL → Supabase Database
 ```
 
 ### 4. App Syncs Status
+
 ```
 App → Supabase → Updated Premium Status
 ```
 
 ## 📊 Webhook Events Handled
 
-| Event | Description | Database Action |
-|-------|-------------|-----------------|
-| `INITIAL_PURCHASE` | First subscription | Set status to `active`, enable premium |
-| `RENEWAL` | Subscription renewed | Extend current_period_end, keep active |
-| `CANCELLATION` | User cancelled | Set status to `cancelled`, keep premium until expiration |
-| `EXPIRATION` | Subscription expired | Set status to `expired`, disable premium |
-| `BILLING_ISSUE` | Payment failed | Set status to `past_due`, may disable premium |
-| `TRANSFER` | Subscription transferred | Update user_id, maintain subscription |
+| Event              | Description              | Database Action                                          |
+| ------------------ | ------------------------ | -------------------------------------------------------- |
+| `INITIAL_PURCHASE` | First subscription       | Set status to `active`, enable premium                   |
+| `RENEWAL`          | Subscription renewed     | Extend current_period_end, keep active                   |
+| `CANCELLATION`     | User cancelled           | Set status to `cancelled`, keep premium until expiration |
+| `EXPIRATION`       | Subscription expired     | Set status to `expired`, disable premium                 |
+| `BILLING_ISSUE`    | Payment failed           | Set status to `past_due`, may disable premium            |
+| `TRANSFER`         | Subscription transferred | Update user_id, maintain subscription                    |
 
 ## 🛠️ Troubleshooting
 
 ### Webhook Not Receiving Events
+
 1. **Check webhook URL** - Ensure it's publicly accessible
 2. **Check logs** - Look for webhook delivery failures in RevenueCat
 3. **Test endpoint** - Verify your webhook responds to POST requests
 
 ### Database Not Updating
+
 1. **Check Supabase logs** - Look for function execution errors
 2. **Verify user IDs** - Ensure app_user_id matches your user.id format
 3. **Check permissions** - Verify service role key has proper access
 
 ### Premium Status Not Updating
+
 1. **Check profiles table** - Verify is_premium field updates
 2. **Check subscription status** - Ensure status is 'active' or 'cancelled'
 3. **Check expiration dates** - Verify current_period_end is in future
@@ -183,12 +197,14 @@ App → Supabase → Updated Premium Status
 ## 📈 Monitoring
 
 ### Key Metrics to Track
+
 - ✅ Webhook delivery success rate
-- ✅ Database update success rate  
+- ✅ Database update success rate
 - ✅ Subscription status accuracy
 - ✅ Premium feature access
 
 ### Logging
+
 - All webhook events are logged with timestamps
 - Database updates are logged with user and subscription details
 - Errors are logged with full context for debugging

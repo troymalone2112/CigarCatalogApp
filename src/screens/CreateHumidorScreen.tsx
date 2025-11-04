@@ -17,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { DatabaseService } from '../services/supabaseService';
-import { clearHumidorCache } from '../services/humidorCacheService';
 import { OptimizedHumidorService } from '../services/optimizedHumidorService';
 
 type CreateHumidorScreenNavigationProp = StackNavigationProp<RootStackParamList, 'CreateHumidor'>;
@@ -43,44 +42,41 @@ export default function CreateHumidorScreen() {
 
     try {
       setLoading(true);
-      
+
       const capacityNumber = capacity.trim() ? parseInt(capacity.trim()) : undefined;
-      
+
       if (capacityNumber && (isNaN(capacityNumber) || capacityNumber <= 0)) {
         Alert.alert('Error', 'Capacity must be a positive number');
         return;
       }
 
       const descriptionValue = description.trim() === '' ? null : description.trim();
-      
+
       console.log('🔄 Creating humidor with data:', {
         name: name.trim(),
         description: descriptionValue,
-        capacity: capacityNumber
+        capacity: capacityNumber,
       });
-      
+
       const newHumidor = await DatabaseService.createHumidor(
         user.id,
         name.trim(),
         descriptionValue,
-        capacityNumber
+        capacityNumber,
       );
-      
+
       console.log('✅ Humidor created successfully:', newHumidor);
 
       // Clear cache to ensure new humidor appears in the list
       console.log('🗑️ Clearing humidor cache to show new humidor...');
-      await Promise.all([
-        clearHumidorCache(user.id),
-        OptimizedHumidorService.clearCache(user.id)
-      ]);
+      await OptimizedHumidorService.clearCache(user.id);
       console.log('✅ Cache cleared, new humidor will appear in list');
 
       // Navigate back directly without popup
       navigation.goBack();
     } catch (error: any) {
       console.error('Error creating humidor:', error);
-      
+
       if (error.code === '23505') {
         Alert.alert('Error', 'A humidor with this name already exists');
       } else {

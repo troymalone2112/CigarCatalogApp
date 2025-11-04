@@ -1,6 +1,6 @@
 /**
  * Dashboard Cache Service
- * 
+ *
  * This service caches dashboard data (inventory count, journal count, latest entries)
  * to provide instant loading when users return to the app.
  */
@@ -29,8 +29,8 @@ export class DashboardCacheService {
       if (cachedData) {
         const parsedCache: CachedDashboardData = JSON.parse(cachedData);
         const now = Date.now();
-        const isExpired = (now - parsedCache.lastUpdated) > CACHE_DURATION;
-        
+        const isExpired = now - parsedCache.lastUpdated > CACHE_DURATION;
+
         if (!isExpired && parsedCache.userId === userId) {
           console.log('✅ Using cached dashboard data');
           return parsedCache;
@@ -42,7 +42,7 @@ export class DashboardCacheService {
     } catch (error) {
       console.error('❌ Error loading dashboard cache:', error);
     }
-    
+
     return null;
   }
 
@@ -53,7 +53,7 @@ export class DashboardCacheService {
     userId: string,
     inventoryCount: number,
     journalCount: number,
-    latestJournalEntries: JournalEntry[]
+    latestJournalEntries: JournalEntry[],
   ): Promise<void> {
     try {
       const cacheData: CachedDashboardData = {
@@ -61,7 +61,7 @@ export class DashboardCacheService {
         journalCount,
         latestJournalEntries,
         lastUpdated: Date.now(),
-        userId
+        userId,
       };
 
       await AsyncStorage.setItem(`${CACHE_KEY}_${userId}`, JSON.stringify(cacheData));
@@ -82,7 +82,7 @@ export class DashboardCacheService {
       } else {
         // Clear all dashboard caches
         const keys = await AsyncStorage.getAllKeys();
-        const dashboardKeys = keys.filter(key => key.startsWith(CACHE_KEY));
+        const dashboardKeys = keys.filter((key) => key.startsWith(CACHE_KEY));
         await AsyncStorage.multiRemove(dashboardKeys);
         console.log('🗑️ All dashboard caches cleared');
       }
@@ -133,7 +133,10 @@ export class DashboardCacheService {
       const cachedData = await this.getCachedDashboardData(userId);
       if (cachedData) {
         // Add new entry to the beginning of the array
-        cachedData.latestJournalEntries = [newEntry, ...cachedData.latestJournalEntries].slice(0, 3);
+        cachedData.latestJournalEntries = [newEntry, ...cachedData.latestJournalEntries].slice(
+          0,
+          3,
+        );
         cachedData.journalCount += 1;
         cachedData.lastUpdated = Date.now();
         await AsyncStorage.setItem(`${CACHE_KEY}_${userId}`, JSON.stringify(cachedData));
@@ -160,22 +163,20 @@ export class DashboardCacheService {
         return {
           hasCache: true,
           lastUpdated: cachedData.lastUpdated,
-          isExpired: (now - cachedData.lastUpdated) > CACHE_DURATION,
-          dataAge: now - cachedData.lastUpdated
+          isExpired: now - cachedData.lastUpdated > CACHE_DURATION,
+          dataAge: now - cachedData.lastUpdated,
         };
       }
     } catch (error) {
       console.error('❌ Error getting dashboard cache stats:', error);
     }
-    
+
     return {
       hasCache: false,
       lastUpdated: null,
       isExpired: true,
-      dataAge: null
+      dataAge: null,
     };
   }
 }
-
-
 

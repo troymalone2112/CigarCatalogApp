@@ -11,7 +11,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 if (!supabaseUrl || !supabaseServiceKey) {
   console.error('❌ Missing Supabase environment variables:', {
     SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
-    SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET'
+    SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
   });
 }
 
@@ -24,7 +24,7 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
   };
 
   // Handle preflight requests
@@ -32,53 +32,53 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ message: 'CORS preflight' })
+      body: JSON.stringify({ message: 'CORS preflight' }),
     };
   }
 
   // Health check endpoint
-  if (event.httpMethod === 'GET' && event.path === '/.netlify/functions/revenuecat-webhook/health') {
+  if (
+    event.httpMethod === 'GET' &&
+    event.path === '/.netlify/functions/revenuecat-webhook/health'
+  ) {
     try {
       console.log('Testing Supabase connection...');
       console.log('URL:', supabaseUrl);
       console.log('Key exists:', !!supabaseServiceKey);
-      
-      const { data, error } = await supabase
-        .from('subscription_plans')
-        .select('id')
-        .limit(1);
-      
+
+      const { data, error } = await supabase.from('subscription_plans').select('id').limit(1);
+
       if (error) {
         console.error('❌ Supabase connection test failed:', error);
         return {
           statusCode: 500,
           headers,
-          body: JSON.stringify({ 
+          body: JSON.stringify({
             error: 'Database connection failed',
-            details: error.message 
-          })
+            details: error.message,
+          }),
         };
       }
-      
+
       console.log('✅ Supabase connection test successful');
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           status: 'healthy',
           database: 'connected',
-          timestamp: new Date().toISOString()
-        })
+          timestamp: new Date().toISOString(),
+        }),
       };
     } catch (error) {
       console.error('❌ Health check error:', error);
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           error: 'Health check failed',
-          details: error.message 
-        })
+          details: error.message,
+        }),
       };
     }
   }
@@ -88,24 +88,24 @@ exports.handler = async (event, context) => {
     try {
       const webhookData = JSON.parse(event.body);
       console.log('📨 RevenueCat webhook received:', JSON.stringify(webhookData, null, 2));
-      
+
       // Log the full webhook event to a separate table for debugging
       await supabase.from('revenuecat_webhook_events').insert({
         event_data: webhookData,
-        received_at: new Date().toISOString()
+        received_at: new Date().toISOString(),
       });
 
       const { api_version, event: eventData } = webhookData;
-      
+
       if (!eventData) {
         console.error('❌ No event data in webhook payload');
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'No event data' })
+          body: JSON.stringify({ error: 'No event data' }),
         };
       }
-      
+
       const {
         type: event_type,
         app_user_id,
@@ -119,27 +119,27 @@ exports.handler = async (event, context) => {
         auto_renew_status,
         original_transaction_id,
         transaction_id,
-        environment
+        environment,
       } = eventData;
-      
+
       console.log('🔍 Event details:', {
         event_type,
         app_user_id,
         original_app_user_id,
         product_id,
         store,
-        environment
+        environment,
       });
-      
+
       console.log(`🔄 Processing ${event_type} for user ${app_user_id}`);
-      
+
       // Handle test events
       if (event_type === 'TEST') {
         console.log('✅ Test webhook received - returning success');
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ success: true, message: 'Test webhook received' })
+          body: JSON.stringify({ success: true, message: 'Test webhook received' }),
         };
       }
 
@@ -149,7 +149,7 @@ exports.handler = async (event, context) => {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'Missing purchased_at_ms or expiration_at_ms' })
+          body: JSON.stringify({ error: 'Missing purchased_at_ms or expiration_at_ms' }),
         };
       }
 
@@ -161,14 +161,15 @@ exports.handler = async (event, context) => {
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'Invalid date format' })
+          body: JSON.stringify({ error: 'Invalid date format' }),
         };
       }
 
       // Date validation and correction logic
       const purchasedAtDate = new Date(final_purchased_at_ms);
       let expirationAtDate = new Date(final_expiration_at_ms);
-      const timeDifferenceMinutes = (expirationAtDate.getTime() - purchasedAtDate.getTime()) / (1000 * 60);
+      const timeDifferenceMinutes =
+        (expirationAtDate.getTime() - purchasedAtDate.getTime()) / (1000 * 60);
 
       // Determine expected duration based on product_id
       let expectedDurationDays = 0;
@@ -177,24 +178,38 @@ exports.handler = async (event, context) => {
       if (product_id.includes('monthly') || product_id === '$rc_monthly') {
         expectedDurationDays = 30;
         subscription_plan_name = 'Premium Monthly';
-      } else if (product_id.includes('yearly') || product_id.includes('annual') || product_id === '$rc_annual') {
+      } else if (
+        product_id.includes('yearly') ||
+        product_id.includes('annual') ||
+        product_id === '$rc_annual'
+      ) {
         expectedDurationDays = 365;
         subscription_plan_name = 'Premium Yearly';
       }
 
       // If the time difference is suspiciously short (e.g., less than 29 days for a monthly plan)
       // and an expected duration is defined, correct the expiration date.
-      if (expectedDurationDays > 0 && timeDifferenceMinutes < (expectedDurationDays * 24 * 60 - (24 * 60))) { // Less than expected duration minus 1 day
-        console.warn(`⚠️ Detected problematic subscription dates for user ${app_user_id}. Original expiration: ${expirationAtDate.toISOString()}. Recalculating.`);
-        expirationAtDate = new Date(purchasedAtDate.getTime() + (expectedDurationDays * 24 * 60 * 60 * 1000));
+      if (
+        expectedDurationDays > 0 &&
+        timeDifferenceMinutes < expectedDurationDays * 24 * 60 - 24 * 60
+      ) {
+        // Less than expected duration minus 1 day
+        console.warn(
+          `⚠️ Detected problematic subscription dates for user ${app_user_id}. Original expiration: ${expirationAtDate.toISOString()}. Recalculating.`,
+        );
+        expirationAtDate = new Date(
+          purchasedAtDate.getTime() + expectedDurationDays * 24 * 60 * 60 * 1000,
+        );
         final_expiration_at_ms = expirationAtDate.getTime();
-        console.log(`✅ Corrected expiration date to: ${expirationAtDate.toISOString()} (based on ${expectedDurationDays} days)`);
+        console.log(
+          `✅ Corrected expiration date to: ${expirationAtDate.toISOString()} (based on ${expectedDurationDays} days)`,
+        );
       }
 
       // Try the database function first
       try {
         console.log('🔄 Attempting to process via database function...');
-        
+
         const { data, error } = await supabase.rpc('handle_revenuecat_webhook', {
           event_type,
           app_user_id,
@@ -206,31 +221,36 @@ exports.handler = async (event, context) => {
           store,
           is_trial_period: Boolean(is_trial_period),
           // Important: If RevenueCat omits auto_renew_status, pass null so DB can default to true
-          auto_renew_status: (typeof auto_renew_status === 'boolean' ? auto_renew_status : null),
+          auto_renew_status: typeof auto_renew_status === 'boolean' ? auto_renew_status : null,
           original_transaction_id,
           transaction_id,
-          environment
+          environment,
         });
-        
+
         if (error) {
           console.error('❌ Database function error:', error);
           throw error;
         }
-        
+
         console.log('✅ Webhook processed successfully via database function:', data);
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ success: true, data, corrected_dates: expectedDurationDays > 0 && timeDifferenceMinutes < (expectedDurationDays * 24 * 60 - (24 * 60)) })
+          body: JSON.stringify({
+            success: true,
+            data,
+            corrected_dates:
+              expectedDurationDays > 0 &&
+              timeDifferenceMinutes < expectedDurationDays * 24 * 60 - 24 * 60,
+          }),
         };
-        
       } catch (dbError) {
         console.log('⚠️ Database function failed, trying direct update:', dbError.message);
-        
+
         // Fallback: Direct database update
         const purchased_at = new Date(final_purchased_at_ms);
         const expiration_at = new Date(final_expiration_at_ms);
-        
+
         // Determine subscription status
         let subscription_status = 'active';
         if (event_type === 'CANCELLATION') {
@@ -240,26 +260,30 @@ exports.handler = async (event, context) => {
         } else if (event_type === 'BILLING_ISSUE') {
           subscription_status = 'past_due';
         }
-        
+
         // Get the premium plan ID
         const { data: planData, error: planError } = await supabase
           .from('subscription_plans')
           .select('id')
           .eq('name', subscription_plan_name) // Use determined plan name
           .single();
-        
+
         if (planError) {
           console.error('❌ Error getting plan:', planError);
           return {
             statusCode: 500,
             headers,
-            body: JSON.stringify({ error: 'Plan not found' })
+            body: JSON.stringify({ error: 'Plan not found' }),
           };
         }
-        
+
         // Determine auto_renew default based on event type (fallback path)
         let autoRenewFlag = true; // default to true for active subscriptions
-        if (event_type === 'CANCELLATION' || event_type === 'EXPIRATION' || event_type === 'BILLING_ISSUE') {
+        if (
+          event_type === 'CANCELLATION' ||
+          event_type === 'EXPIRATION' ||
+          event_type === 'BILLING_ISSUE'
+        ) {
           autoRenewFlag = false;
         }
         // If webhook provided a definitive boolean, respect it
@@ -270,45 +294,55 @@ exports.handler = async (event, context) => {
         // Update or insert subscription with RevenueCat user ID
         const { data: subscriptionData, error: subscriptionError } = await supabase
           .from('user_subscriptions')
-          .upsert({
-            user_id: app_user_id,
-            plan_id: planData.id,
-            status: subscription_status,
-            subscription_start_date: purchased_at.toISOString(),
-            subscription_end_date: expiration_at.toISOString(),
-            auto_renew: autoRenewFlag,
-            updated_at: new Date().toISOString(),
-            revenuecat_user_id: app_user_id, // FIXED: Store RevenueCat user ID
-            is_premium: (subscription_status === 'active' || subscription_status === 'cancelled') && expiration_at > new Date()
-          }, {
-            onConflict: 'user_id'
-          })
+          .upsert(
+            {
+              user_id: app_user_id,
+              plan_id: planData.id,
+              status: subscription_status,
+              subscription_start_date: purchased_at.toISOString(),
+              subscription_end_date: expiration_at.toISOString(),
+              auto_renew: autoRenewFlag,
+              updated_at: new Date().toISOString(),
+              revenuecat_user_id: app_user_id, // FIXED: Store RevenueCat user ID
+              is_premium:
+                (subscription_status === 'active' || subscription_status === 'cancelled') &&
+                expiration_at > new Date(),
+            },
+            {
+              onConflict: 'user_id',
+            },
+          )
           .select()
           .single();
-        
+
         if (subscriptionError) {
           console.error('❌ Error updating subscription:', subscriptionError);
           return {
             statusCode: 500,
             headers,
-            body: JSON.stringify({ error: subscriptionError.message })
+            body: JSON.stringify({ error: subscriptionError.message }),
           };
         }
-        
+
         console.log('✅ Direct webhook processed successfully:', subscriptionData);
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ success: true, data: subscriptionData, corrected_dates: expectedDurationDays > 0 && timeDifferenceMinutes < (expectedDurationDays * 24 * 60 - (24 * 60)) })
+          body: JSON.stringify({
+            success: true,
+            data: subscriptionData,
+            corrected_dates:
+              expectedDurationDays > 0 &&
+              timeDifferenceMinutes < expectedDurationDays * 24 * 60 - 24 * 60,
+          }),
         };
       }
-      
     } catch (error) {
       console.error('❌ Webhook error:', error);
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: error.message })
+        body: JSON.stringify({ error: error.message }),
       };
     }
   }
@@ -317,6 +351,6 @@ exports.handler = async (event, context) => {
   return {
     statusCode: 405,
     headers,
-    body: JSON.stringify({ error: 'Method not allowed' })
+    body: JSON.stringify({ error: 'Method not allowed' }),
   };
 };

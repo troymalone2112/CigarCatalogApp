@@ -19,10 +19,10 @@ async function checkOpenAIUsage() {
     console.log('🔍 Checking OpenAI usage...');
     const response = await axios.get('https://api.openai.com/v1/usage', {
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
     });
-    
+
     console.log('✅ OpenAI API accessible');
     console.log('📊 Usage data:', JSON.stringify(response.data, null, 2));
   } catch (error) {
@@ -47,10 +47,10 @@ async function checkPerplexityUsage() {
     console.log('🔍 Checking Perplexity usage...');
     const response = await axios.get('https://api.perplexity.ai/accounts/self', {
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
     });
-    
+
     console.log('✅ Perplexity API accessible');
     console.log('📊 Account data:', JSON.stringify(response.data, null, 2));
   } catch (error) {
@@ -66,11 +66,11 @@ async function checkPerplexityUsage() {
 
 async function main() {
   console.log('🔑 Checking API Usage and Quota Status...\n');
-  
+
   await checkOpenAIUsage();
   console.log('');
   await checkPerplexityUsage();
-  
+
   console.log('\n💡 Tips:');
   console.log('- HYBRID mode uses BOTH APIs (ChatGPT + Perplexity)');
   console.log('- BUDGET mode uses only ChatGPT (cheaper)');
@@ -79,12 +79,3 @@ async function main() {
 }
 
 main().catch(console.error);
-
-
-
-
-
-
-
-
-

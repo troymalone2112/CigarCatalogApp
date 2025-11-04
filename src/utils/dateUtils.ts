@@ -39,8 +39,8 @@ export const formatDateForDisplay = (
   options: Intl.DateTimeFormatOptions = {
     year: 'numeric',
     month: 'short',
-    day: 'numeric'
-  }
+    day: 'numeric',
+  },
 ): string => {
   const dateObj = typeof date === 'string' ? fromLocalDateString(date) : date;
   return dateObj.toLocaleDateString(undefined, options);
@@ -57,8 +57,8 @@ export const formatDateTimeForDisplay = (
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
-  }
+    minute: '2-digit',
+  },
 ): string => {
   const dateObj = typeof date === 'string' ? fromLocalDateString(date) : date;
   return dateObj.toLocaleDateString(undefined, options);
@@ -71,10 +71,12 @@ export const formatDateTimeForDisplay = (
 export const isToday = (date: Date | string): boolean => {
   const dateObj = typeof date === 'string' ? fromLocalDateString(date) : date;
   const today = new Date();
-  
-  return dateObj.getFullYear() === today.getFullYear() &&
-         dateObj.getMonth() === today.getMonth() &&
-         dateObj.getDate() === today.getDate();
+
+  return (
+    dateObj.getFullYear() === today.getFullYear() &&
+    dateObj.getMonth() === today.getMonth() &&
+    dateObj.getDate() === today.getDate()
+  );
 };
 
 /**
@@ -85,10 +87,12 @@ export const isYesterday = (date: Date | string): boolean => {
   const dateObj = typeof date === 'string' ? fromLocalDateString(date) : date;
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  
-  return dateObj.getFullYear() === yesterday.getFullYear() &&
-         dateObj.getMonth() === yesterday.getMonth() &&
-         dateObj.getDate() === yesterday.getDate();
+
+  return (
+    dateObj.getFullYear() === yesterday.getFullYear() &&
+    dateObj.getMonth() === yesterday.getMonth() &&
+    dateObj.getDate() === yesterday.getDate()
+  );
 };
 
 /**
@@ -99,17 +103,10 @@ export const getRelativeDateString = (date: Date | string): string => {
   if (isToday(date)) {
     return 'Today';
   }
-  
+
   if (isYesterday(date)) {
     return 'Yesterday';
   }
-  
+
   return formatDateForDisplay(date);
 };
-
-
-
-
-
-
-

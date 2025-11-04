@@ -22,7 +22,7 @@ console.log('   - App Store Connect products not approved\n');
 
 console.log('2. ❌ "Products not found"');
 console.log('   Possible causes:');
-console.log('   - Product IDs don\'t match RevenueCat dashboard');
+console.log("   - Product IDs don't match RevenueCat dashboard");
 console.log('   - Products not created in App Store Connect');
 console.log('   - Products not approved by Apple');
 console.log('   - Bundle ID mismatch\n');
@@ -50,7 +50,7 @@ console.log('   - Verify bundle ID matches: com.anonymous.CigarCatalogApp\n');
 
 console.log('3. Test Network Connectivity:');
 console.log('   - Try the purchase flow on a different network');
-console.log('   - Check if you\'re behind a corporate firewall');
+console.log("   - Check if you're behind a corporate firewall");
 console.log('   - Verify device has internet connectivity\n');
 
 console.log('4. Check App Logs:');
@@ -75,6 +75,7 @@ console.log('3. Test with a fresh sandbox user account');
 console.log('4. Contact RevenueCat support if dashboard shows issues\n');
 
 console.log('✅ Configuration looks correct based on code analysis.');
-console.log('The issue is likely environmental (network, App Store Connect, or RevenueCat dashboard).');
-
+console.log(
+  'The issue is likely environmental (network, App Store Connect, or RevenueCat dashboard).',
+);
 

@@ -39,15 +39,15 @@ export default function JournalScreen() {
   useFocusEffect(
     useCallback(() => {
       loadEntries();
-    }, [])
+    }, []),
   );
 
   const loadEntries = async (forceRefresh: boolean = false) => {
     try {
       console.log('🔍 Loading journal entries, forceRefresh:', forceRefresh);
-      
+
       const startTime = Date.now();
-      
+
       // Clear cache if force refresh
       if (forceRefresh) {
         try {
@@ -58,13 +58,13 @@ export default function JournalScreen() {
           console.log('⚠️ Cache clear failed (non-critical):', cacheError);
         }
       }
-      
+
       const journalEntries = await StorageService.getJournalEntries(forceRefresh);
       const loadTime = Date.now() - startTime;
-      
+
       // Ensure we have valid data
       const validEntries = journalEntries || [];
-      
+
       // Record analytics
       try {
         const { CacheAnalyticsService } = await import('../services/cacheAnalyticsService');
@@ -73,14 +73,14 @@ export default function JournalScreen() {
           !forceRefresh && validEntries.length > 0,
           user?.id || 'unknown',
           JSON.stringify(validEntries).length,
-          loadTime
+          loadTime,
         );
       } catch (analyticsError) {
         console.log('⚠️ Analytics recording failed (non-critical):', analyticsError);
       }
-      
+
       // Validate entries before setting state
-      const filteredEntries = validEntries.filter(entry => {
+      const filteredEntries = validEntries.filter((entry) => {
         if (!entry.id) {
           console.warn('⚠️ Skipping entry with missing ID');
           return false;
@@ -91,10 +91,10 @@ export default function JournalScreen() {
         }
         return true;
       });
-      
+
       console.log(`🔍 Loaded ${journalEntries.length} entries, ${filteredEntries.length} valid`);
       setEntries(filteredEntries);
-      
+
       // Check if we need to highlight a specific entry
       if (route.params?.highlightItemId) {
         const targetId = route.params.highlightItemId;
@@ -116,7 +116,7 @@ export default function JournalScreen() {
   const triggerHighlight = (itemId: string, items: JournalEntry[]) => {
     console.log('🎯 Setting highlighted journal entry:', itemId);
     setHighlightedItemId(itemId);
-    
+
     // Start highlight animation
     Animated.sequence([
       Animated.timing(highlightAnimation, {
@@ -136,7 +136,7 @@ export default function JournalScreen() {
 
     // Scroll to the highlighted item after a short delay
     setTimeout(() => {
-      const itemIndex = items.findIndex(item => item.id === itemId);
+      const itemIndex = items.findIndex((item) => item.id === itemId);
       console.log('🔍 Journal entry index found:', itemIndex);
       if (itemIndex !== -1 && flatListRef.current) {
         flatListRef.current.scrollToIndex({
@@ -154,33 +154,28 @@ export default function JournalScreen() {
   };
 
   const deleteEntry = async (entryId: string) => {
-    Alert.alert(
-      'Delete Entry',
-      'Are you sure you want to delete this journal entry?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await StorageService.removeJournalEntry(entryId);
-              await loadEntries();
-            } catch (error) {
-              console.error('Error deleting journal entry:', error);
-              Alert.alert('Error', 'Failed to delete journal entry');
-            }
-          },
+    Alert.alert('Delete Entry', 'Are you sure you want to delete this journal entry?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await StorageService.removeJournalEntry(entryId);
+            await loadEntries();
+          } catch (error) {
+            console.error('Error deleting journal entry:', error);
+            Alert.alert('Error', 'Failed to delete journal entry');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await loadEntries(true); // Force refresh from database
   };
-
 
   const renderStars = (rating: number) => {
     const stars = [];
@@ -205,100 +200,116 @@ export default function JournalScreen() {
 
   const renderJournalEntry = ({ item }: { item: JournalEntry }) => {
     const isHighlighted = highlightedItemId === item.id;
-    const animatedStyle = isHighlighted ? {
-      transform: [{
-        scale: highlightAnimation.interpolate({
-          inputRange: [0, 1],
-          outputRange: [1, 1.05],
-        }),
-      }],
-      shadowOpacity: highlightAnimation.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0.3, 0.8],
-      }),
-      shadowRadius: highlightAnimation.interpolate({
-        inputRange: [0, 1],
-        outputRange: [4, 12],
-      }),
-    } : {};
+    const animatedStyle = isHighlighted
+      ? {
+          transform: [
+            {
+              scale: highlightAnimation.interpolate({
+                inputRange: [0, 1],
+                outputRange: [1, 1.05],
+              }),
+            },
+          ],
+          shadowOpacity: highlightAnimation.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0.3, 0.8],
+          }),
+          shadowRadius: highlightAnimation.interpolate({
+            inputRange: [0, 1],
+            outputRange: [4, 12],
+          }),
+        }
+      : {};
 
     return (
       <Animated.View style={animatedStyle}>
         <Pressable
-          style={({ pressed }) => [
-            styles.entryCard,
-            pressed && styles.entryCardPressed
-          ]}
+          style={styles.entryCard}
           onPress={() => navigation.navigate('JournalEntryDetails', { entry: item })}
         >
-      <View style={styles.entryHeader}>
-        <View style={styles.entryInfo}>
-          <View style={styles.entryTitleRow}>
-            <Text style={styles.cigarBrand}>{item.cigar.brand}</Text>
-          </View>
-          <Text style={styles.cigarLine}>{item.cigar.line}</Text>
-          <Text style={styles.entryDate}>{item.date ? item.date.toLocaleDateString() : 'No date'}</Text>
-        </View>
-        <View style={styles.entryImageContainer}>
-          {item.imageUrl && item.imageUrl !== 'placeholder' ? (
-            <Image source={{ uri: item.imageUrl }} style={styles.entryImage} />
-          ) : item.cigar.imageUrl && item.cigar.imageUrl !== 'placeholder' ? (
-            <Image source={{ uri: item.cigar.imageUrl }} style={styles.entryImage} />
-          ) : (
-            <Image source={require('../../assets/cigar-placeholder.jpg')} style={styles.entryImage} />
-          )}
-        </View>
-      </View>
-
-      <View style={styles.ratingSection}>
-        <View style={styles.ratingAndStrength}>
-          <View style={styles.overallRating}>
-            <Text style={styles.ratingLabel}>Rating</Text>
-            <Text style={styles.ratingValue}>{item.rating.overall}/10</Text>
-          </View>
-          <View style={styles.strengthContainer}>
-            <View style={[styles.strengthPill, { backgroundColor: getStrengthColor(item.cigar.strength) }]}>
-              <Text style={styles.strengthText}>{getStrengthInfo(item.cigar.strength).label}</Text>
+          <View style={styles.entryHeader}>
+            <View style={styles.entryInfo}>
+              <View style={styles.entryTitleRow}>
+                <Text style={styles.cigarBrand}>{item.cigar.brand}</Text>
+              </View>
+              <Text style={styles.cigarLine}>{item.cigar.line}</Text>
+              <Text style={styles.entryDate}>
+                {item.date ? item.date.toLocaleDateString() : 'No date'}
+              </Text>
+            </View>
+            <View style={styles.entryImageContainer}>
+              {item.imageUrl && item.imageUrl !== 'placeholder' ? (
+                <Image source={{ uri: item.imageUrl }} style={styles.entryImage} />
+              ) : item.photos && item.photos.length > 0 ? (
+                <Image source={{ uri: item.photos[0] }} style={styles.entryImage} />
+              ) : item.cigar.imageUrl && item.cigar.imageUrl !== 'placeholder' ? (
+                <Image source={{ uri: item.cigar.imageUrl }} style={styles.entryImage} />
+              ) : (
+                <Image
+                  source={require('../../assets/cigar-placeholder.jpg')}
+                  style={styles.entryImage}
+                />
+              )}
             </View>
           </View>
-        </View>
-      </View>
 
-      <Text style={styles.entryNotes} numberOfLines={1}>
-        {item.notes}
-      </Text>
-
-      <View style={styles.locationAndActions}>
-        {item.location && (
-          <View style={styles.locationSection}>
-            <Ionicons name="location" size={14} color="#7C2D12" />
-            <Text style={styles.locationText}>
-              {item.location.city}{item.location.state ? `, ${item.location.state}` : ''}
-            </Text>
+          <View style={styles.ratingSection}>
+            <View style={styles.ratingAndStrength}>
+              <View style={styles.overallRating}>
+                <Text style={styles.ratingLabel}>Rating</Text>
+                <Text style={styles.ratingValue}>{item.rating.overall}/10</Text>
+              </View>
+              <View style={styles.strengthContainer}>
+                <View
+                  style={[
+                    styles.strengthPill,
+                    { backgroundColor: getStrengthColor(item.cigar.strength) },
+                  ]}
+                >
+                  <Text style={styles.strengthText}>
+                    {getStrengthInfo(item.cigar.strength).label}
+                  </Text>
+                </View>
+              </View>
+            </View>
           </View>
-        )}
 
-        <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            style={styles.deleteButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              deleteEntry(item.id);
-            }}
-          >
-            <Ionicons name="trash-outline" size={16} color="#dc3545" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.editButton}
-            onPress={(e) => {
-              e.stopPropagation();
-              navigation.navigate('JournalEntryDetails', { entry: item });
-            }}
-          >
-            <Ionicons name="pencil-outline" size={16} color="#DC851F" />
-          </TouchableOpacity>
-        </View>
-      </View>
+          <Text style={styles.entryNotes} numberOfLines={1}>
+            {item.notes}
+          </Text>
+
+          <View style={styles.locationAndActions}>
+            {item.location && (
+              <View style={styles.locationSection}>
+                <Ionicons name="location" size={14} color="#7C2D12" />
+                <Text style={styles.locationText}>
+                  {item.location.city}
+                  {item.location.state ? `, ${item.location.state}` : ''}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  deleteEntry(item.id);
+                }}
+              >
+                <Ionicons name="trash-outline" size={16} color="#dc3545" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  navigation.navigate('JournalEntryDetails', { entry: item });
+                }}
+              >
+                <Ionicons name="pencil-outline" size={16} color="#DC851F" />
+              </TouchableOpacity>
+            </View>
+          </View>
         </Pressable>
       </Animated.View>
     );
@@ -308,14 +319,12 @@ export default function JournalScreen() {
     <View style={styles.emptyState}>
       <Ionicons name="book-outline" size={64} color="#ccc" />
       <Text style={styles.emptyTitle}>Journal</Text>
-      <Text style={styles.emptySubtitle}>
-        Start recording your cigar experiences
-      </Text>
+      <Text style={styles.emptySubtitle}>Start recording your cigar experiences</Text>
     </View>
   );
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.fullScreenBackground}
       imageStyle={styles.tobaccoBackgroundImage}

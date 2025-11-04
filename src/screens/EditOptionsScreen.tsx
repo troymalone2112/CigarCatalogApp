@@ -1,11 +1,5 @@
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity,
-  Image
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { RouteProp, useNavigation, StackNavigationProp } from '@react-navigation/native';
 import { RootStackParamList, InventoryItem, HumidorStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,14 +20,14 @@ export default function EditOptionsScreen({ route }: Props) {
       cigar: item.cigar,
       singleStickPrice: undefined, // Don't pre-populate for add more
       existingItem: item,
-      mode: 'addMore' // Pass mode to distinguish from edit
+      mode: 'addMore', // Pass mode to distinguish from edit
     });
   };
 
   const handleEdit = () => {
     // Determine the price to show for editing
     let priceToShow: string | undefined;
-    
+
     if (item.originalBoxPrice && item.sticksPerBox) {
       // This was originally a box purchase
       priceToShow = `$${item.originalBoxPrice}`;
@@ -41,12 +35,12 @@ export default function EditOptionsScreen({ route }: Props) {
       // This was a single stick purchase
       priceToShow = `$${item.pricePaid}`;
     }
-    
+
     navigation.navigate('AddToInventory', {
       cigar: item.cigar,
       singleStickPrice: priceToShow,
       existingItem: item,
-      mode: 'edit' // Pass mode to distinguish from add more
+      mode: 'edit', // Pass mode to distinguish from add more
     });
   };
 
@@ -61,7 +55,9 @@ export default function EditOptionsScreen({ route }: Props) {
               <Ionicons name="image-outline" size={24} color="#999" />
             </View>
           )}
-          <Text style={styles.subtitle}>{item.cigar.brand} {item.cigar.line}</Text>
+          <Text style={styles.subtitle}>
+            {item.cigar.brand} {item.cigar.line}
+          </Text>
         </View>
       </View>
 
@@ -79,7 +75,9 @@ export default function EditOptionsScreen({ route }: Props) {
           </View>
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Total value:</Text>
-            <Text style={styles.infoValue}>${((item.pricePaid || 0) * item.quantity).toFixed(2)}</Text>
+            <Text style={styles.infoValue}>
+              ${((item.pricePaid || 0) * item.quantity).toFixed(2)}
+            </Text>
           </View>
           {item.location && (
             <View style={styles.infoRow}>

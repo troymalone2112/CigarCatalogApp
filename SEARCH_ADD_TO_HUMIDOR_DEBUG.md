@@ -13,6 +13,7 @@
 ### 1. **EnhancedCigarRecognitionScreen.tsx**
 
 **Added debugging to `addToInventory` function:**
+
 ```typescript
 const addToInventory = async () => {
   console.log('🔍 Add to Humidor button pressed!');
@@ -22,23 +23,26 @@ const addToInventory = async () => {
 ```
 
 **Added debugging to navigation:**
+
 ```typescript
 console.log('🚀 Navigation params:', {
   fromRecognition: true,
   cigar: cigar.brand,
-  singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0'
+  singleStickPrice: recognitionResult.enrichedCigar.singleStickPrice || '0',
 });
 ```
 
 ### 2. **HumidorListScreen.tsx**
 
 **Added debugging to route params:**
+
 ```typescript
 console.log('🔍 HumidorList params:', { fromRecognition, cigar: cigar?.brand, singleStickPrice });
 console.log('🔍 Full route params:', route.params);
 ```
 
 **Added debugging to humidor press handler:**
+
 ```typescript
 console.log('🔍 Recognition flow check:', { fromRecognition, hasCigar: !!cigar, singleStickPrice });
 ```
@@ -48,6 +52,7 @@ console.log('🔍 Recognition flow check:', { fromRecognition, hasCigar: !!cigar
 ### **Console Logs to Check:**
 
 #### **1. When "Add to Humidor" is pressed:**
+
 ```
 🔍 Add to Humidor button pressed!
 🔍 Current humidorId: [should be null/undefined for search flow]
@@ -57,12 +62,14 @@ console.log('🔍 Recognition flow check:', { fromRecognition, hasCigar: !!cigar
 ```
 
 #### **2. When HumidorListScreen loads:**
+
 ```
 🔍 HumidorList params: { fromRecognition: true, cigar: "Brand Name", singleStickPrice: "0" }
 🔍 Full route params: { fromRecognition: true, cigar: {...}, singleStickPrice: "0" }
 ```
 
 #### **3. When a humidor is pressed:**
+
 ```
 🔍 Humidor pressed: "Main Humidor" fromRecognition: true
 🔍 Recognition flow check: { fromRecognition: true, hasCigar: true, singleStickPrice: "0" }
@@ -72,6 +79,7 @@ console.log('🔍 Recognition flow check:', { fromRecognition, hasCigar: !!cigar
 ## Expected Flow
 
 ### **Search Flow:**
+
 1. **User searches** → `processSimpleSearch()` → Sets `recognitionResult`
 2. **User presses "Add to Humidor"** → `addToInventory()` called
 3. **No humidorId** → Goes to recognition flow path
@@ -79,6 +87,7 @@ console.log('🔍 Recognition flow check:', { fromRecognition, hasCigar: !!cigar
 5. **User selects humidor** → Should go to AddToInventory with cigar data
 
 ### **Key Parameters:**
+
 - ✅ `fromRecognition: true` - Indicates recognition flow
 - ✅ `cigar` - The searched cigar object
 - ✅ `singleStickPrice` - Price information (can be "0")
@@ -86,24 +95,29 @@ console.log('🔍 Recognition flow check:', { fromRecognition, hasCigar: !!cigar
 ## Potential Issues
 
 ### **1. Navigation Parameters Not Passed**
+
 - **Check:** Are the navigation parameters being passed correctly?
 - **Look for:** `🚀 Navigation params:` log showing correct data
 
 ### **2. HumidorListScreen Not Receiving Parameters**
+
 - **Check:** Is HumidorListScreen receiving the recognition flow parameters?
 - **Look for:** `🔍 HumidorList params:` log showing `fromRecognition: true`
 
 ### **3. Recognition Flow Logic Not Working**
+
 - **Check:** Is the humidor press handler detecting the recognition flow?
 - **Look for:** `🔍 Recognition flow check:` log showing all true values
 
 ### **4. Navigation Target Wrong**
+
 - **Check:** Is the navigation going to the right screen?
 - **Look for:** `🔍 Navigating to AddToInventory with humidor:` log
 
 ## Testing Steps
 
 ### **1. Test Search Flow:**
+
 1. Go to main page
 2. Search for a cigar by keyword
 3. Wait for results to load
@@ -111,22 +125,26 @@ console.log('🔍 Recognition flow check:', { fromRecognition, hasCigar: !!cigar
 5. Check console logs for navigation parameters
 
 ### **2. Test HumidorListScreen:**
+
 1. Should see humidor list
 2. Check console logs for recognition flow parameters
 3. Tap a humidor
 4. Check console logs for recognition flow detection
 
 ### **3. Expected Result:**
+
 - Should go to AddToInventory screen with cigar data pre-filled
 - Should NOT go to inventory view
 
 ## Files Modified
 
 ### Primary Changes
+
 - ✅ `src/screens/EnhancedCigarRecognitionScreen.tsx` - Added debugging to addToInventory function
 - ✅ `src/screens/HumidorListScreen.tsx` - Added debugging to route params and humidor press handler
 
 ### Key Debugging Points
+
 1. **Navigation parameters** - Are they being passed correctly?
 2. **Route params** - Is HumidorListScreen receiving them?
 3. **Recognition flow detection** - Is the logic working?
@@ -142,7 +160,3 @@ The debugging will help identify where the search "Add to Humidor" flow is break
 4. **If navigation goes to wrong screen** → Issue in navigation target
 
 The console logs will show exactly where the flow is breaking and help fix the issue!
-
-
-
-

@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   ImageBackground,
-  ScrollView
+  ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 
-type OnboardingExperienceNavigationProp = StackNavigationProp<RootStackParamList, 'OnboardingExperience'>;
+type OnboardingExperienceNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'OnboardingExperience'
+>;
 type OnboardingExperienceRouteProp = RouteProp<RootStackParamList, 'OnboardingExperience'>;
 
 const experienceOptions = [
@@ -31,10 +34,10 @@ export default function OnboardingExperienceScreen() {
     if (selectedDuration) {
       // Store the selection and move directly to taste preferences
       // Important: Pass through the onComplete callback from the previous screen
-      navigation.navigate('OnboardingTastePreferences', { 
+      navigation.navigate('OnboardingTastePreferences', {
         smokingDuration: selectedDuration,
         experienceLevel: 'getting-started', // Default experience level
-        onComplete: route.params?.onComplete // Pass through the onComplete callback
+        onComplete: route.params?.onComplete, // Pass through the onComplete callback
       });
     }
   };
@@ -53,7 +56,7 @@ export default function OnboardingExperienceScreen() {
   };
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.fullScreenBackground}
       imageStyle={styles.tobaccoBackgroundImage}
@@ -63,7 +66,7 @@ export default function OnboardingExperienceScreen() {
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} color="#CCCCCC" />
           </TouchableOpacity>
-          
+
           <View style={styles.progressIndicator}>
             <Text style={styles.progressText}>2 of 3</Text>
             <View style={styles.progressBar}>
@@ -76,12 +79,10 @@ export default function OnboardingExperienceScreen() {
           <View style={styles.iconContainer}>
             <Ionicons name="star" size={80} color="#DC851F" />
           </View>
-          
+
           <Text style={styles.title}>Smoking Experience</Text>
-          
-          <Text style={styles.subtitle}>
-            Which category best describes your cigar experience?
-          </Text>
+
+          <Text style={styles.subtitle}>Which category best describes your cigar experience?</Text>
 
           <View style={styles.optionsContainer}>
             {experienceOptions.map((option) => (
@@ -89,28 +90,32 @@ export default function OnboardingExperienceScreen() {
                 key={option.key}
                 style={[
                   styles.optionButton,
-                  selectedDuration === option.key && styles.optionButtonSelected
+                  selectedDuration === option.key && styles.optionButtonSelected,
                 ]}
                 onPress={() => setSelectedDuration(option.key)}
               >
                 <View style={styles.optionContent}>
-                  <Text style={[
-                    styles.optionLabel,
-                    selectedDuration === option.key && styles.optionLabelSelected
-                  ]}>
+                  <Text
+                    style={[
+                      styles.optionLabel,
+                      selectedDuration === option.key && styles.optionLabelSelected,
+                    ]}
+                  >
                     {option.label}
                   </Text>
-                  <Text style={[
-                    styles.optionDescription,
-                    selectedDuration === option.key && styles.optionDescriptionSelected
-                  ]}>
+                  <Text
+                    style={[
+                      styles.optionDescription,
+                      selectedDuration === option.key && styles.optionDescriptionSelected,
+                    ]}
+                  >
                     {option.description}
                   </Text>
                 </View>
-                <Ionicons 
-                  name={selectedDuration === option.key ? "checkmark-circle" : "ellipse-outline"} 
-                  size={24} 
-                  color={selectedDuration === option.key ? "#DC851F" : "#999999"} 
+                <Ionicons
+                  name={selectedDuration === option.key ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={24}
+                  color={selectedDuration === option.key ? '#DC851F' : '#999999'}
                 />
               </TouchableOpacity>
             ))}
@@ -118,16 +123,21 @@ export default function OnboardingExperienceScreen() {
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity 
-            style={[styles.continueButton, !selectedDuration && styles.continueButtonDisabled]} 
+          <TouchableOpacity
+            style={[styles.continueButton, !selectedDuration && styles.continueButtonDisabled]}
             onPress={handleContinue}
             disabled={!selectedDuration}
           >
-            <Text style={[styles.continueButtonText, !selectedDuration && styles.continueButtonTextDisabled]}>
+            <Text
+              style={[
+                styles.continueButtonText,
+                !selectedDuration && styles.continueButtonTextDisabled,
+              ]}
+            >
               Continue
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
             <Text style={styles.skipButtonText}>Skip for now</Text>
           </TouchableOpacity>
@@ -279,4 +289,3 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
 });
-

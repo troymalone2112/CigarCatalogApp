@@ -6,7 +6,7 @@ exports.handler = async (event, context) => {
       message: 'Hello from Netlify Functions!',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV,
-      allEnvKeys: Object.keys(process.env).filter(key => key.includes('SUPABASE'))
-    })
+      allEnvKeys: Object.keys(process.env).filter((key) => key.includes('SUPABASE')),
+    }),
   };
 };

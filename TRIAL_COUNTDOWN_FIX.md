@@ -14,6 +14,7 @@ The free trial countdown was showing inconsistent values across different parts 
 ### 1. Database Functions (SQL)
 
 **Files Updated:**
+
 - `fix_trial_countdown.sql`
 - `update_subscription_schema.sql`
 
@@ -34,6 +35,7 @@ END IF;
 ```
 
 **Why this matters:**
+
 - Converts time to hours first for better precision
 - Ensures "1 day" shows even if only 1 hour remains
 - Uses CEIL to round up, so users see the full day count
@@ -41,6 +43,7 @@ END IF;
 
 **To Apply:**
 Run this SQL in your Supabase SQL Editor:
+
 ```bash
 # Option 1: Use the fix_trial_countdown.sql file
 psql your_database < fix_trial_countdown.sql
@@ -57,12 +60,14 @@ psql your_database < fix_trial_countdown.sql
 **Key Changes:**
 
 #### A. Smarter Dismissal Logic
+
 - Banner now remembers **which day** it was dismissed on
 - Only reappears when days decrease (3→2, 2→1, etc.)
 - Always shows on day 0 (expires today) - cannot be dismissed permanently
 - Always shows when trial expires
 
 **Before:**
+
 ```typescript
 // Reset on any status change
 if (subscriptionStatus.status === 'trial' || !subscriptionStatus.hasAccess) {
@@ -71,10 +76,10 @@ if (subscriptionStatus.status === 'trial' || !subscriptionStatus.hasAccess) {
 ```
 
 **After:**
+
 ```typescript
 // Only reset when days actually decrease
-if (lastDismissedDaysRemaining !== null && 
-    currentDays < lastDismissedDaysRemaining) {
+if (lastDismissedDaysRemaining !== null && currentDays < lastDismissedDaysRemaining) {
   resetDismissal();
 }
 
@@ -85,13 +90,14 @@ if (currentDays === 0 && isDismissed) {
 ```
 
 #### B. Enhanced Dismissal Storage
+
 Stores more context when dismissed:
 
 ```typescript
 const dismissalData = JSON.stringify({
   dismissed: true,
   daysRemaining: subscriptionStatus.daysRemaining,
-  dismissedAt: new Date().toISOString()
+  dismissedAt: new Date().toISOString(),
 });
 ```
 
@@ -106,19 +112,20 @@ This allows the app to intelligently decide when to show the banner again.
 **Key Changes:**
 
 #### A. Upgrade Button Logic
+
 **Before:** Only showed when `!isPremium && !hasEverSubscribed`
 **After:** Shows for all non-premium users (trial or expired)
 
 ```typescript
 {/* Upgrade Button - Show for trial or expired users, not for premium */}
 {!subscriptionStatus?.isPremium && (
-  <TouchableOpacity 
+  <TouchableOpacity
     style={styles.upgradeButton}
     onPress={handleUpgrade}
   >
     <Text style={styles.upgradeButtonText}>
-      {subscriptionStatus?.isTrialActive 
-        ? 'Upgrade to Premium' 
+      {subscriptionStatus?.isTrialActive
+        ? 'Upgrade to Premium'
         : 'Subscribe to Premium'}
     </Text>
   </TouchableOpacity>
@@ -126,13 +133,14 @@ This allows the app to intelligently decide when to show the banner again.
 ```
 
 #### B. Manage Subscription Button
+
 **Before:** Showed when `hasEverSubscribed || isPremium`
 **After:** Only shows for premium users
 
 ```typescript
 {/* Only show Manage Subscription for premium users */}
 {subscriptionStatus?.isPremium && (
-  <TouchableOpacity 
+  <TouchableOpacity
     style={styles.actionButton}
     onPress={handleManageSubscription}
   >
@@ -152,12 +160,15 @@ This allows the app to intelligently decide when to show the banner again.
 Simplified paywall logic - don't force paywall on last day of trial:
 
 **Before:**
+
 ```typescript
-const shouldShowPaywall = !subscriptionStatus.hasAccess || 
+const shouldShowPaywall =
+  !subscriptionStatus.hasAccess ||
   (subscriptionStatus.isTrialActive && subscriptionStatus.daysRemaining <= 1);
 ```
 
 **After:**
+
 ```typescript
 // Show paywall only if user has no access (trial expired)
 // Don't force paywall during active trial, even on last day
@@ -171,6 +182,7 @@ This allows users to enjoy their full trial period without being interrupted.
 ## Display Logic Summary
 
 ### When Banner Shows:
+
 - ✅ During active trial (3, 2, 1, or 0 days remaining)
 - ✅ When trial expires (hasAccess = false)
 - ✅ When days decrease after being dismissed
@@ -178,16 +190,19 @@ This allows users to enjoy their full trial period without being interrupted.
 - ❌ NOT when user is premium
 
 ### When Upgrade Button Shows (Profile):
+
 - ✅ When on active trial
 - ✅ When trial expired
 - ❌ NOT when user is premium
 
 ### When Manage Subscription Shows (Profile):
+
 - ✅ Only when user is premium
 - ❌ NOT during trial
 - ❌ NOT when expired
 
 ### When Paywall Blocks Access:
+
 - ✅ Only when trial is expired (hasAccess = false)
 - ❌ NOT during active trial (even on day 0)
 
@@ -198,6 +213,7 @@ This allows users to enjoy their full trial period without being interrupted.
 After applying these fixes, test the following scenarios:
 
 ### Scenario 1: New User (3 Days Remaining)
+
 - [ ] Banner shows "3 days left"
 - [ ] Can dismiss banner
 - [ ] Banner stays dismissed until next day
@@ -206,22 +222,26 @@ After applying these fixes, test the following scenarios:
 - [ ] No "Manage Subscription" button
 
 ### Scenario 2: Day 2 of Trial
+
 - [ ] Banner reappears showing "2 days left"
 - [ ] Can dismiss again
 - [ ] Days countdown is consistent across app
 
 ### Scenario 3: Day 1 of Trial
+
 - [ ] Banner shows "1 day left"
 - [ ] Marked as urgent (warning icon)
 - [ ] Can still dismiss
 
 ### Scenario 4: Last Day (0 Days)
+
 - [ ] Banner shows "Trial expires today!"
 - [ ] Cannot be permanently dismissed
 - [ ] Still has full access to app features
 - [ ] Profile shows "0 days remaining"
 
 ### Scenario 5: Trial Expired
+
 - [ ] Banner shows "Trial expired - Upgrade to continue"
 - [ ] Banner cannot be dismissed
 - [ ] Profile shows "Free Member - Limited access"
@@ -230,6 +250,7 @@ After applying these fixes, test the following scenarios:
 - [ ] Paywall appears when accessing premium features
 
 ### Scenario 6: Premium User
+
 - [ ] No banner shows
 - [ ] Profile shows "Premium Member - Full access"
 - [ ] "Manage Subscription" button visible
@@ -241,12 +262,14 @@ After applying these fixes, test the following scenarios:
 ## Deployment Steps
 
 ### Step 1: Update Database Functions
+
 ```bash
 # In Supabase SQL Editor, run:
 # Copy contents of fix_trial_countdown.sql and execute
 ```
 
 ### Step 2: Deploy App Code
+
 ```bash
 # Your code changes are already in the files
 # Build and deploy as normal
@@ -254,13 +277,16 @@ eas build --platform ios --profile production
 ```
 
 ### Step 3: Clear Old Dismissal Data (Optional)
+
 If you want to reset all banner dismissals for existing users:
+
 ```typescript
 // In your app initialization or settings:
 await AsyncStorage.removeItem('subscription_banner_dismissed');
 ```
 
 ### Step 4: Test All Scenarios
+
 Go through the testing checklist above
 
 ---
@@ -268,11 +294,13 @@ Go through the testing checklist above
 ## Troubleshooting
 
 ### Banner shows wrong days
+
 **Solution:** Ensure database function is deployed:
+
 ```sql
 -- Check if function exists
-SELECT routine_name 
-FROM information_schema.routines 
+SELECT routine_name
+FROM information_schema.routines
 WHERE routine_name = 'get_user_subscription_status';
 
 -- Verify it returns correct structure
@@ -280,23 +308,30 @@ SELECT get_user_subscription_status('your-user-uuid');
 ```
 
 ### Days jumping around
+
 **Possible Causes:**
+
 1. Database function not updated
 2. Multiple users logged in on same device
 3. Timezone issues
 
-**Solution:** 
+**Solution:**
+
 - Verify SQL functions are deployed
 - Check user ID is consistent
 - All date calculations now use server time (NOW())
 
 ### Banner appears too often
-**Solution:** 
+
+**Solution:**
+
 - Clear AsyncStorage: `await AsyncStorage.removeItem('subscription_banner_dismissed');`
 - Verify you're using the updated SubscriptionBanner.tsx code
 
 ### Upgrade button not showing
+
 **Solution:**
+
 - Verify subscriptionStatus.isPremium is correctly set
 - Check database `is_premium` field value
 - Ensure RevenueCat sync is working
@@ -326,12 +361,8 @@ SELECT get_user_subscription_status('your-user-uuid');
 ## Contact
 
 If you encounter any issues with these fixes, check:
+
 1. Database function is deployed correctly
 2. App code is updated and rebuilt
 3. AsyncStorage is clean (no old dismissal format)
 4. User subscription record exists in database
-
-
-
-
-

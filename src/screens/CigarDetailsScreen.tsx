@@ -1,12 +1,12 @@
 import React from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  Image, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Image,
   TouchableOpacity,
-  ImageBackground 
+  ImageBackground,
 } from 'react-native';
 import { RouteProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList, HumidorStackParamList } from '../types';
@@ -33,32 +33,32 @@ export default function CigarDetailsScreen({ route }: Props) {
   };
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.fullScreenBackground}
       imageStyle={styles.tobaccoBackgroundImage}
     >
       <View style={styles.container}>
-
         <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
           <View style={styles.resultCard}>
             {/* Main content area with image on right */}
             <View style={styles.mainContent}>
               <View style={styles.cigarInfo}>
                 {/* Cigar Title */}
-                <Text style={styles.resultTitle}>
-                  {cigar.brand}
-                </Text>
+                <Text style={styles.resultTitle}>{cigar.brand}</Text>
                 <Text style={styles.resultSubtitle}>
-                  {cigar.name && cigar.name !== 'Unknown Name' 
-                    ? cigar.name 
-                    : cigar.line}
+                  {cigar.name && cigar.name !== 'Unknown Name' ? cigar.name : cigar.line}
                 </Text>
-                
+
                 {/* Strength Badge */}
                 {cigar.strength && (
                   <View style={styles.flavorTags}>
-                    <View style={[styles.flavorTag, { backgroundColor: getStrengthInfo(cigar.strength).color }]}>
+                    <View
+                      style={[
+                        styles.flavorTag,
+                        { backgroundColor: getStrengthInfo(cigar.strength).color },
+                      ]}
+                    >
                       <Text style={styles.flavorText}>{getStrengthInfo(cigar.strength).label}</Text>
                     </View>
                   </View>
@@ -70,20 +70,19 @@ export default function CigarDetailsScreen({ route }: Props) {
                 {cigar.imageUrl && cigar.imageUrl !== 'placeholder' ? (
                   <Image source={{ uri: cigar.imageUrl }} style={styles.cigarImage} />
                 ) : (
-                  <Image source={require('../../assets/cigar-placeholder.jpg')} style={styles.cigarImage} />
+                  <Image
+                    source={require('../../assets/cigar-placeholder.jpg')}
+                    style={styles.cigarImage}
+                  />
                 )}
               </View>
             </View>
 
             {/* Cigar Description */}
-            {cigar.overview && (
-              <Text style={styles.cigarDescription}>
-                {cigar.overview}
-              </Text>
-            )}
+            {cigar.overview && <Text style={styles.cigarDescription}>{cigar.overview}</Text>}
 
             {/* Flavor Profile Section */}
-            {((cigar.flavorTags && cigar.flavorTags.length > 0) || 
+            {((cigar.flavorTags && cigar.flavorTags.length > 0) ||
               (cigar.flavorProfile && cigar.flavorProfile.length > 0)) && (
               <View style={styles.flavorSection}>
                 <Text style={styles.sectionTitle}>Flavor Profile</Text>
@@ -110,9 +109,7 @@ export default function CigarDetailsScreen({ route }: Props) {
               <View style={styles.detailsGrid}>
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Tobacco</Text>
-                  <Text style={styles.detailValue}>
-                    {cigar.tobacco || cigar.wrapper}
-                  </Text>
+                  <Text style={styles.detailValue}>{cigar.tobacco || cigar.wrapper}</Text>
                 </View>
               </View>
             )}
@@ -178,7 +175,6 @@ export default function CigarDetailsScreen({ route }: Props) {
                 </View>
               </View>
             )}
-
           </View>
         </ScrollView>
       </View>

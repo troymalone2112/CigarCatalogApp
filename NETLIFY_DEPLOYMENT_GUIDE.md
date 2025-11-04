@@ -34,11 +34,13 @@
 #### Option B: Deploy from Local Directory
 
 1. **Install Netlify CLI:**
+
    ```bash
    npm install -g netlify-cli
    ```
 
 2. **Login to Netlify:**
+
    ```bash
    netlify login
    ```
@@ -60,6 +62,7 @@
 ### Step 4: Test Your Webhook
 
 Your webhook will be available at:
+
 ```
 https://your-site-name.netlify.app/webhook/revenuecat
 ```
@@ -67,11 +70,13 @@ https://your-site-name.netlify.app/webhook/revenuecat
 #### Test Endpoints:
 
 1. **Health Check:**
+
    ```bash
    curl https://your-site-name.netlify.app/webhook/revenuecat/health
    ```
 
 2. **Test Connection:**
+
    ```bash
    curl https://your-site-name.netlify.app/webhook/revenuecat/test
    ```
@@ -152,6 +157,7 @@ https://your-site-name.netlify.app/webhook/revenuecat
 ### CORS Issues
 
 The function includes CORS headers, but if you have issues:
+
 1. **Check Netlify redirects in netlify.toml**
 2. **Verify function is deployed correctly**
 

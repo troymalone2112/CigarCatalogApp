@@ -56,13 +56,6 @@ console.log('- 🔄 App came to foreground - refreshing auth state');
 console.log('- ✅ Supabase connection healthy');
 console.log('- 🔧 Clearing stuck loading state (if needed)');
 console.log('');
-console.log('If you still see issues, the logs will show exactly what\'s happening.');
+console.log("If you still see issues, the logs will show exactly what's happening.");
 console.log('');
 console.log('🚀 Ready to test! Build and deploy your updated app.');
-
-
-
-
-
-
-

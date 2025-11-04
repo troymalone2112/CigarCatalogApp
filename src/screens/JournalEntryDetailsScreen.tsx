@@ -21,13 +21,43 @@ import { getStrengthInfo } from '../utils/strengthUtils';
 type JournalEntryDetailsScreenRouteProp = RouteProp<RootStackParamList, 'JournalEntryDetails'>;
 
 const FLAVOR_TAGS = [
-  'Woody', 'Earthy', 'Spicy', 'Sweet', 'Creamy', 'Nutty', 'Chocolate', 'Coffee',
-  'Leather', 'Cedar', 'Pepper', 'Vanilla', 'Caramel', 'Honey', 'Fruity', 'Citrus',
-  'Floral', 'Herbal', 'Smoky', 'Toasty', 'Rich', 'Smooth', 'Bold', 'Complex',
-  'Balanced', 'Elegant', 'Robust', 'Refined', 'Intense', 'Subtle'
+  'Woody',
+  'Earthy',
+  'Spicy',
+  'Sweet',
+  'Creamy',
+  'Nutty',
+  'Chocolate',
+  'Coffee',
+  'Leather',
+  'Cedar',
+  'Pepper',
+  'Vanilla',
+  'Caramel',
+  'Honey',
+  'Fruity',
+  'Citrus',
+  'Floral',
+  'Herbal',
+  'Smoky',
+  'Toasty',
+  'Rich',
+  'Smooth',
+  'Bold',
+  'Complex',
+  'Balanced',
+  'Elegant',
+  'Robust',
+  'Refined',
+  'Intense',
+  'Subtle',
 ];
 
-export default function JournalEntryDetailsScreen({ route }: { route: JournalEntryDetailsScreenRouteProp }) {
+export default function JournalEntryDetailsScreen({
+  route,
+}: {
+  route: JournalEntryDetailsScreenRouteProp;
+}) {
   const { entry: initialEntry } = route.params;
   const [entry, setEntry] = useState(initialEntry);
   const [isEditing, setIsEditing] = useState(false);
@@ -76,21 +106,21 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
           overall: editedRating,
         },
       };
-      
+
       await StorageService.saveJournalEntry(updatedEntry);
       setEntry(updatedEntry);
       setIsEditing(false);
     } catch (error: any) {
       console.error('Error saving journal entry:', error);
-      
+
       // Check if it's a network error
       if (error.message?.includes('Network request failed')) {
         Alert.alert(
-          'Network Error', 
+          'Network Error',
           'Your changes have been saved locally and will sync when your connection is restored.',
-          [{ text: 'OK', style: 'default' }]
+          [{ text: 'OK', style: 'default' }],
         );
-        
+
         // Still update local state since changes are saved locally
         setEntry(updatedEntry);
         setIsEditing(false);
@@ -101,39 +131,33 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
   };
 
   const handleDeletePhoto = async (photoIndex: number) => {
-    Alert.alert(
-      'Delete Photo',
-      'Are you sure you want to delete this photo?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const updatedPhotos = entry.photos?.filter((_, index) => index !== photoIndex) || [];
-              const updatedEntry = {
-                ...entry,
-                photos: updatedPhotos,
-              };
-              
-              await StorageService.saveJournalEntry(updatedEntry);
-              setEntry(updatedEntry);
-            } catch (error) {
-              console.error('Error deleting photo:', error);
-              Alert.alert('Error', 'Failed to delete photo');
-            }
-          },
+    Alert.alert('Delete Photo', 'Are you sure you want to delete this photo?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            const updatedPhotos = entry.photos?.filter((_, index) => index !== photoIndex) || [];
+            const updatedEntry = {
+              ...entry,
+              photos: updatedPhotos,
+            };
+
+            await StorageService.saveJournalEntry(updatedEntry);
+            setEntry(updatedEntry);
+          } catch (error) {
+            console.error('Error deleting photo:', error);
+            Alert.alert('Error', 'Failed to delete photo');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const handleFlavorToggle = (flavor: string) => {
-    setEditedFlavors(prev => 
-      prev.includes(flavor) 
-        ? prev.filter(f => f !== flavor)
-        : [...prev, flavor]
+    setEditedFlavors((prev) =>
+      prev.includes(flavor) ? prev.filter((f) => f !== flavor) : [...prev, flavor],
     );
   };
 
@@ -152,11 +176,11 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
           style={styles.starContainer}
         >
           <Ionicons
-            name={i <= rating ? "star" : "star-outline"}
+            name={i <= rating ? 'star' : 'star-outline'}
             size={20}
-            color={i <= rating ? "#FFD700" : "#666"}
+            color={i <= rating ? '#FFD700' : '#666'}
           />
-        </TouchableOpacity>
+        </TouchableOpacity>,
       );
     }
     return stars;
@@ -174,14 +198,16 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
                 key={flavor}
                 style={[
                   styles.flavorTag,
-                  editedFlavors.includes(flavor) && styles.flavorTagSelected
+                  editedFlavors.includes(flavor) && styles.flavorTagSelected,
                 ]}
                 onPress={() => handleFlavorToggle(flavor)}
               >
-                <Text style={[
-                  styles.flavorTagText,
-                  editedFlavors.includes(flavor) && styles.flavorTagTextSelected
-                ]}>
+                <Text
+                  style={[
+                    styles.flavorTagText,
+                    editedFlavors.includes(flavor) && styles.flavorTagTextSelected,
+                  ]}
+                >
                   {flavor}
                 </Text>
               </TouchableOpacity>
@@ -190,9 +216,9 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
         </View>
       );
     }
-    
+
     if (flavors.length === 0) return null;
-    
+
     return (
       <View style={styles.flavorsContainer}>
         {flavors.map((flavor, index) => (
@@ -205,7 +231,7 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
   };
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.fullScreenBackground}
       imageStyle={styles.tobaccoBackgroundImage}
@@ -232,6 +258,20 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
         </View>
 
         {/* Flavor Profile */}
+        { (entry.imageUrl || entry.cigar?.imageUrl) && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Photo</Text>
+            </View>
+            <Image
+              source={{ uri: (entry.imageUrl || entry.cigar?.imageUrl) as string }}
+              style={{ width: '100%', height: 220, borderRadius: 12, backgroundColor: '#333' }}
+              resizeMode="cover"
+            />
+          </View>
+        )}
+
+        {/* Flavor Profile */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Flavor Profile</Text>
@@ -242,17 +282,24 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
             )}
           </View>
           {renderFlavorChips(entry.selectedFlavors)}
-          
+
           {/* Rating and Strength */}
           <View style={styles.ratingStrengthContainer}>
             {/* Strength Section - Above Rating */}
             <View style={styles.strengthSection}>
               <Text style={styles.strengthLabel}>Strength</Text>
-              <View style={[styles.strengthPill, { backgroundColor: getStrengthColor(entry.cigar.strength) }]}>
-                <Text style={styles.strengthText}>{getStrengthInfo(entry.cigar.strength).label}</Text>
+              <View
+                style={[
+                  styles.strengthPill,
+                  { backgroundColor: getStrengthColor(entry.cigar.strength) },
+                ]}
+              >
+                <Text style={styles.strengthText}>
+                  {getStrengthInfo(entry.cigar.strength).label}
+                </Text>
               </View>
             </View>
-            
+
             {/* Rating Section - Below Strength */}
             <View style={styles.ratingSection}>
               <Text style={styles.ratingLabel}>Your Rating</Text>
@@ -298,7 +345,6 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
           </View>
         </View>
 
-
         {/* Notes */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -337,11 +383,7 @@ export default function JournalEntryDetailsScreen({ route }: { route: JournalEnt
                     onPress={() => setSelectedImage(photo)}
                     style={styles.photoTouchable}
                   >
-                    <Image
-                      source={{ uri: photo }}
-                      style={styles.photoImage}
-                      resizeMode="cover"
-                    />
+                    <Image source={{ uri: photo }} style={styles.photoImage} resizeMode="cover" />
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.deletePhotoButton}

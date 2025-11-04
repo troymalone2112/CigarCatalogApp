@@ -4,8 +4,11 @@ import { createClient } from '@supabase/supabase-js';
 import { connectionHealthManager } from './connectionHealthManager';
 
 // Use environment variables with proper fallbacks
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxra2JzdHdtemRibWxmc293d2d0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzNzE2MzAsImV4cCI6MjA3NDk0NzYzMH0.CKoWTs7bCDymUteLM9BfG2ugl07N9fid1WV6mmabT-I';
+const supabaseUrl =
+  process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://lkkbstwmzdbmlfsowwgt.supabase.co';
+const supabaseAnonKey =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxra2JzdHdtemRibWxmc293d2d0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTkzNzE2MzAsImV4cCI6MjA3NDk0NzYzMH0.CKoWTs7bCDymUteLM9BfG2ugl07N9fid1WV6mmabT-I';
 
 // Production-ready logging
 console.log('🔍 Supabase URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
@@ -15,7 +18,9 @@ if (!process.env.EXPO_PUBLIC_SUPABASE_URL) {
   console.warn('⚠️ EXPO_PUBLIC_SUPABASE_URL not found in environment variables, using fallback');
 }
 if (!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
-  console.warn('⚠️ EXPO_PUBLIC_SUPABASE_ANON_KEY not found in environment variables, using fallback');
+  console.warn(
+    '⚠️ EXPO_PUBLIC_SUPABASE_ANON_KEY not found in environment variables, using fallback',
+  );
 }
 
 // Additional validation
@@ -45,8 +50,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     fetch: (url, options = {}) => {
       // Add timeout using AbortController (standard approach)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-      
+      // Increase timeout to reduce false aborts on slower networks
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
       return fetch(url, {
         ...options,
         signal: controller.signal,
@@ -63,7 +69,7 @@ export const checkSupabaseConnection = async () => {
   return await connectionHealthManager.checkDatabaseHealth();
 };
 
-// Enhanced network connectivity check using ConnectionHealthManager  
+// Enhanced network connectivity check using ConnectionHealthManager
 export const checkNetworkConnectivity = async () => {
   return await connectionHealthManager.checkNetworkConnectivity();
 };
@@ -72,13 +78,9 @@ export const checkNetworkConnectivity = async () => {
 export const executeWithResilience = async <T>(
   operation: () => Promise<T>,
   operationName: string,
-  options?: { timeoutMs?: number; maxRetries?: number }
+  options?: { timeoutMs?: number; maxRetries?: number },
 ): Promise<T> => {
-  return await connectionHealthManager.executeWithRetry(
-    operation,
-    operationName,
-    options
-  );
+  return await connectionHealthManager.executeWithRetry(operation, operationName, options);
 };
 
 // Auth Service
@@ -89,42 +91,46 @@ export const AuthService = {
     if (!networkOk) {
       throw new Error('No internet connection. Please check your network and try again.');
     }
-    
+
     // Check Supabase connection
     const supabaseOk = await checkSupabaseConnection();
     if (!supabaseOk) {
       throw new Error('Unable to connect to server. Please try again later.');
     }
-    
+
     const maxRetries = 3;
     let lastError;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         // Get user's timezone for accurate trial tracking
         const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        
-        console.log(`🔐 Attempting signup (attempt ${attempt}/${maxRetries}):`, { email, fullName, userTimezone });
-        
+
+        console.log(`🔐 Attempting signup (attempt ${attempt}/${maxRetries}):`, {
+          email,
+          fullName,
+          userTimezone,
+        });
+
         // Get device's current time in local timezone
         const now = new Date();
         const deviceTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        
+
         // Create a date string in the user's local timezone
         const localDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
-        const localTime = new Date().toLocaleTimeString('en-US', { 
+        const localTime = new Date().toLocaleTimeString('en-US', {
           hour12: false,
           hour: '2-digit',
           minute: '2-digit',
-          second: '2-digit'
+          second: '2-digit',
         });
         const localDateTimeString = `${localDate}T${localTime}`;
-        
+
         console.log('📱 Local date:', localDate);
         console.log('📱 Local time:', localTime);
         console.log('📱 Local datetime:', localDateTimeString);
         console.log('📱 Device timezone:', deviceTimezone);
-        
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -142,35 +148,39 @@ export const AuthService = {
           console.error('Error type:', error.constructor.name);
           console.error('Error code:', error.code);
           console.error('Error message:', error.message);
-          
+
           // If it's a network error and we have retries left, continue
           if (error.message.includes('Network request failed') && attempt < maxRetries) {
             console.log(`🔄 Network error, retrying in ${attempt * 2} seconds...`);
-            await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+            await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
             lastError = error;
             continue;
           }
-          
+
           throw error;
         }
-        
+
         console.log('✅ Supabase signup successful:', data.user?.id);
         return data;
       } catch (error: any) {
         console.error(`❌ Signup failed (attempt ${attempt}):`, error);
         lastError = error;
-        
+
         // If it's a network error and we have retries left, continue
-        if (error?.message && error.message.includes('Network request failed') && attempt < maxRetries) {
+        if (
+          error?.message &&
+          error.message.includes('Network request failed') &&
+          attempt < maxRetries
+        ) {
           console.log(`🔄 Network error, retrying in ${attempt * 2} seconds...`);
-          await new Promise(resolve => setTimeout(resolve, attempt * 2000));
+          await new Promise((resolve) => setTimeout(resolve, attempt * 2000));
           continue;
         }
-        
+
         throw error;
       }
     }
-    
+
     // If we get here, all retries failed
     throw lastError;
   },
@@ -206,11 +216,7 @@ export const AuthService = {
 // Database Service
 export const DatabaseService = {
   async getProfile(userId: string) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
 
     if (error) {
       // If no profile exists, return null instead of trying to create one
@@ -225,7 +231,7 @@ export const DatabaseService = {
 
   async createProfile(userId: string, email: string, fullName: string) {
     console.log('🔍 Creating profile for user:', userId);
-    
+
     // First check if profile already exists
     const { data: existingProfile } = await supabase
       .from('profiles')
@@ -237,7 +243,7 @@ export const DatabaseService = {
       console.log('🔍 Profile already exists, returning existing profile');
       return existingProfile;
     }
-    
+
     const { data, error } = await supabase
       .from('profiles')
       .insert([
@@ -246,29 +252,32 @@ export const DatabaseService = {
           email: email || '',
           full_name: fullName || 'New User',
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
+          updated_at: new Date().toISOString(),
+        },
       ])
       .select()
       .single();
 
     if (error) {
       console.error('Error creating profile:', error);
-      
+
       // If it's a duplicate key error, try to fetch the existing profile
       if (error.code === '23505') {
         console.log('🔍 Profile already exists, fetching it...');
         return await this.getProfile(userId);
       }
-      
+
       throw error;
     }
-    
+
     console.log('✅ Profile created successfully:', data);
     return data;
   },
 
-  async updateProfile(userId: string, updates: { full_name?: string; avatar_url?: string; onboarding_completed?: boolean }) {
+  async updateProfile(
+    userId: string,
+    updates: { full_name?: string; avatar_url?: string; onboarding_completed?: boolean },
+  ) {
     const { data, error } = await supabase
       .from('profiles')
       .update(updates)
@@ -287,9 +296,12 @@ export const DatabaseService = {
     return data;
   },
 
-  async createProfileWithUpdates(userId: string, updates: { full_name?: string; avatar_url?: string; onboarding_completed?: boolean }) {
+  async createProfileWithUpdates(
+    userId: string,
+    updates: { full_name?: string; avatar_url?: string; onboarding_completed?: boolean },
+  ) {
     console.log('🔍 Creating profile with updates for user:', userId);
-    
+
     const { data, error } = await supabase
       .from('profiles')
       .insert([
@@ -300,8 +312,8 @@ export const DatabaseService = {
           avatar_url: updates.avatar_url || null,
           onboarding_completed: updates.onboarding_completed || false,
           created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
+          updated_at: new Date().toISOString(),
+        },
       ])
       .select()
       .single();
@@ -310,7 +322,7 @@ export const DatabaseService = {
       console.error('Error creating profile with updates:', error);
       throw error;
     }
-    
+
     console.log('✅ Profile created with updates successfully:', data);
     return data;
   },
@@ -324,15 +336,17 @@ export const DatabaseService = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data?.map(h => ({
-      id: h.id,
-      userId: h.user_id,
-      name: h.name,
-      description: h.description,
-      capacity: h.capacity,
-      createdAt: new Date(h.created_at),
-      updatedAt: new Date(h.updated_at),
-    })) || [];
+    return (
+      data?.map((h) => ({
+        id: h.id,
+        userId: h.user_id,
+        name: h.name,
+        description: h.description,
+        capacity: h.capacity,
+        createdAt: new Date(h.created_at),
+        updatedAt: new Date(h.updated_at),
+      })) || []
+    );
   },
 
   async getHumidorStats(userId: string) {
@@ -343,18 +357,20 @@ export const DatabaseService = {
       .order('cigar_count', { ascending: false });
 
     if (error) throw error;
-    return data?.map(h => ({
-      humidorId: h.humidor_id,
-      userId: h.user_id,
-      humidorName: h.humidor_name,
-      description: h.description,
-      capacity: h.capacity,
-      cigarCount: h.cigar_count,
-      totalValue: h.total_value,
-      avgCigarPrice: h.avg_cigar_price,
-      createdAt: new Date(h.created_at),
-      updatedAt: new Date(h.updated_at),
-    })) || [];
+    return (
+      data?.map((h) => ({
+        humidorId: h.humidor_id,
+        userId: h.user_id,
+        humidorName: h.humidor_name,
+        description: h.description,
+        capacity: h.capacity,
+        cigarCount: h.cigar_count,
+        totalValue: h.total_value,
+        avgCigarPrice: h.avg_cigar_price,
+        createdAt: new Date(h.created_at),
+        updatedAt: new Date(h.updated_at),
+      })) || []
+    );
   },
 
   async getUserHumidorAggregate(userId: string) {
@@ -395,7 +411,7 @@ export const DatabaseService = {
           name,
           description,
           capacity,
-        }
+        },
       ])
       .select()
       .single();
@@ -416,7 +432,7 @@ export const DatabaseService = {
   async getHumidorDataOptimized(userId: string) {
     console.log('🚀 DatabaseService - Starting optimized humidor data load for user:', userId);
     const startTime = Date.now();
-    
+
     try {
       // Get all humidor data in parallel (removed problematic user_humidor_aggregate view)
       const [humidorsResult, statsResult] = await Promise.all([
@@ -425,41 +441,43 @@ export const DatabaseService = {
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false }),
-        
+
         supabase
           .from('humidor_stats')
           .select('*')
           .eq('user_id', userId)
-          .order('cigar_count', { ascending: false })
+          .order('cigar_count', { ascending: false }),
       ]);
 
       const loadTime = Date.now() - startTime;
       console.log(`⚡ DatabaseService - Optimized humidor data loaded in ${loadTime}ms`);
 
       // Handle humidors
-      const humidors = humidorsResult.data?.map(h => ({
-        id: h.id,
-        userId: h.user_id,
-        name: h.name,
-        description: h.description,
-        capacity: h.capacity,
-        createdAt: new Date(h.created_at),
-        updatedAt: new Date(h.updated_at),
-      })) || [];
+      const humidors =
+        humidorsResult.data?.map((h) => ({
+          id: h.id,
+          userId: h.user_id,
+          name: h.name,
+          description: h.description,
+          capacity: h.capacity,
+          createdAt: new Date(h.created_at),
+          updatedAt: new Date(h.updated_at),
+        })) || [];
 
       // Handle stats
-      const humidorStats = statsResult.data?.map(h => ({
-        humidorId: h.humidor_id,
-        userId: h.user_id,
-        humidorName: h.humidor_name,
-        description: h.description,
-        capacity: h.capacity,
-        cigarCount: h.cigar_count, // Fixed: was h.total_cigars
-        totalValue: h.total_value,
-        avgCigarPrice: h.avg_cigar_price,
-        createdAt: new Date(h.created_at),
-        updatedAt: new Date(h.updated_at),
-      })) || [];
+      const humidorStats =
+        statsResult.data?.map((h) => ({
+          humidorId: h.humidor_id,
+          userId: h.user_id,
+          humidorName: h.humidor_name,
+          description: h.description,
+          capacity: h.capacity,
+          cigarCount: h.cigar_count, // Fixed: was h.total_cigars
+          totalValue: h.total_value,
+          avgCigarPrice: h.avg_cigar_price,
+          createdAt: new Date(h.created_at),
+          updatedAt: new Date(h.updated_at),
+        })) || [];
 
       // Calculate aggregate data from humidor stats (since we removed the problematic view)
       const aggregate = {
@@ -467,7 +485,11 @@ export const DatabaseService = {
         totalHumidors: humidors.length,
         totalCigars: humidorStats.reduce((sum, stat) => sum + (stat.cigarCount || 0), 0),
         totalCollectionValue: humidorStats.reduce((sum, stat) => sum + (stat.totalValue || 0), 0),
-        avgCigarValue: humidorStats.length > 0 ? humidorStats.reduce((sum, stat) => sum + (stat.avgCigarPrice || 0), 0) / humidorStats.length : 0,
+        avgCigarValue:
+          humidorStats.length > 0
+            ? humidorStats.reduce((sum, stat) => sum + (stat.avgCigarPrice || 0), 0) /
+              humidorStats.length
+            : 0,
         uniqueBrands: 0, // This would need to be calculated from inventory data if needed
       };
 
@@ -479,16 +501,22 @@ export const DatabaseService = {
         humidors,
         humidorStats,
         aggregate,
-        loadTime
+        loadTime,
       };
     } catch (error: any) {
       const loadTime = Date.now() - startTime;
-      console.error(`❌ DatabaseService - Optimized humidor data load failed after ${loadTime}ms:`, error);
+      console.error(
+        `❌ DatabaseService - Optimized humidor data load failed after ${loadTime}ms:`,
+        error,
+      );
       throw error;
     }
   },
 
-  async updateHumidor(humidorId: string, updates: { name?: string; description?: string; capacity?: number }) {
+  async updateHumidor(
+    humidorId: string,
+    updates: { name?: string; description?: string; capacity?: number },
+  ) {
     const { data, error } = await supabase
       .from('humidors')
       .update(updates)
@@ -509,10 +537,7 @@ export const DatabaseService = {
   },
 
   async deleteHumidor(humidorId: string) {
-    const { error } = await supabase
-      .from('humidors')
-      .delete()
-      .eq('id', humidorId);
+    const { error } = await supabase.from('humidors').delete().eq('id', humidorId);
 
     if (error) throw error;
   },
@@ -521,10 +546,10 @@ export const DatabaseService = {
   async getInventory(userId: string, humidorId?: string) {
     try {
       // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Database request timeout')), 15000) // 15 second timeout
+      const timeoutPromise = new Promise(
+        (_, reject) => setTimeout(() => reject(new Error('Database request timeout')), 15000), // 15 second timeout
       );
-      
+
       let query = supabase
         .from('inventory')
         .select('*')
@@ -536,50 +561,52 @@ export const DatabaseService = {
       }
 
       const dataPromise = query;
-      const { data, error } = await Promise.race([dataPromise, timeoutPromise]) as any;
+      const { data, error } = (await Promise.race([dataPromise, timeoutPromise])) as any;
 
       if (error) throw error;
-      return data?.map((item: any) => ({
-      id: item.id,
-      cigar: {
-        id: item.cigar_data.id,
-        brand: item.cigar_data.brand,
-        line: item.cigar_data.line,
-        name: item.cigar_data.name,
-        size: item.cigar_data.size,
-        wrapper: item.cigar_data.wrapper,
-        filler: item.cigar_data.filler,
-        binder: item.cigar_data.binder,
-        tobacco: item.cigar_data.tobacco,
-        strength: item.cigar_data.strength,
-        flavorProfile: item.cigar_data.flavorProfile,
-        tobaccoOrigins: item.cigar_data.tobaccoOrigins,
-        smokingExperience: item.cigar_data.smokingExperience,
-        imageUrl: item.cigar_data.imageUrl,
-        recognitionConfidence: item.cigar_data.recognitionConfidence,
-        msrp: item.cigar_data.msrp,
-        singleStickPrice: item.cigar_data.singleStickPrice,
-        releaseYear: item.cigar_data.releaseYear,
-        limitedEdition: item.cigar_data.limitedEdition,
-        professionalRating: item.cigar_data.professionalRating,
-        agingPotential: item.cigar_data.agingPotential,
-        wrapperColor: item.cigar_data.wrapperColor,
-        identifyingFeatures: item.cigar_data.identifyingFeatures,
-        overview: item.cigar_data.overview,
-        tobaccoOrigin: item.cigar_data.tobaccoOrigin,
-        flavorTags: item.cigar_data.flavorTags,
-        cigarAficionadoRating: item.cigar_data.cigarAficionadoRating,
-        detailUrl: item.cigar_data.detailUrl,
-      },
-      quantity: item.quantity,
-      purchaseDate: item.purchase_date ? new Date(item.purchase_date) : undefined,
-      pricePaid: item.price_paid || undefined,
-      originalBoxPrice: item.original_box_price || undefined,
-      sticksPerBox: item.sticks_per_box || undefined,
-      location: item.location || undefined,
-      notes: item.notes || undefined,
-      humidorId: item.humidor_id,
-    })) || [];
+      return (
+        data?.map((item: any) => ({
+          id: item.id,
+          cigar: {
+            id: item.cigar_data.id,
+            brand: item.cigar_data.brand,
+            line: item.cigar_data.line,
+            name: item.cigar_data.name,
+            size: item.cigar_data.size,
+            wrapper: item.cigar_data.wrapper,
+            filler: item.cigar_data.filler,
+            binder: item.cigar_data.binder,
+            tobacco: item.cigar_data.tobacco,
+            strength: item.cigar_data.strength,
+            flavorProfile: item.cigar_data.flavorProfile,
+            tobaccoOrigins: item.cigar_data.tobaccoOrigins,
+            smokingExperience: item.cigar_data.smokingExperience,
+            imageUrl: item.cigar_data.imageUrl,
+            recognitionConfidence: item.cigar_data.recognitionConfidence,
+            msrp: item.cigar_data.msrp,
+            singleStickPrice: item.cigar_data.singleStickPrice,
+            releaseYear: item.cigar_data.releaseYear,
+            limitedEdition: item.cigar_data.limitedEdition,
+            professionalRating: item.cigar_data.professionalRating,
+            agingPotential: item.cigar_data.agingPotential,
+            wrapperColor: item.cigar_data.wrapperColor,
+            identifyingFeatures: item.cigar_data.identifyingFeatures,
+            overview: item.cigar_data.overview,
+            tobaccoOrigin: item.cigar_data.tobaccoOrigin,
+            flavorTags: item.cigar_data.flavorTags,
+            cigarAficionadoRating: item.cigar_data.cigarAficionadoRating,
+            detailUrl: item.cigar_data.detailUrl,
+          },
+          quantity: item.quantity,
+          purchaseDate: item.purchase_date ? new Date(item.purchase_date) : undefined,
+          pricePaid: item.price_paid || undefined,
+          originalBoxPrice: item.original_box_price || undefined,
+          sticksPerBox: item.sticks_per_box || undefined,
+          location: item.location || undefined,
+          notes: item.notes || undefined,
+          humidorId: item.humidor_id,
+        })) || []
+      );
     } catch (error: any) {
       console.error('❌ DatabaseService.getInventory error:', error);
       throw error;
@@ -602,7 +629,7 @@ export const DatabaseService = {
           sticks_per_box: inventoryItem.sticks_per_box,
           location: inventoryItem.location,
           notes: inventoryItem.notes,
-        }
+        },
       ])
       .select()
       .single();
@@ -612,10 +639,7 @@ export const DatabaseService = {
   },
 
   async deleteInventoryItem(itemId: string) {
-    const { error } = await supabase
-      .from('inventory')
-      .delete()
-      .eq('id', itemId);
+    const { error } = await supabase.from('inventory').delete().eq('id', itemId);
 
     if (error) throw error;
   },
@@ -648,14 +672,14 @@ export const JournalService = {
 
   async saveJournalEntry(journalData: any) {
     console.log('🔍 JournalService.saveJournalEntry called with:', journalData);
-    
+
     const maxRetries = 3;
     let lastError;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         console.log(`🔄 Attempt ${attempt}/${maxRetries} to save journal entry`);
-        
+
         const { data, error } = await supabase
           .from('journal_entries')
           .upsert(journalData, { onConflict: 'id' })
@@ -665,46 +689,42 @@ export const JournalService = {
         if (error) {
           console.error(`❌ Error on attempt ${attempt}:`, error);
           lastError = error;
-          
+
           // If it's a network error, wait before retrying
           if (error.message?.includes('Network request failed') && attempt < maxRetries) {
             console.log(`⏳ Waiting 2 seconds before retry ${attempt + 1}...`);
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise((resolve) => setTimeout(resolve, 2000));
             continue;
           }
-          
+
           throw error;
         }
-        
+
         console.log('✅ Journal entry saved successfully');
         return data;
       } catch (error: any) {
         console.error(`❌ Attempt ${attempt} failed:`, error);
         lastError = error;
-        
+
         // If it's a network error and we have retries left, continue
         if (error.message?.includes('Network request failed') && attempt < maxRetries) {
           console.log(`⏳ Waiting 2 seconds before retry ${attempt + 1}...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           continue;
         }
-        
+
         // If it's not a network error or we're out of retries, throw
         throw error;
       }
     }
-    
+
     // If we get here, all retries failed
     console.error('❌ All retry attempts failed for journal entry save');
     throw lastError;
   },
 
-
   async deleteJournalEntry(entryId: string) {
-    const { error } = await supabase
-      .from('journal_entries')
-      .delete()
-      .eq('id', entryId);
+    const { error } = await supabase.from('journal_entries').delete().eq('id', entryId);
 
     if (error) throw error;
   },
@@ -741,70 +761,84 @@ export const InventoryService = {
   },
 
   async getInventoryItems(humidorId?: string): Promise<any[]> {
-    let query = supabase
-      .from('inventory')
-      .select('*')
-      .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
+    try {
+      let query = supabase
+        .from('inventory')
+        .select('*')
+        .eq('user_id', (await supabase.auth.getUser()).data.user?.id);
 
-    if (humidorId) {
-      query = query.eq('humidor_id', humidorId);
-    }
+      if (humidorId) {
+        query = query.eq('humidor_id', humidorId);
+      }
 
-    const { data, error } = await query.order('created_at', { ascending: false });
+      const { data, error } = await query.order('created_at', { ascending: false });
 
-    if (error) throw error;
+      if (error) throw error;
 
-    // Transform to InventoryItem format
-    return data.map(item => ({
-      id: item.id,
-      cigar: {
-        id: item.cigar_data.id || item.id,
-        brand: item.cigar_data.brand || 'Unknown',
-        line: item.cigar_data.line || 'Unknown',
-        name: item.cigar_data.name || 'Unknown',
-        size: item.cigar_data.size || '',
-        wrapper: item.cigar_data.wrapper || '',
-        filler: item.cigar_data.filler || '',
-        binder: item.cigar_data.binder || '',
-        strength: item.cigar_data.strength || 'Medium',
-        flavorProfile: item.cigar_data.flavorProfile || item.cigar_data.flavor_profile || [],
-        tobaccoOrigins: item.cigar_data.tobaccoOrigins || item.cigar_data.tobacco_origins || [],
-        smokingExperience: item.cigar_data.smokingExperience || item.cigar_data.smoking_experience || {
-          first: '',
-          second: '',
-          final: '',
+      // Transform to InventoryItem format
+      return data.map((item) => ({
+        id: item.id,
+        cigar: {
+          id: item.cigar_data.id || item.id,
+          brand: item.cigar_data.brand || 'Unknown',
+          line: item.cigar_data.line || 'Unknown',
+          name: item.cigar_data.name || 'Unknown',
+          size: item.cigar_data.size || '',
+          wrapper: item.cigar_data.wrapper || '',
+          filler: item.cigar_data.filler || '',
+          binder: item.cigar_data.binder || '',
+          strength: item.cigar_data.strength || 'Medium',
+          flavorProfile: item.cigar_data.flavorProfile || item.cigar_data.flavor_profile || [],
+          tobaccoOrigins: item.cigar_data.tobaccoOrigins || item.cigar_data.tobacco_origins || [],
+          smokingExperience: item.cigar_data.smokingExperience ||
+            item.cigar_data.smoking_experience || {
+              first: '',
+              second: '',
+              final: '',
+            },
+          imageUrl: item.cigar_data.imageUrl || item.cigar_data.image_url,
+          msrp: item.cigar_data.msrp,
+          singleStickPrice: item.cigar_data.singleStickPrice || item.cigar_data.single_stick_price,
+          overview: item.cigar_data.overview,
+          tobaccoOrigin: item.cigar_data.tobaccoOrigin || item.cigar_data.tobacco_origin,
+          flavorTags: item.cigar_data.flavorTags || item.cigar_data.flavor_tags || [],
+          cigarAficionadoRating:
+            item.cigar_data.cigarAficionadoRating || item.cigar_data.cigar_aficionado_rating,
         },
-        imageUrl: item.cigar_data.imageUrl || item.cigar_data.image_url,
-        msrp: item.cigar_data.msrp,
-        singleStickPrice: item.cigar_data.singleStickPrice || item.cigar_data.single_stick_price,
-        overview: item.cigar_data.overview,
-        tobaccoOrigin: item.cigar_data.tobaccoOrigin || item.cigar_data.tobacco_origin,
-        flavorTags: item.cigar_data.flavorTags || item.cigar_data.flavor_tags || [],
-        cigarAficionadoRating: item.cigar_data.cigarAficionadoRating || item.cigar_data.cigar_aficionado_rating,
-      },
-      quantity: item.quantity,
-      purchaseDate: new Date(item.created_at),
-      pricePaid: item.price_paid,
-      originalBoxPrice: item.original_box_price,
-      sticksPerBox: item.sticks_per_box,
-      location: item.location,
-      notes: item.notes,
-      humidorId: item.humidor_id,
-      // New cigar specification fields
-      dateAcquired: item.date_acquired ? new Date(item.date_acquired) : undefined,
-      agingPreferenceMonths: item.aging_preference_months || 0,
-      lengthInches: item.length_inches,
-      ringGauge: item.ring_gauge,
-      vitola: item.vitola,
-    }));
+        quantity: item.quantity,
+        purchaseDate: new Date(item.created_at),
+        pricePaid: item.price_paid,
+        originalBoxPrice: item.original_box_price,
+        sticksPerBox: item.sticks_per_box,
+        location: item.location,
+        notes: item.notes,
+        humidorId: item.humidor_id,
+        // New cigar specification fields
+        dateAcquired: item.date_acquired ? new Date(item.date_acquired) : undefined,
+        agingPreferenceMonths: item.aging_preference_months || 0,
+        lengthInches: item.length_inches,
+        ringGauge: item.ring_gauge,
+        vitola: item.vitola,
+      }));
+    } catch (err: any) {
+      // Treat aborted requests as non-fatal to avoid blocking UX
+      const message = String(err?.message || '').toLowerCase();
+      if (err?.name === 'AbortError' || message.includes('abort')) {
+        console.warn(
+          '⚠️ InventoryService.getInventoryItems aborted; returning empty list to continue UX',
+        );
+        return [];
+      }
+      throw err;
+    }
   },
 
   async updateInventoryQuantity(itemId: string, newQuantity: number) {
     const { error } = await supabase
       .from('inventory')
-      .update({ 
+      .update({
         quantity: newQuantity,
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       })
       .eq('id', itemId);
 
@@ -812,10 +846,7 @@ export const InventoryService = {
   },
 
   async removeInventoryItem(itemId: string) {
-    const { error } = await supabase
-      .from('inventory')
-      .delete()
-      .eq('id', itemId);
+    const { error } = await supabase.from('inventory').delete().eq('id', itemId);
 
     if (error) throw error;
   },

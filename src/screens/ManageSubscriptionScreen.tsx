@@ -46,17 +46,23 @@ export default function ManageSubscriptionScreen() {
     const isActive = subscriptionStatus.isPremium;
     const isCancelled = subscriptionDetails.entitlements?.active?.premium?.willRenew === false;
     const isExpired = !isActive && subscriptionStatus.hasEverSubscribed;
-    const hasBillingIssue = subscriptionDetails.entitlements?.active?.premium?.isActive === false && 
-                           subscriptionStatus.hasEverSubscribed;
+    const hasBillingIssue =
+      subscriptionDetails.entitlements?.active?.premium?.isActive === false &&
+      subscriptionStatus.hasEverSubscribed;
 
     // Calculate grace period (16 days from expiration)
     const gracePeriodDays = 16;
     const expirationDate = subscriptionDetails.entitlements?.active?.premium?.expirationDate;
-    const gracePeriodEnd = expirationDate ? new Date(new Date(expirationDate).getTime() + (gracePeriodDays * 24 * 60 * 60 * 1000)) : null;
-    const daysLeftInGrace = gracePeriodEnd ? Math.ceil((gracePeriodEnd.getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000)) : 0;
+    const gracePeriodEnd = expirationDate
+      ? new Date(new Date(expirationDate).getTime() + gracePeriodDays * 24 * 60 * 60 * 1000)
+      : null;
+    const daysLeftInGrace = gracePeriodEnd
+      ? Math.ceil((gracePeriodEnd.getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000))
+      : 0;
 
     const planType = subscriptionStatus.planType || 'Monthly';
-    const isYearly = planType.toLowerCase().includes('yearly') || planType.toLowerCase().includes('annual');
+    const isYearly =
+      planType.toLowerCase().includes('yearly') || planType.toLowerCase().includes('annual');
 
     return {
       isActive,
@@ -73,7 +79,7 @@ export default function ManageSubscriptionScreen() {
   const handleCancelSubscription = () => {
     Alert.alert(
       'Cancel Subscription',
-      'To cancel your subscription, you\'ll need to go to your Apple ID settings. Your subscription will remain active until the end of your current billing period.',
+      "To cancel your subscription, you'll need to go to your Apple ID settings. Your subscription will remain active until the end of your current billing period.",
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -82,7 +88,7 @@ export default function ManageSubscriptionScreen() {
             Linking.openURL('App-prefs:APPLE_ID&path=SUBSCRIPTIONS');
           },
         },
-      ]
+      ],
     );
   };
 
@@ -93,7 +99,7 @@ export default function ManageSubscriptionScreen() {
   const handleUpdatePayment = () => {
     Alert.alert(
       'Update Payment Method',
-      'To update your payment method, you\'ll need to go to your Apple ID settings.',
+      "To update your payment method, you'll need to go to your Apple ID settings.",
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -102,7 +108,7 @@ export default function ManageSubscriptionScreen() {
             Linking.openURL('App-prefs:APPLE_ID&path=SUBSCRIPTIONS');
           },
         },
-      ]
+      ],
     );
   };
 
@@ -110,23 +116,20 @@ export default function ManageSubscriptionScreen() {
 
   if (!status) {
     return (
-      <ImageBackground 
+      <ImageBackground
         source={require('../../assets/tobacco-leaves-bg.jpg')}
         style={styles.backgroundImage}
         imageStyle={styles.tobaccoBackgroundImage}
       >
         <View style={styles.container}>
           <View style={styles.header}>
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={() => navigation.goBack()}
-            >
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
               <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <Text style={styles.title}>Manage Subscription</Text>
             <View style={styles.placeholder} />
           </View>
-          
+
           <View style={styles.loadingContainer}>
             <Text style={styles.loadingText}>Loading subscription details...</Text>
           </View>
@@ -137,15 +140,15 @@ export default function ManageSubscriptionScreen() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     });
   };
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.backgroundImage}
       imageStyle={styles.tobaccoBackgroundImage}
@@ -153,10 +156,7 @@ export default function ManageSubscriptionScreen() {
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           <Text style={styles.title}>Manage Subscription</Text>
@@ -173,16 +173,18 @@ export default function ManageSubscriptionScreen() {
                 {status.isExpired && ' (Payment Issue)'}
                 {status.hasBillingIssue && ' (Billing Issue)'}
               </Text>
-              
+
               {status.isCancelled && status.expirationDate && (
                 <Text style={styles.warningText}>
-                  Your subscription is cancelled and you will lose access on {formatDate(status.expirationDate)}
+                  Your subscription is cancelled and you will lose access on{' '}
+                  {formatDate(status.expirationDate)}
                 </Text>
               )}
-              
+
               {(status.isExpired || status.hasBillingIssue) && status.daysLeftInGrace > 0 && (
                 <Text style={styles.warningText}>
-                  You have {status.daysLeftInGrace} day{status.daysLeftInGrace !== 1 ? 's' : ''} left to resubscribe or update your payment information.
+                  You have {status.daysLeftInGrace} day{status.daysLeftInGrace !== 1 ? 's' : ''}{' '}
+                  left to resubscribe or update your payment information.
                 </Text>
               )}
             </View>
@@ -192,7 +194,7 @@ export default function ManageSubscriptionScreen() {
         {/* Action Buttons */}
         <View style={styles.actionsContainer}>
           {status.isActive && !status.isCancelled && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.actionButton, styles.cancelButton]}
               onPress={handleCancelSubscription}
             >
@@ -202,22 +204,21 @@ export default function ManageSubscriptionScreen() {
           )}
 
           {(status.isCancelled || status.isExpired || status.hasBillingIssue) && (
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={handleRenewSubscription}
-            >
+            <TouchableOpacity style={styles.actionButton} onPress={handleRenewSubscription}>
               <Ionicons name="refresh" size={20} color="#FFFFFF" />
               <Text style={styles.actionButtonText}>Renew Subscription</Text>
             </TouchableOpacity>
           )}
 
           {(status.isExpired || status.hasBillingIssue) && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.actionButton, styles.secondaryButton]}
               onPress={handleUpdatePayment}
             >
               <Ionicons name="card" size={20} color="#DC851F" />
-              <Text style={[styles.actionButtonText, styles.secondaryText]}>Update Payment Method</Text>
+              <Text style={[styles.actionButtonText, styles.secondaryText]}>
+                Update Payment Method
+              </Text>
             </TouchableOpacity>
           )}
         </View>
@@ -225,10 +226,9 @@ export default function ManageSubscriptionScreen() {
         {/* Additional Info */}
         <View style={styles.infoContainer}>
           <Text style={styles.infoText}>
-            {status.isActive && !status.isCancelled 
+            {status.isActive && !status.isCancelled
               ? 'Your subscription is active and will automatically renew.'
-              : 'Manage your subscription through your Apple ID settings or renew to continue enjoying premium features.'
-            }
+              : 'Manage your subscription through your Apple ID settings or renew to continue enjoying premium features.'}
           </Text>
         </View>
       </ScrollView>
@@ -352,8 +352,3 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
-
-
-
-
-

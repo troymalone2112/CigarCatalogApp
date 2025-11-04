@@ -1,24 +1,28 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase, AuthService, DatabaseService, checkSupabaseConnection, executeWithResilience } from '../services/supabaseService';
+import { supabase, AuthService, checkSupabaseConnection, executeWithResilience } from '../services/supabaseService';
+import { Api } from '../services/api';
 import { connectionHealthManager } from '../services/connectionHealthManager';
 import { ColdStartCache } from '../services/coldStartCache';
 import { StorageService } from '../storage/storageService';
 import { UserManagementService } from '../services/userManagementService';
 import { UserRole } from '../types';
-import { 
-  DEVELOPMENT_CONFIG, 
-  isExpoGo, 
-  getTimeoutValue, 
-  getRetryCount, 
+import {
+  DEVELOPMENT_CONFIG,
+  isExpoGo,
+  getTimeoutValue,
+  getRetryCount,
   getRetryDelay,
   shouldUseGracefulDegradation,
-  shouldPreserveExistingData 
+  shouldPreserveExistingData,
 } from '../config/development';
 import { ProfileCacheService, NetworkError } from '../services/profileCacheService';
 import { PerformanceMonitor } from '../utils/performanceMonitor';
-import { FastSubscriptionService, FastSubscriptionStatus } from '../services/fastSubscriptionService';
+import {
+  FastSubscriptionService,
+  FastSubscriptionStatus,
+} from '../services/fastSubscriptionService';
 import { DatabaseSubscriptionManager } from '../services/databaseSubscriptionManager';
 
 interface Profile {
@@ -77,13 +81,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       console.log('📱 App state changed:', appState, '->', nextAppState);
-      
+
       if (appState.match(/inactive|background/) && nextAppState === 'active') {
         console.log('🔄 App came to foreground - refreshing auth state');
         // App came to foreground, refresh auth state
         refreshAuthState();
       }
-      
+
       setAppState(nextAppState);
     };
 
@@ -94,28 +98,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshAuthState = async () => {
     try {
       console.log('🔄 Refreshing auth state...');
-      
+
       // Skip connection check on foreground refresh to reduce delays
       // Only do a quick session check
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (session?.user) {
         console.log('✅ Session still valid, doing lightweight refresh');
         // Ensure StorageService has current user
         StorageService.setCurrentUser(session.user.id);
-        
+
         // Only refresh if profile is missing or stale
         if (!profile || profile.id !== session.user.id) {
           console.log('🔄 Profile missing or stale, refreshing...');
-          loadProfile(session.user.id).catch(err => 
-            console.error('❌ Profile refresh failed:', err)
+          loadProfile(session.user.id).catch((err) =>
+            console.error('❌ Profile refresh failed:', err),
           );
         }
-        
+
         // Load permissions in background (non-blocking)
-        loadUserPermissions().catch(err => 
-          console.error('❌ Permissions refresh failed:', err)
-        );
+        loadUserPermissions().catch((err) => console.error('❌ Permissions refresh failed:', err));
       } else {
         console.log('❌ No valid session found');
       }
@@ -126,7 +130,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     console.log('🚀 AuthContext: Starting resilient initialization with cache fallback...');
-    
+
     // Shorter timeout for faster failure detection
     const authTimeout = getTimeoutValue(3000, 'auth'); // Reduced to 3s for faster failure
     const loadingTimeout = setTimeout(() => {
@@ -139,15 +143,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         PerformanceMonitor.startTimer('auth-initialization');
         console.log('🔄 Starting resilient auth initialization...');
-        
+
         // Step 1: Check if we have cached data available
         const hasCachedData = await ColdStartCache.hasCachedData();
         console.log('💾 Cached data available:', hasCachedData);
-        
+
         // Step 2: Perform health check first
         const healthCheck = await connectionHealthManager.performHealthCheck();
         console.log('🔍 Connection health:', healthCheck);
-        
+
         // Step 3: Try to load from network if healthy, otherwise use cache
         if (healthCheck.isOnline && healthCheck.isDatabaseHealthy) {
           console.log('✅ Network is healthy, attempting fresh data load...');
@@ -161,16 +165,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.log('❌ No network and no cache, attempting degraded load...');
           await attemptDegradedLoad();
         }
-        
+
         console.log('✅ Resilient auth initialization complete');
         PerformanceMonitor.endTimer('auth-initialization');
         setLoading(false);
         clearTimeout(loadingTimeout);
-        
       } catch (error) {
         console.error('❌ Error during resilient auth initialization:', error);
         PerformanceMonitor.endTimer('auth-initialization');
-        
+
         // Try cache as last resort
         const cachedState = await ColdStartCache.loadCachedAppState();
         if (cachedState) {
@@ -181,12 +184,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setSubscriptionStatus(cachedState.subscriptionStatus);
           StorageService.setCurrentUser(cachedState.user.id);
         }
-        
+
         setLoading(false);
         clearTimeout(loadingTimeout);
       }
     };
-    
+
     // Helper function to load fresh data from network
     const loadFreshData = async () => {
       try {
@@ -194,28 +197,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const sessionData = await executeWithResilience(
           () => supabase.auth.getSession(),
           'session-check',
-          { timeoutMs: 3000, maxRetries: 2 }
+          { timeoutMs: 3000, maxRetries: 2 },
         );
-        
-        const { data: { session } } = sessionData;
+
+        const {
+          data: { session },
+        } = sessionData;
         console.log('🔍 Fresh session loaded:', session?.user?.id || 'no user');
-        
+
         setSession(session);
         setUser(session?.user ?? null);
-        
+
         if (session?.user) {
           StorageService.setCurrentUser(session.user.id);
-          
+
           // Load subscription status with priority
           console.log('💎 Loading fresh subscription status...');
           await loadSubscriptionStatus(session.user.id);
-          
+
           // Load profile in background
           console.log('👤 Loading fresh profile in background...');
-          loadProfile(session.user.id).catch(error => {
+          loadProfile(session.user.id).catch((error) => {
             console.error('❌ Profile load failed, but continuing:', error);
           });
-          
+
           // Cache successful state after a delay to ensure all state is updated
           setTimeout(async () => {
             try {
@@ -225,7 +230,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   session.user,
                   profile,
                   subscriptionStatus,
-                  session
+                  session,
                 );
                 console.log('✅ Complete app state cached successfully');
               }
@@ -239,13 +244,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
     };
-    
+
     // Helper function to load from cache
     const loadFromCache = async () => {
       try {
         console.log('💾 Loading app state from cache...');
         const cachedState = await ColdStartCache.loadCachedAppState();
-        
+
         if (cachedState) {
           console.log('✅ Loaded cached app state successfully');
           setUser(cachedState.user);
@@ -262,28 +267,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw error;
       }
     };
-    
+
     // Helper function for background sync
     const syncInBackground = async () => {
       try {
         console.log('🔄 Starting background sync...');
-        
+
         // Wait a bit for the UI to load
         setTimeout(async () => {
           try {
             const sessionData = await supabase.auth.getSession();
-            const { data: { session } } = sessionData;
-            
+            const {
+              data: { session },
+            } = sessionData;
+
             if (session?.user) {
               console.log('🔄 Background sync: updating subscription status...');
               await loadSubscriptionStatus(session.user.id);
-              
+
               console.log('🔄 Background sync: updating profile...');
               await loadProfile(session.user.id);
-              
+
               console.log('✅ Background sync completed');
               connectionHealthManager.resetHealthState();
-              
+
               // Update cached state after successful sync
               setTimeout(async () => {
                 try {
@@ -293,7 +300,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                       session.user,
                       profile,
                       subscriptionStatus,
-                      session
+                      session,
                     );
                     await ColdStartCache.updateCacheTimestamp();
                   }
@@ -310,28 +317,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('❌ Background sync setup failed:', error);
       }
     };
-    
+
     // Helper function for degraded load (last resort)
     const attemptDegradedLoad = async () => {
       try {
         console.log('🆘 Attempting degraded load...');
-        
+
         // Try to get session from AsyncStorage
         const cachedSession = await ColdStartCache.loadCachedUserSession();
         if (cachedSession) {
           setSession(cachedSession);
           setUser(cachedSession.user);
           StorageService.setCurrentUser(cachedSession.user.id);
-          
+
           // Try to load other cached components
           const [cachedProfile, cachedSubscription] = await Promise.all([
             ColdStartCache.loadCachedUserProfile(),
-            ColdStartCache.loadCachedSubscriptionStatus()
+            ColdStartCache.loadCachedSubscriptionStatus(),
           ]);
-          
+
           if (cachedProfile) setProfile(cachedProfile);
           if (cachedSubscription) setSubscriptionStatus(cachedSubscription);
-          
+
           console.log('✅ Degraded load completed with partial cached data');
         } else {
           console.log('❌ No cached session available, user needs to sign in');
@@ -341,7 +348,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // At this point, we just show the login screen
       }
     };
-    
+
     initializeAuth();
 
     // Listen for auth changes
@@ -351,11 +358,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('🔍 Auth state change:', event, session?.user?.id || 'no user');
       setSession(session);
       setUser(session?.user ?? null);
-      
+
       if (session?.user) {
         // Set current user in StorageService for user-specific data
         StorageService.setCurrentUser(session.user.id);
-        
+
         // Sync RevenueCat user ID with Supabase user ID
         try {
           const { PaymentService } = await import('../services/paymentService');
@@ -364,7 +371,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (rcError) {
           console.log('⚠️ Failed to sync RevenueCat user ID:', rcError);
         }
-        
+
         await loadProfile(session.user.id);
         await loadUserPermissions();
       } else {
@@ -375,7 +382,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsSuperUser(false);
         setCanAccessAdmin(false);
       }
-      
+
       setLoading(false);
     });
 
@@ -387,8 +394,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const loadProfile = async (userId: string, retryCount = 0) => {
     try {
-      console.log('🔍 Loading profile for user:', userId, retryCount > 0 ? `(retry ${retryCount})` : '');
-      
+      console.log(
+        '🔍 Loading profile for user:',
+        userId,
+        retryCount > 0 ? `(retry ${retryCount})` : '',
+      );
+
       // First, try to get cached profile if this is a retry or we're in Expo Go
       if (retryCount > 0 || isExpoGo) {
         const cachedProfile = await ProfileCacheService.getCachedProfile();
@@ -398,29 +409,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
       }
-      
+
       // Reduced timeout for faster failure and better UX
       const profileTimeout = getTimeoutValue(8000, 'profile'); // Reduced from 15s to 8s
-      const profilePromise = DatabaseService.getProfile(userId);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile load timeout')), profileTimeout)
+      const profilePromise = Api.profiles.get(userId);
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Profile load timeout')), profileTimeout),
       );
-      
+
       const profileData = await Promise.race([profilePromise, timeoutPromise]);
       console.log('✅ Profile loaded successfully:', profileData);
-      
+
       // Cache the profile for future use (both old and new cache systems)
       await ProfileCacheService.cacheProfile(profileData);
       await ColdStartCache.cacheUserProfile(profileData);
-      
+
       setProfile(profileData);
     } catch (error) {
       console.error('❌ Error loading profile:', error);
-      
+
       // Classify the error for better handling
       const networkError = ProfileCacheService.classifyNetworkError(error);
       console.log('🔍 Network error classified:', networkError);
-      
+
       // Try to use cached profile for network/timeout errors
       if (ProfileCacheService.shouldUseCachedProfile(networkError)) {
         const cachedProfile = await ProfileCacheService.getCachedProfile();
@@ -430,26 +441,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
       }
-      
+
       // Check if we should retry
       const maxRetries = getRetryCount();
       if (ProfileCacheService.shouldRetry(networkError, retryCount, maxRetries)) {
         const delay = ProfileCacheService.getRetryDelay(networkError, retryCount);
-        console.log(`🔄 Retrying profile load in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries}) - Error: ${networkError.type}`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        console.log(
+          `🔄 Retrying profile load in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries}) - Error: ${networkError.type}`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
         return loadProfile(userId, retryCount + 1);
       }
-      
+
       // If we already have a profile in state, keep it (don't reset to default)
       if (profile && shouldPreserveExistingData()) {
-        console.log('⚠️ Profile load failed after retries, keeping existing profile (Expo Go mode)');
+        console.log(
+          '⚠️ Profile load failed after retries, keeping existing profile (Expo Go mode)',
+        );
         return;
       }
-      
+
       // Final fallback - try to get minimal profile info
       if (networkError.type === 'timeout' || networkError.type === 'network') {
         console.log('⚠️ Profile load timeout/network error - checking if user exists in database');
-        
+
         // Try to check if user exists in database with a simple query
         try {
           const { data: existingProfile, error: checkError } = await supabase
@@ -457,7 +472,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             .select('id, onboarding_completed, full_name, created_at, updated_at')
             .eq('id', userId)
             .single();
-            
+
           if (existingProfile && !checkError) {
             console.log('✅ User exists in database, using existing profile data');
             const fallbackProfile = {
@@ -466,28 +481,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               full_name: existingProfile.full_name || user?.email?.split('@')[0] || 'User',
               onboarding_completed: existingProfile.onboarding_completed,
               created_at: existingProfile.created_at || new Date().toISOString(),
-              updated_at: existingProfile.updated_at || new Date().toISOString()
+              updated_at: existingProfile.updated_at || new Date().toISOString(),
             };
-            
-      // Cache the fallback profile
-      await ProfileCacheService.cacheProfile(fallbackProfile);
-      setProfile(fallbackProfile);
-      
-      // Set RevenueCat user ID to match Supabase user ID
-      try {
-        const { RevenueCatService } = await import('../services/revenueCatService');
-        await RevenueCatService.setUserId(userId);
-        console.log('✅ RevenueCat user ID synchronized with Supabase');
-      } catch (rcError) {
-        console.log('⚠️ Failed to sync RevenueCat user ID:', rcError);
-      }
-      
-      return;
+
+            // Cache the fallback profile
+            await ProfileCacheService.cacheProfile(fallbackProfile);
+            setProfile(fallbackProfile);
+
+            // Set RevenueCat user ID to match Supabase user ID
+            try {
+              const { RevenueCatService } = await import('../services/revenueCatService');
+              await RevenueCatService.setUserId(userId);
+              console.log('✅ RevenueCat user ID synchronized with Supabase');
+            } catch (rcError) {
+              console.log('⚠️ Failed to sync RevenueCat user ID:', rcError);
+            }
+
+            return;
           }
         } catch (checkError) {
           console.log('⚠️ Could not verify user existence, using cached profile or default');
         }
-        
+
         // Try cached profile one more time
         const cachedProfile = await ProfileCacheService.getCachedProfile();
         if (cachedProfile) {
@@ -496,7 +511,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
       }
-      
+
       // Last resort - create default profile
       console.log('🔧 Setting default profile for new user (all fallbacks failed)');
       const defaultProfile = {
@@ -505,9 +520,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         full_name: 'New User',
         onboarding_completed: false,
         created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       };
-      
+
       // Cache the default profile
       await ProfileCacheService.cacheProfile(defaultProfile);
       setProfile(defaultProfile);
@@ -535,15 +550,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadSubscriptionStatus = async (userId: string, forceRefresh = false) => {
     try {
       setSubscriptionLoading(true);
-      console.log('💎 Loading subscription status (PRIORITY) for user:', userId, forceRefresh ? '(forced refresh)' : '');
-      
+      console.log(
+        '💎 Loading subscription status (PRIORITY) for user:',
+        userId,
+        forceRefresh ? '(forced refresh)' : '',
+      );
+
       // Try to load with resilience using DatabaseSubscriptionManager directly
       const dbStatus = await executeWithResilience(
         () => DatabaseSubscriptionManager.getSubscriptionStatus(userId),
         'subscription-status-load',
-        { timeoutMs: 5000, maxRetries: 2 }
+        { timeoutMs: 5000, maxRetries: 2 },
       );
-      
+
       // Convert to FastSubscriptionStatus for compatibility
       const status: FastSubscriptionStatus = {
         hasAccess: dbStatus.hasAccess,
@@ -551,24 +570,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isTrialActive: dbStatus.isTrialActive,
         status: dbStatus.status,
         planId: dbStatus.planId,
-        daysRemaining: dbStatus.daysRemaining
+        daysRemaining: dbStatus.daysRemaining,
       };
-      
+
       console.log('💎 Subscription status loaded:', {
         hasAccess: status.hasAccess,
         isPremium: status.isPremium,
         isTrialActive: status.isTrialActive,
-        status: status.status
+        status: status.status,
       });
-      
+
       // Cache successful subscription status
       await ColdStartCache.cacheSubscriptionStatus(status);
-      
+
       setSubscriptionStatus(status);
       return status;
     } catch (error) {
       console.error('❌ Error loading subscription status:', error);
-      
+
       // Try to use cached subscription status
       try {
         const cachedStatus = await ColdStartCache.loadCachedSubscriptionStatus();
@@ -580,13 +599,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } catch (cacheError) {
         console.error('❌ Failed to load cached subscription status:', cacheError);
       }
-      
+
       // Provide fallback status
       const fallbackStatus: FastSubscriptionStatus = {
         hasAccess: false,
         isTrialActive: false,
         isPremium: false,
-        status: 'error'
+        status: 'error',
       };
       setSubscriptionStatus(fallbackStatus);
       return fallbackStatus;
@@ -598,14 +617,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadUserPermissions = async (retryCount = 0) => {
     try {
       console.log('🔍 Loading user permissions...', retryCount > 0 ? `(retry ${retryCount})` : '');
-      
+
       // Add timeout to prevent hanging (dynamic based on environment)
       const permissionsTimeout = getTimeoutValue(10000, 'permissions');
       const permissionsPromise = UserManagementService.getCurrentUserPermissions();
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Permissions load timeout')), permissionsTimeout)
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Permissions load timeout')), permissionsTimeout),
       );
-      
+
       const permissions = await Promise.race([permissionsPromise, timeoutPromise]);
       console.log('✅ User permissions loaded:', permissions);
       setUserRole(permissions.role);
@@ -613,20 +632,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCanAccessAdmin(permissions.canAccessAdmin);
     } catch (error) {
       console.error('❌ Error loading user permissions:', error);
-      
+
       // EMERGENCY FIX: Disable retry logic to prevent infinite loops
       console.log('🚨 Permissions load failed - setting default permissions to prevent loop');
       setUserRole('user');
       setIsSuperUser(false);
       setCanAccessAdmin(false);
       return;
-      
+
       // If we already have permissions in state, keep them
       if (userRole && shouldPreserveExistingData()) {
-        console.log('⚠️ Permissions load failed after retries, keeping existing permissions (Expo Go mode)');
+        console.log(
+          '⚠️ Permissions load failed after retries, keeping existing permissions (Expo Go mode)',
+        );
         return;
       }
-      
+
       // Set safe defaults only if we don't have existing data
       console.log('🔧 Setting default permissions (timeout/network error)');
       setUserRole('standard_user');
@@ -635,13 +656,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
+  const signUp = useCallback(async (email: string, password: string, fullName: string) => {
     try {
       setLoading(true);
       await AuthService.signUp(email, password, fullName);
-      
+
       // Set RevenueCat user ID after successful signup
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         try {
           const { RevenueCatService } = await import('../services/revenueCatService');
@@ -652,7 +675,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // Don't throw - RevenueCat setup failure shouldn't break signup
         }
       }
-      
+
       // Note: Profile creation is handled automatically by database trigger
     } catch (error) {
       console.error('Sign up error:', error);
@@ -660,15 +683,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     try {
       setLoading(true);
       await AuthService.signIn(email, password);
-      
+
       // Set RevenueCat user ID after successful login
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (user) {
         try {
           const { RevenueCatService } = await import('../services/revenueCatService');
@@ -684,14 +709,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     try {
       setLoading(true);
       PerformanceMonitor.startTimer('logout-cleanup');
       console.log('🔄 Starting parallel logout cleanup...');
-      
+
       // Run all cleanup operations in parallel for faster logout
       const cleanupPromises = [
         StorageService.clearCurrentUserData(),
@@ -709,75 +734,97 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Don't throw - continue with other cleanup
           }
         })(),
-        AuthService.signOut()
+        AuthService.signOut(),
       ];
-      
+
       // Wait for all cleanup operations to complete (or fail gracefully)
       await Promise.allSettled(cleanupPromises);
       PerformanceMonitor.endTimer('logout-cleanup');
       console.log('✅ Logout cleanup completed');
-      
     } catch (error) {
       console.error('Sign out error:', error);
       throw error;
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = useCallback(async (email: string) => {
     try {
       await AuthService.resetPassword(email);
     } catch (error) {
       console.error('Reset password error:', error);
       throw error;
     }
-  };
+  }, []);
 
-  const updateProfile = async (updates: { full_name?: string; avatar_url?: string }) => {
-    try {
-      if (!user) throw new Error('No user logged in');
-      
-      // Update auth user data
-      await AuthService.updateProfile(updates);
-      
-      // Update profile in database
-      const updatedProfile = await DatabaseService.updateProfile(user.id, {
-        ...updates,
-        updated_at: new Date().toISOString(),
-      });
-      
-      setProfile(updatedProfile);
-    } catch (error) {
-      console.error('Update profile error:', error);
-      throw error;
-    }
-  };
+  const updateProfile = useCallback(
+    async (updates: { full_name?: string; avatar_url?: string }) => {
+      try {
+        if (!user) throw new Error('No user logged in');
 
-  const refreshUserPermissions = async () => {
+        // Update auth user data
+        await AuthService.updateProfile(updates);
+
+        // Update profile in database
+        const updatedProfile = await Api.profiles.update(user.id, {
+          ...updates,
+          updated_at: new Date().toISOString(),
+        });
+
+        setProfile(updatedProfile);
+      } catch (error) {
+        console.error('Update profile error:', error);
+        throw error;
+      }
+    },
+    [user],
+  );
+
+  const refreshUserPermissions = useCallback(async () => {
     await loadUserPermissions();
-  };
+  }, []);
 
-  const value = {
-    user,
-    profile,
-    session,
-    loading,
-    userRole,
-    isSuperUser,
-    canAccessAdmin,
-    subscriptionStatus,
-    subscriptionLoading,
-    signUp,
-    signIn,
-    signOut,
-    resetPassword,
-    updateProfile,
-    refreshUserPermissions,
-    refreshProfile,
-    refreshSubscription,
-  };
+  const value = useMemo(
+    () => ({
+      user,
+      profile,
+      session,
+      loading,
+      userRole,
+      isSuperUser,
+      canAccessAdmin,
+      subscriptionStatus,
+      subscriptionLoading,
+      signUp,
+      signIn,
+      signOut,
+      resetPassword,
+      updateProfile,
+      refreshUserPermissions,
+      refreshProfile,
+      refreshSubscription,
+    }),
+    [
+      user,
+      profile,
+      session,
+      loading,
+      userRole,
+      isSuperUser,
+      canAccessAdmin,
+      subscriptionStatus,
+      subscriptionLoading,
+      signUp,
+      signIn,
+      signOut,
+      resetPassword,
+      updateProfile,
+      refreshUserPermissions,
+      refreshProfile,
+      refreshSubscription,
+    ],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
-

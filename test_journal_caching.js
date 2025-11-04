@@ -19,7 +19,7 @@ async function testJournalCaching() {
 
     // Test 2: Test cache operations
     console.log('2️⃣ Testing cache operations...');
-    
+
     // Simulate some journal entries
     const mockEntries = [
       {
@@ -27,15 +27,15 @@ async function testJournalCaching() {
         cigar: { brand: 'Test Brand', name: 'Test Cigar' },
         date: new Date(),
         rating: { overall: 4 },
-        notes: 'Test entry 1'
+        notes: 'Test entry 1',
       },
       {
-        id: 'test-2', 
+        id: 'test-2',
         cigar: { brand: 'Test Brand 2', name: 'Test Cigar 2' },
         date: new Date(),
         rating: { overall: 5 },
-        notes: 'Test entry 2'
-      }
+        notes: 'Test entry 2',
+      },
     ];
 
     // Cache the entries
@@ -65,16 +65,16 @@ async function testJournalCaching() {
 
     // Test 6: Test cache manipulation
     console.log('6️⃣ Testing cache manipulation...');
-    
+
     // Add new entry
     const newEntry = {
       id: 'test-3',
       cigar: { brand: 'New Brand', name: 'New Cigar' },
       date: new Date(),
       rating: { overall: 3 },
-      notes: 'New test entry'
+      notes: 'New test entry',
     };
-    
+
     await JournalCacheService.addEntryToCache(newEntry);
     console.log('✅ Added new entry to cache');
 
@@ -107,7 +107,6 @@ async function testJournalCaching() {
     console.log('   ✅ Statistics tracking');
     console.log('   ✅ Health monitoring');
     console.log('   ✅ Cache cleanup');
-
   } catch (error) {
     console.error('❌ Test failed:', error);
     console.error('Stack trace:', error.stack);
@@ -116,6 +115,4 @@ async function testJournalCaching() {
 
 // Run the test
 testJournalCaching();
-
-
 

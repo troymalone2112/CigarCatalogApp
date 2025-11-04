@@ -23,13 +23,13 @@ export class PerformanceMonitor {
 
     const duration = Date.now() - startTime;
     this.timers.delete(operation);
-    
+
     // Store metric for analysis
     if (!this.metrics.has(operation)) {
       this.metrics.set(operation, []);
     }
     this.metrics.get(operation)!.push(duration);
-    
+
     console.log(`⏱️ ${operation}: ${duration}ms`);
     return duration;
   }
@@ -40,24 +40,27 @@ export class PerformanceMonitor {
   static getAverageTime(operation: string): number {
     const times = this.metrics.get(operation);
     if (!times || times.length === 0) return 0;
-    
+
     return times.reduce((sum, time) => sum + time, 0) / times.length;
   }
 
   /**
    * Get performance summary
    */
-  static getPerformanceSummary(): Record<string, { average: number; count: number; latest: number }> {
+  static getPerformanceSummary(): Record<
+    string,
+    { average: number; count: number; latest: number }
+  > {
     const summary: Record<string, { average: number; count: number; latest: number }> = {};
-    
+
     for (const [operation, times] of this.metrics.entries()) {
       summary[operation] = {
         average: this.getAverageTime(operation),
         count: times.length,
-        latest: times[times.length - 1] || 0
+        latest: times[times.length - 1] || 0,
       };
     }
-    
+
     return summary;
   }
 
@@ -75,9 +78,11 @@ export class PerformanceMonitor {
   static logPerformanceSummary(): void {
     const summary = this.getPerformanceSummary();
     console.log('📊 Performance Summary:');
-    
+
     for (const [operation, data] of Object.entries(summary)) {
-      console.log(`  ${operation}: avg=${data.average.toFixed(0)}ms, count=${data.count}, latest=${data.latest}ms`);
+      console.log(
+        `  ${operation}: avg=${data.average.toFixed(0)}ms, count=${data.count}, latest=${data.latest}ms`,
+      );
     }
   }
 }
@@ -86,7 +91,7 @@ export class PerformanceMonitor {
 export function trackPerformance(operationName: string) {
   return function (target: any, propertyName: string, descriptor: PropertyDescriptor) {
     const method = descriptor.value;
-    
+
     descriptor.value = async function (...args: any[]) {
       PerformanceMonitor.startTimer(operationName);
       try {
@@ -100,7 +105,4 @@ export function trackPerformance(operationName: string) {
     };
   };
 }
-
-
-
 

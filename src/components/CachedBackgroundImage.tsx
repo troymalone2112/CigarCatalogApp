@@ -8,16 +8,16 @@ interface CachedBackgroundImageProps extends Omit<ImageBackgroundProps, 'source'
 
 /**
  * CachedBackgroundImage Component
- * 
+ *
  * A wrapper around ImageBackground that uses the cached tobacco background image.
  * This prevents the image from being reloaded every time a screen renders,
  * significantly improving performance and reducing lag.
  */
-export default function CachedBackgroundImage({ 
-  children, 
-  style, 
+export default function CachedBackgroundImage({
+  children,
+  style,
   imageStyle,
-  ...props 
+  ...props
 }: CachedBackgroundImageProps) {
   return (
     <ImageBackground
@@ -40,6 +40,4 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
 });
-
-
 

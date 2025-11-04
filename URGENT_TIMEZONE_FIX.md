@@ -1,9 +1,11 @@
 # URGENT: Timezone Fix for Trial Dates
 
 ## The Problem
+
 Your trial dates are showing "tomorrow" because the database trigger is using UTC time instead of your local timezone.
 
 ## IMMEDIATE SOLUTION
+
 **Copy and paste this SQL into your Supabase SQL Editor:**
 
 ```sql
@@ -22,18 +24,18 @@ DECLARE
 BEGIN
   -- Extract timezone from user metadata, default to 'UTC' if not provided
   user_timezone := COALESCE(NEW.raw_user_meta_data->>'timezone', 'UTC');
-  
+
   -- Trial starts NOW in UTC
   trial_start_utc := NOW() AT TIME ZONE 'UTC';
-  
+
   -- Trial ends 3 days from NOW in user's timezone, converted to UTC
   trial_end_utc := (NOW() AT TIME ZONE user_timezone + INTERVAL '3 days') AT TIME ZONE 'UTC';
-  
+
   -- Insert profile
   INSERT INTO public.profiles (id, email, full_name, created_at, updated_at, onboarding_completed)
   VALUES (
-    NEW.id, 
-    NEW.email, 
+    NEW.id,
+    NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', 'New User'),
     trial_start_utc,
     trial_start_utc,
@@ -45,17 +47,17 @@ BEGIN
     updated_at = trial_start_utc;
 
   -- Get trial plan ID
-  SELECT id INTO trial_plan_id 
-  FROM public.subscription_plans 
-  WHERE name = 'Free Trial' 
+  SELECT id INTO trial_plan_id
+  FROM public.subscription_plans
+  WHERE name = 'Free Trial'
   AND is_active = true
   LIMIT 1;
 
   -- Create trial subscription
   IF trial_plan_id IS NOT NULL THEN
     INSERT INTO public.user_subscriptions (
-      user_id, 
-      plan_id, 
+      user_id,
+      plan_id,
       status,
       trial_start_date,
       trial_end_date,
@@ -76,8 +78,8 @@ BEGIN
   -- Create default humidor
   INSERT INTO public.humidors (
     id,
-    user_id, 
-    name, 
+    user_id,
+    name,
     description,
     capacity,
     created_at,
@@ -123,6 +125,7 @@ CREATE TRIGGER on_auth_user_created
 ## Test the Fix
 
 After running the SQL:
+
 1. Create a new user account in your app
 2. Check that the trial starts immediately (not tomorrow)
 3. Verify the trial ends exactly 3 days from now in your timezone

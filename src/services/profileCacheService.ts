@@ -28,7 +28,9 @@ export class ProfileCacheService {
   /**
    * Cache a user profile locally
    */
-  static async cacheProfile(profile: Omit<CachedProfile, 'cached_at' | 'cache_version'>): Promise<void> {
+  static async cacheProfile(
+    profile: Omit<CachedProfile, 'cached_at' | 'cache_version'>,
+  ): Promise<void> {
     try {
       // Check if profile is valid before caching
       if (!profile || !profile.id) {
@@ -61,7 +63,7 @@ export class ProfileCacheService {
       }
 
       const cachedProfile: CachedProfile = JSON.parse(cachedData);
-      
+
       // Check if cache is expired
       const cacheAge = Date.now() - new Date(cachedProfile.cached_at).getTime();
       if (cacheAge > MAX_CACHE_AGE_MS) {
@@ -140,10 +142,12 @@ export class ProfileCacheService {
     }
 
     // Network connectivity errors
-    if (errorMessage.includes('Network request failed') || 
-        errorMessage.includes('fetch') ||
-        errorMessage.includes('connection') ||
-        errorMessage.includes('offline')) {
+    if (
+      errorMessage.includes('Network request failed') ||
+      errorMessage.includes('fetch') ||
+      errorMessage.includes('connection') ||
+      errorMessage.includes('offline')
+    ) {
       return {
         type: 'network',
         message: 'Network connection failed',
@@ -153,10 +157,12 @@ export class ProfileCacheService {
     }
 
     // Server errors (5xx)
-    if (errorMessage.includes('500') || 
-        errorMessage.includes('502') || 
-        errorMessage.includes('503') || 
-        errorMessage.includes('504')) {
+    if (
+      errorMessage.includes('500') ||
+      errorMessage.includes('502') ||
+      errorMessage.includes('503') ||
+      errorMessage.includes('504')
+    ) {
       return {
         type: 'server',
         message: 'Server error occurred',
@@ -166,9 +172,11 @@ export class ProfileCacheService {
     }
 
     // Authentication errors
-    if (errorMessage.includes('401') || 
-        errorMessage.includes('unauthorized') ||
-        errorMessage.includes('auth')) {
+    if (
+      errorMessage.includes('401') ||
+      errorMessage.includes('unauthorized') ||
+      errorMessage.includes('auth')
+    ) {
       return {
         type: 'auth',
         message: 'Authentication failed',
@@ -199,7 +207,7 @@ export class ProfileCacheService {
    */
   static getRetryDelay(error: NetworkError, attemptCount: number): number {
     const baseDelay = 1000; // 1 second base delay
-    
+
     switch (error.type) {
       case 'timeout':
         return baseDelay * Math.pow(2, attemptCount); // Exponential backoff
@@ -218,10 +226,10 @@ export class ProfileCacheService {
   static shouldRetry(error: NetworkError, attemptCount: number, maxRetries: number = 3): boolean {
     if (!error.retryable) return false;
     if (attemptCount >= maxRetries) return false;
-    
+
     // Don't retry auth errors
     if (error.type === 'auth') return false;
-    
+
     return true;
   }
 }

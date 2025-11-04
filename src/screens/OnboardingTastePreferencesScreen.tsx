@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   ImageBackground,
   ScrollView,
-  Alert
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -15,8 +15,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { StorageService } from '../storage/storageService';
 import { useAuth } from '../contexts/AuthContext';
 
-type OnboardingTastePreferencesNavigationProp = StackNavigationProp<RootStackParamList, 'OnboardingTastePreferences'>;
-type OnboardingTastePreferencesRouteProp = RouteProp<RootStackParamList, 'OnboardingTastePreferences'>;
+type OnboardingTastePreferencesNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'OnboardingTastePreferences'
+>;
+type OnboardingTastePreferencesRouteProp = RouteProp<
+  RootStackParamList,
+  'OnboardingTastePreferences'
+>;
 
 const flavorOptions = [
   { key: 'woody', label: 'Woody', icon: 'leaf', description: 'Cedar, Oak, Hickory' },
@@ -36,9 +42,9 @@ export default function OnboardingTastePreferencesScreen() {
   const [selectedFlavors, setSelectedFlavors] = useState<string[]>([]);
 
   const handleFlavorToggle = (flavorKey: string) => {
-    setSelectedFlavors(prev => {
+    setSelectedFlavors((prev) => {
       if (prev.includes(flavorKey)) {
-        return prev.filter(f => f !== flavorKey);
+        return prev.filter((f) => f !== flavorKey);
       } else {
         return [...prev, flavorKey];
       }
@@ -46,7 +52,7 @@ export default function OnboardingTastePreferencesScreen() {
   };
 
   const handleSelectAll = () => {
-    setSelectedFlavors(flavorOptions.map(f => f.key));
+    setSelectedFlavors(flavorOptions.map((f) => f.key));
   };
 
   const handleClearAll = () => {
@@ -55,7 +61,7 @@ export default function OnboardingTastePreferencesScreen() {
 
   const handleFinish = async () => {
     console.log('🔄 Finish Setup button pressed - completing onboarding...');
-    
+
     try {
       if (!user) {
         console.error('❌ No user found');
@@ -64,7 +70,7 @@ export default function OnboardingTastePreferencesScreen() {
       }
 
       console.log('🔍 Finishing onboarding for user:', user.id);
-      
+
       // Create user profile
       const userProfile: UserProfile = {
         userId: user.id, // Use actual user ID from auth
@@ -81,7 +87,7 @@ export default function OnboardingTastePreferencesScreen() {
       // Save to storage
       await StorageService.saveUserProfile(userProfile);
       console.log('✅ User profile saved successfully');
-      
+
       // Call the completion handler if provided
       if (route.params?.onComplete) {
         console.log('📞 Calling onComplete handler...');
@@ -96,10 +102,10 @@ export default function OnboardingTastePreferencesScreen() {
       }
     } catch (error) {
       console.error('❌ Error saving user profile:', error);
-      
+
       // Production fix: Don't block user on database errors
       console.log('🆘 Profile save failed, attempting fallback completion...');
-      
+
       // Try to mark onboarding as completed at minimum
       try {
         await StorageService.updateUserProfile({ onboardingCompleted: true });
@@ -107,7 +113,7 @@ export default function OnboardingTastePreferencesScreen() {
       } catch (updateError) {
         console.error('❌ Even minimal update failed:', updateError);
       }
-      
+
       // Still try to complete onboarding
       if (route.params?.onComplete) {
         console.log('📞 Calling onComplete handler (fallback)...');
@@ -128,13 +134,13 @@ export default function OnboardingTastePreferencesScreen() {
 
   const handleSkip = async () => {
     console.log('🔄 Skip button pressed on taste preferences...');
-    
+
     try {
       // Mark onboarding as completed when skipping
       console.log('💾 Marking onboarding as completed...');
       await StorageService.updateUserProfile({ onboardingCompleted: true });
       console.log('✅ Onboarding marked as completed');
-      
+
       // Use the onComplete callback if available, otherwise fall back to navigation
       if (route.params?.onComplete) {
         console.log('📞 Calling onComplete handler...');
@@ -148,7 +154,7 @@ export default function OnboardingTastePreferencesScreen() {
       }
     } catch (error) {
       console.error('❌ Error in handleSkip:', error);
-      
+
       // Fallback: still try to complete onboarding
       if (route.params?.onComplete) {
         console.log('📞 Calling onComplete handler (fallback)...');
@@ -164,7 +170,7 @@ export default function OnboardingTastePreferencesScreen() {
   };
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.fullScreenBackground}
       imageStyle={styles.tobaccoBackgroundImage}
@@ -174,7 +180,7 @@ export default function OnboardingTastePreferencesScreen() {
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <Ionicons name="arrow-back" size={24} color="#CCCCCC" />
           </TouchableOpacity>
-          
+
           <View style={styles.progressIndicator}>
             <Text style={styles.progressText}>3 of 3</Text>
             <View style={styles.progressBar}>
@@ -187,12 +193,10 @@ export default function OnboardingTastePreferencesScreen() {
           <View style={styles.iconContainer}>
             <Ionicons name="heart" size={80} color="#DC851F" />
           </View>
-          
+
           <Text style={styles.title}>Taste Preferences</Text>
-          
-          <Text style={styles.subtitle}>
-            Select your preferred flavor profiles:
-          </Text>
+
+          <Text style={styles.subtitle}>Select your preferred flavor profiles:</Text>
 
           <View style={styles.controlsContainer}>
             <TouchableOpacity style={styles.controlButton} onPress={handleSelectAll}>
@@ -209,51 +213,47 @@ export default function OnboardingTastePreferencesScreen() {
                 key={flavor.key}
                 style={[
                   styles.flavorButton,
-                  selectedFlavors.includes(flavor.key) && styles.flavorButtonSelected
+                  selectedFlavors.includes(flavor.key) && styles.flavorButtonSelected,
                 ]}
                 onPress={() => handleFlavorToggle(flavor.key)}
               >
-                <Ionicons 
-                  name={flavor.icon as any} 
-                  size={24} 
-                  color={selectedFlavors.includes(flavor.key) ? '#DC851F' : '#999999'} 
+                <Ionicons
+                  name={flavor.icon as any}
+                  size={24}
+                  color={selectedFlavors.includes(flavor.key) ? '#DC851F' : '#999999'}
                 />
-                <Text style={[
-                  styles.flavorLabel,
-                  selectedFlavors.includes(flavor.key) && styles.flavorLabelSelected
-                ]}>
+                <Text
+                  style={[
+                    styles.flavorLabel,
+                    selectedFlavors.includes(flavor.key) && styles.flavorLabelSelected,
+                  ]}
+                >
                   {flavor.label}
                 </Text>
-                <Text style={[
-                  styles.flavorDescription,
-                  selectedFlavors.includes(flavor.key) && styles.flavorDescriptionSelected
-                ]}>
+                <Text
+                  style={[
+                    styles.flavorDescription,
+                    selectedFlavors.includes(flavor.key) && styles.flavorDescriptionSelected,
+                  ]}
+                >
                   {flavor.description}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          {selectedFlavors.length === 0 && (
-            <View style={styles.noneSelectedContainer}>
-              <TouchableOpacity 
-                style={styles.noneSelectedButton}
-                onPress={() => setSelectedFlavors(['none'])}
-              >
-                <Text style={styles.noneSelectedText}>None of the above</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          <View style={styles.noneSelectedContainer}>
+            <TouchableOpacity style={styles.noneSelectedButton} onPress={handleClearAll}>
+              <Text style={styles.noneSelectedText}>None of the above</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity 
-            style={styles.finishButton} 
-            onPress={handleFinish}
-          >
+          <TouchableOpacity style={styles.finishButton} onPress={handleFinish}>
             <Text style={styles.finishButtonText}>Finish Setup</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
             <Text style={styles.skipButtonText}>Skip for now</Text>
           </TouchableOpacity>

@@ -5,24 +5,28 @@ An AI-powered mobile app for cigar enthusiasts to identify, catalog, and track t
 ## 🌟 Features
 
 ### 📸 AI-Powered Cigar Recognition
+
 - Take photos of cigars for instant identification
 - ChatGPT analyzes images to identify brand, line, and specific cigars
 - Perplexity API fetches detailed cigar information in real-time
 - High-confidence recognition with alternative suggestions
 
 ### 📦 Digital Humidor Management
+
 - Track your cigar inventory with quantities and locations
 - Add cigars directly from recognition results
 - Sort and filter by brand, quantity, or purchase date
 - Visual inventory cards with cigar details
 
 ### 📖 Smoking Journal
+
 - Record detailed smoking experiences
 - Rate cigars on multiple dimensions (construction, draw, flavor, complexity)
 - Add personal notes, settings, and pairings
 - Photo documentation of smoking sessions
 
 ### 🎯 Personalized Recommendations
+
 - AI analyzes your preferences and journal entries
 - Suggests new cigars based on your taste profile
 - Match confidence scores with detailed explanations
@@ -52,28 +56,33 @@ An AI-powered mobile app for cigar enthusiasts to identify, catalog, and track t
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone <repository-url>
    cd CigarCatalogApp
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Set up environment variables**
+
    ```bash
    cp .env.example .env
    ```
-   
+
    Edit `.env` and add your API keys:
+
    ```
    EXPO_PUBLIC_OPENAI_API_KEY=your_openai_api_key_here
    EXPO_PUBLIC_PERPLEXITY_API_KEY=your_perplexity_api_key_here
    ```
 
 4. **Start the development server**
+
    ```bash
    npm start
    ```
@@ -86,6 +95,7 @@ An AI-powered mobile app for cigar enthusiasts to identify, catalog, and track t
 ## 🔑 API Keys Setup
 
 ### OpenAI API Key
+
 1. Visit [OpenAI Platform](https://platform.openai.com/)
 2. Create an account or sign in
 3. Navigate to API Keys section
@@ -93,6 +103,7 @@ An AI-powered mobile app for cigar enthusiasts to identify, catalog, and track t
 5. Add to your `.env` file
 
 ### Perplexity API Key
+
 1. Visit [Perplexity AI](https://www.perplexity.ai/)
 2. Sign up for API access
 3. Generate an API key
@@ -122,6 +133,7 @@ src/
 ## 🎨 Design System
 
 The app uses a warm, tobacco-inspired color palette:
+
 - Primary: `#8B4513` (Saddle Brown)
 - Secondary: `#A0522D` (Sienna)
 - Accent: `#D2B48C` (Tan)
@@ -130,18 +142,21 @@ The app uses a warm, tobacco-inspired color palette:
 ## 📊 Data Models
 
 ### Cigar
+
 - Brand, line, name, size
 - Tobacco details (wrapper, filler, binder, origins)
 - Strength level and flavor profile
 - Smoking experience by thirds
 
 ### Inventory Item
+
 - Cigar reference
 - Quantity and location
 - Purchase information
 - Personal notes
 
 ### Journal Entry
+
 - Cigar reference
 - Multi-dimensional ratings
 - Personal notes and context
@@ -157,6 +172,7 @@ The app uses a warm, tobacco-inspired color palette:
 ## 🚧 Development Status
 
 ### ✅ Completed
+
 - [x] Project setup and navigation
 - [x] Camera integration
 - [x] ChatGPT API integration
@@ -166,12 +182,14 @@ The app uses a warm, tobacco-inspired color palette:
 - [x] Inventory management
 
 ### 🚧 In Progress
+
 - [ ] Journal entry forms
 - [ ] Detailed cigar information screens
 - [ ] Recommendation engine
 - [ ] Settings and preferences
 
 ### 📋 Planned Features
+
 - [ ] Data export/import
 - [ ] Offline mode
 - [ ] Social sharing

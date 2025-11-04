@@ -48,7 +48,9 @@ export class SubscriptionService {
         .order('price_monthly', { ascending: true, nullsFirst: false });
 
       if (error) {
-        console.log('🔍 SubscriptionService - subscription_plans table not found or RLS issue, using default plans');
+        console.log(
+          '🔍 SubscriptionService - subscription_plans table not found or RLS issue, using default plans',
+        );
         // Return default plans if table doesn't exist
         return [
           {
@@ -59,12 +61,15 @@ export class SubscriptionService {
             price_yearly: 0,
             features: ['Cigar Recognition', 'Journal Entries', 'Humidor Management'],
             is_active: true,
-          }
+          },
         ];
       }
       return data || [];
     } catch (error) {
-      console.log('🔍 SubscriptionService - Error fetching subscription plans, using default:', error);
+      console.log(
+        '🔍 SubscriptionService - Error fetching subscription plans, using default:',
+        error,
+      );
       return [
         {
           id: 'free',
@@ -74,7 +79,7 @@ export class SubscriptionService {
           price_yearly: 0,
           features: ['Cigar Recognition', 'Journal Entries', 'Humidor Management'],
           is_active: true,
-        }
+        },
       ];
     }
   }
@@ -84,20 +89,28 @@ export class SubscriptionService {
     try {
       const { data, error } = await supabase
         .from('user_subscriptions')
-        .select(`
+        .select(
+          `
           *,
           subscription_plans (*)
-        `)
+        `,
+        )
         .eq('user_id', userId)
         .single();
 
       if (error && error.code !== 'PGRST116') {
-        console.log('🔍 SubscriptionService - user_subscriptions table not found or RLS issue:', error);
+        console.log(
+          '🔍 SubscriptionService - user_subscriptions table not found or RLS issue:',
+          error,
+        );
         return null;
       }
       return data || null;
     } catch (error) {
-      console.log('🔍 SubscriptionService - Error fetching user subscription, returning null:', error);
+      console.log(
+        '🔍 SubscriptionService - Error fetching user subscription, returning null:',
+        error,
+      );
       return null;
     }
   }
@@ -106,13 +119,15 @@ export class SubscriptionService {
   static async checkSubscriptionStatus(userId: string): Promise<SubscriptionStatus> {
     try {
       const subscription = await this.getUserSubscription(userId);
-      
+
       if (!subscription) {
-        console.log('🔍 SubscriptionService - No subscription found, providing default trial status');
+        console.log(
+          '🔍 SubscriptionService - No subscription found, providing default trial status',
+        );
         // Provide a default trial status for new users
         const trialStartDate = new Date();
         const trialEndDate = new Date(trialStartDate.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days from now
-        
+
         return {
           hasAccess: true,
           isTrialActive: true,
@@ -144,27 +159,42 @@ export class SubscriptionService {
         // Days remaining if we already have an end date
         if (subscription.subscription_end_date) {
           const subscriptionEndDate = new Date(subscription.subscription_end_date);
-          daysRemaining = Math.ceil((subscriptionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          daysRemaining = Math.ceil(
+            (subscriptionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+          );
         }
         console.log('🔍 SubscriptionService - Prioritizing is_premium=true for immediate access');
       } else if (subscription.status === 'trial') {
         const trialEndDate = new Date(subscription.trial_end_date);
         isTrialActive = trialEndDate > now;
         hasAccess = isTrialActive;
-        
+
         if (isTrialActive) {
-          daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          daysRemaining = Math.ceil(
+            (trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+          );
         }
-        console.log('🔍 SubscriptionService - Trial status:', { isTrialActive, hasAccess, daysRemaining, trialEndDate });
+        console.log('🔍 SubscriptionService - Trial status:', {
+          isTrialActive,
+          hasAccess,
+          daysRemaining,
+          trialEndDate,
+        });
       } else if (subscription.status === 'active') {
         const subscriptionEndDate = new Date(subscription.subscription_end_date || '');
         isPremium = subscriptionEndDate > now;
         hasAccess = isPremium;
-        
+
         if (isPremium) {
-          daysRemaining = Math.ceil((subscriptionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          daysRemaining = Math.ceil(
+            (subscriptionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+          );
         }
-        console.log('🔍 SubscriptionService - Premium status:', { isPremium, hasAccess, daysRemaining });
+        console.log('🔍 SubscriptionService - Premium status:', {
+          isPremium,
+          hasAccess,
+          daysRemaining,
+        });
       } else {
         // Non-trial, non-active statuses
         if (subscription.is_premium === true) {
@@ -177,7 +207,9 @@ export class SubscriptionService {
       // If user is premium, calculate days remaining from subscription end date
       if (isPremium && subscription.subscription_end_date) {
         const subscriptionEndDate = new Date(subscription.subscription_end_date);
-        daysRemaining = Math.ceil((subscriptionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        daysRemaining = Math.ceil(
+          (subscriptionEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+        );
       }
 
       console.log('🔍 SubscriptionService - Final status:', {
@@ -186,7 +218,7 @@ export class SubscriptionService {
         isPremium,
         daysRemaining,
         status: subscription.status,
-        is_premium_from_db: subscription.is_premium
+        is_premium_from_db: subscription.is_premium,
       });
 
       return {
@@ -213,15 +245,13 @@ export class SubscriptionService {
   // Track usage for analytics
   static async trackUsage(userId: string, action: string, metadata?: any) {
     try {
-      const { error } = await supabase
-        .from('usage_tracking')
-        .insert([
-          {
-            user_id: userId,
-            action,
-            metadata: metadata || {},
-          },
-        ]);
+      const { error } = await supabase.from('usage_tracking').insert([
+        {
+          user_id: userId,
+          action,
+          metadata: metadata || {},
+        },
+      ]);
 
       if (error) throw error;
     } catch (error) {
@@ -232,14 +262,14 @@ export class SubscriptionService {
 
   // Create premium subscription (placeholder for Stripe integration)
   static async createPremiumSubscription(
-    userId: string, 
-    planId: string, 
-    paymentMethodId: string
+    userId: string,
+    planId: string,
+    paymentMethodId: string,
   ): Promise<{ success: boolean; error?: string }> {
     try {
       // This would integrate with Stripe in a real implementation
       // For now, we'll simulate a successful subscription
-      
+
       const { error } = await supabase
         .from('user_subscriptions')
         .update({
@@ -257,9 +287,9 @@ export class SubscriptionService {
       return { success: true };
     } catch (error) {
       console.error('Error creating premium subscription:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
@@ -281,15 +311,18 @@ export class SubscriptionService {
       return { success: true };
     } catch (error) {
       console.error('Error cancelling subscription:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
 
   // Extend trial (admin function)
-  static async extendTrial(userId: string, days: number): Promise<{ success: boolean; error?: string }> {
+  static async extendTrial(
+    userId: string,
+    days: number,
+  ): Promise<{ success: boolean; error?: string }> {
     try {
       const subscription = await this.getUserSubscription(userId);
       if (!subscription) {
@@ -312,16 +345,10 @@ export class SubscriptionService {
       return { success: true };
     } catch (error) {
       console.error('Error extending trial:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
 }
-
-
-
-
-
-

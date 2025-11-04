@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -19,12 +19,8 @@ import { RootStackParamList, InventoryItem, TabParamList, Humidor } from '../typ
 import { StorageService } from '../storage/storageService';
 import { DatabaseService } from '../services/supabaseService';
 import { useAuth } from '../contexts/AuthContext';
+import { normalizeStrength } from '../utils/helpers';
 import { getStrengthInfo } from '../utils/strengthUtils';
-import { useScreenLoading } from '../hooks/useScreenLoading';
-import { useRecognitionFlow } from '../contexts/RecognitionFlowContext';
-import HumidorCapacitySetupModal from '../components/HumidorCapacitySetupModal';
-import { clearHumidorCache } from '../services/humidorCacheService';
-import { OptimizedHumidorService } from '../services/optimizedHumidorService';
 
 type InventoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Inventory'>;
 type InventoryScreenRouteProp = RouteProp<RootStackParamList, 'Inventory'>;
@@ -33,46 +29,24 @@ export default function InventoryScreen() {
   const navigation = useNavigation<InventoryScreenNavigationProp>();
   const route = useRoute<InventoryScreenRouteProp>();
   const { user } = useAuth();
-  const { clearRecognitionFlow } = useRecognitionFlow();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([]);
-  const { loading, refreshing, setLoading, setRefreshing } = useScreenLoading(true);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [forceUpdate, setForceUpdate] = useState(0);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
   const [currentHumidor, setCurrentHumidor] = useState<Humidor | null>(null);
   const [availableHumidors, setAvailableHumidors] = useState<Humidor[]>([]);
   const [humidorName, setHumidorName] = useState<string>('');
-  const [showCapacitySetup, setShowCapacitySetup] = useState(false);
-  const [hasShownCapacitySetup, setHasShownCapacitySetup] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const highlightAnimation = useRef(new Animated.Value(0)).current;
   const processedHighlightId = useRef<string | null>(null);
 
-  // Set header title dynamically based on humidor name
-  useLayoutEffect(() => {
-    console.log('🎨 Setting Inventory header style for humidor:', route.params?.humidorName);
-    
-    navigation.setOptions({
-      headerShown: true,
-      title: route.params?.humidorName || 'Humidor',
-      headerStyle: {
-        backgroundColor: '#0a0a0a',
-      },
-      headerTintColor: '#FFFFFF',
-      headerTitleStyle: {
-        fontWeight: '400',
-        fontSize: 14,
-        color: '#FFFFFF',
-      },
-      headerBackTitleVisible: false,
-    });
-  }, [navigation, route.params?.humidorName, route.params?.humidorId]);
-
   useFocusEffect(
     useCallback(() => {
       loadInventory();
-    }, [route.params?.humidorId, loadInventory])
+    }, [route.params?.humidorId])
   );
 
 
@@ -102,13 +76,6 @@ export default function InventoryScreen() {
       setCurrentHumidor(selectedHumidor);
       setHumidorName(route.params?.humidorName || selectedHumidor?.name || '');
       
-      // Check if we should show capacity setup modal
-      if (selectedHumidor && !selectedHumidor.capacity && !hasShownCapacitySetup) {
-        console.log('💎 Humidor has no capacity set, showing capacity setup modal');
-        setShowCapacitySetup(true);
-        setHasShownCapacitySetup(true);
-      }
-      
       // Load inventory for the selected humidor
       const items = await StorageService.getInventory(selectedHumidor?.id);
       console.log('📦 Loaded inventory items:', items.length);
@@ -124,57 +91,12 @@ export default function InventoryScreen() {
         processedHighlightId.current = highlightId;
         triggerHighlight(highlightId, items);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error loading inventory:', error);
-      
-      // Check if it's a network error
-      const isNetworkError = error?.message?.includes('Network request failed') || 
-                            error?.message?.includes('TypeError: Network');
-      
-      if (isNetworkError) {
-        // For network errors, show a more helpful message
-        console.log('⚠️ Network error loading inventory - showing offline message');
-        Alert.alert(
-          'No Connection',
-          'Unable to load inventory. Please check your internet connection and try again.',
-          [
-            { text: 'OK' },
-            { text: 'Retry', onPress: () => loadInventory() }
-          ]
-        );
-      } else {
-        // For other errors, show generic error
-        Alert.alert('Error', 'Failed to load inventory. Please try again.');
-      }
+      Alert.alert('Error', 'Failed to load inventory');
     } finally {
       setLoading(false);
       setRefreshing(false);
-    }
-  };
-
-  const handleCapacitySetup = async (capacity: number | null) => {
-    if (!currentHumidor) return;
-
-    try {
-      console.log('💎 Setting humidor capacity:', capacity);
-      
-      // Update the humidor with the new capacity
-      await DatabaseService.updateHumidor(currentHumidor.id, {
-        capacity: capacity
-      });
-      
-      // Update local state
-      setCurrentHumidor({
-        ...currentHumidor,
-        capacity: capacity
-      });
-      
-      console.log('✅ Humidor capacity updated successfully');
-    } catch (error) {
-      console.error('❌ Error updating humidor capacity:', error);
-      Alert.alert('Error', 'Failed to update humidor capacity. Please try again.');
-    } finally {
-      setShowCapacitySetup(false);
     }
   };
 
@@ -263,17 +185,6 @@ export default function InventoryScreen() {
       // Update database in background
       await StorageService.updateInventoryQuantity(itemId, newQuantity);
       console.log('✅ Quantity updated successfully');
-      
-      // Clear humidor cache to ensure updated counts appear in humidor list
-      console.log('🗑️ Clearing humidor cache after quantity update...');
-      if (user) {
-        await Promise.all([
-          clearHumidorCache(user.id),
-          OptimizedHumidorService.clearCache(user.id)
-        ]);
-        console.log('✅ Cache cleared, humidor stats will reflect new quantities');
-      }
-      
     } catch (error) {
       console.error('Error updating quantity:', error);
       
@@ -293,61 +204,12 @@ export default function InventoryScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            console.log('🗑️ Starting delete for item:', itemId);
-            const startTime = Date.now();
-            
-            // Optimistic update - remove from UI immediately
-            const previousInventory = inventory;
-            const previousFiltered = filteredInventory;
-            
-            setInventory(prev => prev.filter(item => item.id !== itemId));
-            setFilteredInventory(prev => prev.filter(item => item.id !== itemId));
-            setForceUpdate(prev => prev + 1);
-            
-            console.log('🗑️ UI updated in:', Date.now() - startTime, 'ms');
-            
             try {
-              // Delete from database in background
-              const dbStartTime = Date.now();
               await StorageService.removeInventoryItem(itemId);
-              console.log('🗑️ Database delete completed in:', Date.now() - dbStartTime, 'ms');
-              
-              // Clear humidor cache to ensure updated counts appear in humidor list
-              console.log('🗑️ Clearing humidor cache after inventory delete...');
-              if (user) {
-                await Promise.all([
-                  clearHumidorCache(user.id),
-                  OptimizedHumidorService.clearCache(user.id)
-                ]);
-                console.log('✅ Cache cleared, humidor stats will reflect item deletion');
-              }
-              
-              console.log('🗑️ Total delete time:', Date.now() - startTime, 'ms');
-            } catch (error: any) {
-              console.error('❌ Error deleting item:', error);
-              
-              // Check if it's a network error
-              const isNetworkError = error?.message?.includes('Network request failed') || 
-                                    error?.message?.includes('TypeError: Network');
-              
-              if (isNetworkError) {
-                // For network errors, keep the optimistic update and show a subtle message
-                console.log('⚠️ Network error - keeping optimistic update, will sync when online');
-                // Don't rollback - the item is likely deleted, just couldn't confirm
-                // Show a toast-style message instead of blocking alert
-                Alert.alert(
-                  'Offline',
-                  'Item removed. Changes will sync when you\'re back online.',
-                  [{ text: 'OK' }]
-                );
-              } else {
-                // For other errors, rollback
-                console.log('🔄 Rolling back delete due to error');
-                setInventory(previousInventory);
-                setFilteredInventory(previousFiltered);
-                setForceUpdate(prev => prev + 1);
-                Alert.alert('Error', 'Failed to delete item. Please try again.');
-              }
+              await loadInventory();
+            } catch (error) {
+              console.error('Error deleting item:', error);
+              Alert.alert('Error', 'Failed to delete item');
             }
           },
         },
@@ -402,7 +264,7 @@ export default function InventoryScreen() {
             <View style={styles.detailsRow}>
               <View style={[styles.strengthBadge, getStrengthBadgeStyle(item.cigar.strength)]}>
                 <Text style={[styles.strengthText, { color: getStrengthInfo(item.cigar.strength).color }]}>
-                  {getStrengthInfo(item.cigar.strength).label}
+                  {normalizeStrength(item.cigar.strength)}
                 </Text>
               </View>
               {item.cigar.cigarAficionadoRating && (
@@ -423,10 +285,12 @@ export default function InventoryScreen() {
           </View>
 
           <View style={styles.imageContainer}>
-            {item.cigar.imageUrl && item.cigar.imageUrl !== 'placeholder' ? (
+            {item.cigar.imageUrl ? (
               <Image source={{ uri: item.cigar.imageUrl }} style={styles.cigarImage} />
             ) : (
-              <Image source={require('../../assets/cigar-placeholder.jpg')} style={styles.cigarImage} />
+              <View style={styles.placeholderImage}>
+                <Ionicons name="image-outline" size={40} color="#ccc" />
+              </View>
             )}
           </View>
         </View>
@@ -455,17 +319,17 @@ export default function InventoryScreen() {
 
           <View style={styles.actionButtons}>
             <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => navigation.navigate('EditOptions', { item: item })}
-            >
-              <Ionicons name="create-outline" size={16} color="#DC851F" />
-            </TouchableOpacity>
-
-            <TouchableOpacity
               style={styles.deleteButton}
               onPress={() => deleteItem(item.id)}
             >
               <Ionicons name="trash-outline" size={16} color="#dc3545" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => editItem(item)}
+            >
+              <Ionicons name="pencil-outline" size={16} color="#DC851F" />
             </TouchableOpacity>
           </View>
         </View>
@@ -600,14 +464,6 @@ export default function InventoryScreen() {
         </TouchableOpacity>
 
       </View>
-
-      {/* Capacity Setup Modal */}
-      <HumidorCapacitySetupModal
-        visible={showCapacitySetup}
-        onClose={() => setShowCapacitySetup(false)}
-        onSave={handleCapacitySetup}
-        humidorName={currentHumidor?.name || 'Humidor'}
-      />
     </ImageBackground>
   );
 }
@@ -878,7 +734,7 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: 'flex-end',
   },
-  deleteButton: {
+  editButton: {
     padding: 8,
     borderRadius: 6,
     backgroundColor: '#333333',
@@ -887,7 +743,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  editButton: {
+  deleteButton: {
     padding: 8,
     borderRadius: 6,
     backgroundColor: '#333333',

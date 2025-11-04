@@ -3,16 +3,19 @@
 ## How the Simplified System Works
 
 ### **1. RevenueCat Handles Payments** 💳
+
 - Apple/Google handle all billing complexity
 - RevenueCat manages subscription lifecycle
 - We just check status and sync to our database
 
 ### **2. Our Database Tracks Status** 🗄️
+
 - Simple boolean: `is_premium` (true/false)
 - Trial dates for new users
 - Last sync timestamp
 
 ### **3. Feature Gating is Simple** 🚪
+
 - Check database status (fast)
 - Gate features based on subscription status
 - Show upgrade prompts when needed
@@ -35,7 +38,7 @@ function JournalScreen() {
           <Text>Create New Entry</Text>
         </TouchableOpacity>
       )}
-      
+
       {canEditJournal() && (
         <TouchableOpacity onPress={editJournal}>
           <Text>Edit Entry</Text>
@@ -67,7 +70,7 @@ import { useFeatureGate } from '../components/FeatureGate';
 
 function HumidorScreen() {
   const canCreateHumidor = useFeatureGate('humidor_creation');
-  
+
   return (
     <View>
       {canCreateHumidor ? (
@@ -83,16 +86,19 @@ function HumidorScreen() {
 ## **Key Benefits of This Approach** ✅
 
 ### **1. Simple & Fast**
+
 - Database queries are fast (no RevenueCat API calls)
 - Feature checks are instant
 - No complex subscription logic in components
 
 ### **2. Reliable**
+
 - RevenueCat handles all payment edge cases
 - Our database is the source of truth
 - Automatic sync keeps status current
 
 ### **3. Easy to Debug**
+
 - Clear subscription status in database
 - Simple boolean checks
 - Easy to test and modify
@@ -113,12 +119,14 @@ user_subscriptions:
 ## **Sync Strategy**
 
 ### **When to Sync:**
+
 1. **App startup** (if trial expired)
 2. **After purchase** (immediate)
 3. **Periodically** (background)
 4. **User action** (manual refresh)
 
 ### **Sync Logic:**
+
 ```typescript
 // Fast path: check local database first
 let status = await getLocalStatus();
@@ -132,6 +140,7 @@ if (!status.hasAccess) {
 ## **Feature Access Levels**
 
 ### **Trial Users (3 days):**
+
 - ✅ Full access to all features
 - ✅ Cigar recognition
 - ✅ Journal creation/editing
@@ -139,11 +148,13 @@ if (!status.hasAccess) {
 - ✅ Inventory management
 
 ### **Premium Users:**
+
 - ✅ Full access to all features
 - ✅ Everything trial users get
 - ✅ No expiration
 
 ### **Expired Users:**
+
 - ❌ No cigar recognition
 - ❌ No journal creation/editing
 - ❌ No humidor creation/editing

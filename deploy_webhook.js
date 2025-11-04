@@ -55,16 +55,16 @@ console.log('✅ Created webhook-index.js (rename to index.js for Vercel)');
 
 // Create package.json for webhook
 const packageJson = {
-  "name": "revenuecat-webhook",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
+  name: 'revenuecat-webhook',
+  version: '1.0.0',
+  main: 'index.js',
+  scripts: {
+    start: 'node index.js',
   },
-  "dependencies": {
-    "express": "^4.18.2",
-    "@supabase/supabase-js": "^2.39.3"
-  }
+  dependencies: {
+    express: '^4.18.2',
+    '@supabase/supabase-js': '^2.39.3',
+  },
 };
 
 fs.writeFileSync('webhook-package.json', JSON.stringify(packageJson, null, 2));

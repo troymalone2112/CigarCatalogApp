@@ -1,10 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 
 interface LoadingHumidorsScreenProps {
   message?: string;
@@ -12,12 +7,12 @@ interface LoadingHumidorsScreenProps {
 
 /**
  * LoadingHumidorsScreen Component
- * 
+ *
  * A loading screen that shows while humidor data is being loaded.
  * Provides better UX by giving immediate feedback when user clicks "Add to Humidor".
  */
-export default function LoadingHumidorsScreen({ 
-  message = "Loading your humidors..." 
+export default function LoadingHumidorsScreen({
+  message = 'Loading your humidors...',
 }: LoadingHumidorsScreenProps) {
   return (
     <View style={styles.container}>

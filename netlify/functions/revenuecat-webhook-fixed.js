@@ -12,7 +12,7 @@ if (supabaseUrl && supabaseServiceKey) {
 } else {
   console.error('❌ Missing Supabase environment variables:', {
     SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
-    SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET'
+    SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
   });
 }
 
@@ -21,7 +21,7 @@ exports.handler = async (event, context) => {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
   };
 
   // Handle preflight requests
@@ -29,7 +29,7 @@ exports.handler = async (event, context) => {
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ message: 'CORS preflight' })
+      body: JSON.stringify({ message: 'CORS preflight' }),
     };
   }
 
@@ -44,18 +44,15 @@ exports.handler = async (event, context) => {
           message: 'Missing environment variables',
           envVars: {
             SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
-            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
-          }
-        })
+            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
+          },
+        }),
       };
     }
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('count')
-        .limit(1);
-      
+      const { data, error } = await supabase.from('profiles').select('count').limit(1);
+
       return {
         statusCode: 200,
         headers,
@@ -67,21 +64,21 @@ exports.handler = async (event, context) => {
           environment_variables: {
             SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
             SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
-            NODE_ENV: process.env.NODE_ENV
-          }
-        })
+            NODE_ENV: process.env.NODE_ENV,
+          },
+        }),
       };
     } catch (error) {
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           error: error.message,
           environment_variables: {
             SUPABASE_SERVICE_ROLE_KEY: supabaseServiceKey ? 'SET' : 'NOT SET',
-            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET'
-          }
-        })
+            SUPABASE_URL: supabaseUrl ? 'SET' : 'NOT SET',
+          },
+        }),
       };
     }
   }
@@ -94,38 +91,35 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           error: 'Supabase not configured',
-          message: 'Missing environment variables'
-        })
+          message: 'Missing environment variables',
+        }),
       };
     }
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('count')
-        .limit(1);
-      
+      const { data, error } = await supabase.from('profiles').select('count').limit(1);
+
       if (error) {
         return {
           statusCode: 500,
           headers,
-          body: JSON.stringify({ error: error.message })
+          body: JSON.stringify({ error: error.message }),
         };
       }
-      
+
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           success: true,
-          message: 'Supabase connection working'
-        })
+          message: 'Supabase connection working',
+        }),
       };
     } catch (error) {
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: error.message })
+        body: JSON.stringify({ error: error.message }),
       };
     }
   }
@@ -138,25 +132,28 @@ exports.handler = async (event, context) => {
         headers,
         body: JSON.stringify({
           error: 'Supabase not configured',
-          message: 'Missing environment variables'
-        })
+          message: 'Missing environment variables',
+        }),
       };
     }
 
     try {
-      console.log('📨 RevenueCat webhook received:', JSON.stringify(JSON.parse(event.body), null, 2));
-      
+      console.log(
+        '📨 RevenueCat webhook received:',
+        JSON.stringify(JSON.parse(event.body), null, 2),
+      );
+
       const { api_version, event: eventData } = JSON.parse(event.body);
-      
+
       if (!eventData) {
         console.error('❌ No event data in webhook payload');
         return {
           statusCode: 400,
           headers,
-          body: JSON.stringify({ error: 'No event data' })
+          body: JSON.stringify({ error: 'No event data' }),
         };
       }
-      
+
       const {
         type: event_type,
         app_user_id,
@@ -170,11 +167,11 @@ exports.handler = async (event, context) => {
         auto_renew_status,
         original_transaction_id,
         transaction_id,
-        environment
+        environment,
       } = eventData;
-      
+
       console.log(`🔄 Processing ${event_type} for user ${app_user_id}`);
-      
+
       // Try the database function first
       try {
         const { data, error } = await supabase.rpc('handle_revenuecat_webhook', {
@@ -190,28 +187,27 @@ exports.handler = async (event, context) => {
           auto_renew_status: Boolean(auto_renew_status),
           original_transaction_id,
           transaction_id,
-          environment
+          environment,
         });
-        
+
         if (error) {
           console.error('❌ Database function error:', error);
           throw error;
         }
-        
+
         console.log('✅ Webhook processed successfully via database function:', data);
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ success: true, data })
+          body: JSON.stringify({ success: true, data }),
         };
-        
       } catch (dbError) {
         console.log('⚠️ Database function failed, trying direct update:', dbError.message);
-        
+
         // Fallback: Direct database update
         const purchased_at = new Date(parseInt(purchased_at_ms));
         const expiration_at = new Date(parseInt(expiration_at_ms));
-        
+
         // Determine subscription status
         let subscription_status = 'active';
         if (event_type === 'CANCELLATION') {
@@ -221,63 +217,65 @@ exports.handler = async (event, context) => {
         } else if (event_type === 'BILLING_ISSUE') {
           subscription_status = 'past_due';
         }
-        
+
         // Get the premium plan ID
         const { data: planData, error: planError } = await supabase
           .from('subscription_plans')
           .select('id')
           .eq('name', 'Premium Monthly')
           .single();
-        
+
         if (planError) {
           console.error('❌ Error getting plan:', planError);
           return {
             statusCode: 500,
             headers,
-            body: JSON.stringify({ error: 'Plan not found' })
+            body: JSON.stringify({ error: 'Plan not found' }),
           };
         }
-        
+
         // Update or insert subscription
         const { data: subscriptionData, error: subscriptionError } = await supabase
           .from('user_subscriptions')
-          .upsert({
-            user_id: app_user_id,
-            plan_id: planData.id,
-            status: subscription_status,
-            subscription_start_date: purchased_at.toISOString(),
-            subscription_end_date: expiration_at.toISOString(),
-            auto_renew: Boolean(auto_renew_status),
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'user_id'
-          })
+          .upsert(
+            {
+              user_id: app_user_id,
+              plan_id: planData.id,
+              status: subscription_status,
+              subscription_start_date: purchased_at.toISOString(),
+              subscription_end_date: expiration_at.toISOString(),
+              auto_renew: Boolean(auto_renew_status),
+              updated_at: new Date().toISOString(),
+            },
+            {
+              onConflict: 'user_id',
+            },
+          )
           .select()
           .single();
-        
+
         if (subscriptionError) {
           console.error('❌ Error updating subscription:', subscriptionError);
           return {
             statusCode: 500,
             headers,
-            body: JSON.stringify({ error: subscriptionError.message })
+            body: JSON.stringify({ error: subscriptionError.message }),
           };
         }
-        
+
         console.log('✅ Direct webhook processed successfully:', subscriptionData);
         return {
           statusCode: 200,
           headers,
-          body: JSON.stringify({ success: true, data: subscriptionData })
+          body: JSON.stringify({ success: true, data: subscriptionData }),
         };
       }
-      
     } catch (error) {
       console.error('❌ Webhook error:', error);
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: error.message })
+        body: JSON.stringify({ error: error.message }),
       };
     }
   }
@@ -286,6 +284,6 @@ exports.handler = async (event, context) => {
   return {
     statusCode: 405,
     headers,
-    body: JSON.stringify({ error: 'Method not allowed' })
+    body: JSON.stringify({ error: 'Method not allowed' }),
   };
 };

@@ -21,6 +21,7 @@ Implemented a comprehensive draft persistence system that:
 ### 1. **JournalDraftContext** (`src/contexts/JournalDraftContext.tsx`)
 
 **Key Features:**
+
 - **Auto-save on app background** - Saves draft when user locks phone
 - **Periodic auto-save** - Saves every 30 seconds if there are changes
 - **Draft restoration** - Loads previous progress when returning
@@ -28,6 +29,7 @@ Implemented a comprehensive draft persistence system that:
 - **Smart error handling** - Distinguishes between network and storage errors
 
 **Core Functions:**
+
 ```typescript
 interface JournalDraftContextType {
   currentDraft: JournalDraft | null;
@@ -43,6 +45,7 @@ interface JournalDraftContextType {
 ### 2. **Enhanced NewJournalEntryScreen** (`src/screens/NewJournalEntryScreen.tsx`)
 
 **Key Improvements:**
+
 - **Draft restoration** on screen load
 - **Auto-save on every change** (notes, rating, flavors, photos, location)
 - **User feedback** with draft status indicators
@@ -50,6 +53,7 @@ interface JournalDraftContextType {
 - **Loading states** for draft restoration
 
 **Auto-save Integration:**
+
 ```typescript
 // Every form field now auto-saves
 const handleNotesChange = (text: string) => {
@@ -66,6 +70,7 @@ const handleRatingChange = (newRating: number) => {
 ### 3. **App State Management** (`App.tsx`)
 
 **Provider Integration:**
+
 ```typescript
 <AuthProvider>
   <SubscriptionProvider>
@@ -81,6 +86,7 @@ const handleRatingChange = (newRating: number) => {
 ## User Experience Flow
 
 ### Scenario 1: Normal Usage (No Interruption)
+
 1. User starts journal entry
 2. Types notes, sets rating, selects flavors
 3. All changes auto-save in background
@@ -88,6 +94,7 @@ const handleRatingChange = (newRating: number) => {
 5. Draft is cleared after successful save
 
 ### Scenario 2: Phone Locked During Session
+
 1. User starts journal entry
 2. Types some notes, sets rating
 3. **Phone locks** → Draft auto-saves to storage
@@ -98,6 +105,7 @@ const handleRatingChange = (newRating: number) => {
 8. Completes and saves entry
 
 ### Scenario 3: App Killed During Session
+
 1. User starts journal entry
 2. Types notes, adds photos
 3. **App gets killed** by system
@@ -108,24 +116,28 @@ const handleRatingChange = (newRating: number) => {
 ## Technical Features
 
 ### 1. **Auto-Save Triggers**
+
 - **App state changes** - Saves when going to background
 - **Form field changes** - Saves on every keystroke/selection
 - **Periodic saves** - Every 30 seconds if there are changes
 - **Photo additions** - Saves immediately when photos added
 
 ### 2. **Draft Persistence**
+
 - **AsyncStorage** - Local device storage (survives app kills)
 - **JSON serialization** - All form data preserved
 - **Expiry handling** - 24-hour automatic cleanup
 - **Cigar-specific** - Only restores for same cigar
 
 ### 3. **User Feedback**
+
 - **Loading indicator** - "Loading draft..." when restoring
 - **Draft status** - "Draft saved" when auto-saving
 - **Restoration alert** - "Draft Restored" when returning
 - **Unsaved changes warning** - When trying to leave with changes
 
 ### 4. **Error Handling**
+
 - **Network issues** - Continues working offline
 - **Storage failures** - Graceful degradation
 - **Expired drafts** - Automatic cleanup
@@ -134,22 +146,24 @@ const handleRatingChange = (newRating: number) => {
 ## Data Structure
 
 ### JournalDraft Interface
+
 ```typescript
 interface JournalDraft {
-  id: string;                    // Unique draft ID
-  cigar: Cigar;                 // Cigar being journaled
-  notes: string;                 // User's notes
-  rating: number;                // 1-10 rating
-  selectedFlavors: string[];     // Selected flavor tags
-  photos: string[];              // Photo URIs
-  location: string;              // Location string
-  createdAt: Date;               // When draft was created
-  lastModified: Date;            // Last auto-save time
-  recognitionImageUrl?: string;  // Recognition image
+  id: string; // Unique draft ID
+  cigar: Cigar; // Cigar being journaled
+  notes: string; // User's notes
+  rating: number; // 1-10 rating
+  selectedFlavors: string[]; // Selected flavor tags
+  photos: string[]; // Photo URIs
+  location: string; // Location string
+  createdAt: Date; // When draft was created
+  lastModified: Date; // Last auto-save time
+  recognitionImageUrl?: string; // Recognition image
 }
 ```
 
 ### Storage Format
+
 ```json
 {
   "id": "draft_1703123456789",
@@ -167,12 +181,14 @@ interface JournalDraft {
 ## Testing Scenarios
 
 ### Test 1: Basic Auto-Save
+
 1. Start journal entry
 2. Type some notes
 3. Check console for "Draft saved" messages
 4. Verify draft status shows in header
 
 ### Test 2: Background Persistence
+
 1. Start journal entry
 2. Add notes, rating, flavors
 3. Lock phone for 5 minutes
@@ -181,6 +197,7 @@ interface JournalDraft {
 6. All previous data should be there
 
 ### Test 3: App Kill Recovery
+
 1. Start journal entry
 2. Add some content
 3. Force kill the app
@@ -188,6 +205,7 @@ interface JournalDraft {
 5. Should restore previous progress
 
 ### Test 4: Multiple Cigars
+
 1. Start journal for Cigar A
 2. Add some notes
 3. Start journal for Cigar B
@@ -195,6 +213,7 @@ interface JournalDraft {
 5. Should restore Cigar A's draft
 
 ### Test 5: Draft Expiry
+
 1. Create draft
 2. Wait 24+ hours
 3. Try to load draft
@@ -203,13 +222,15 @@ interface JournalDraft {
 ## Configuration Options
 
 ### Draft Settings
+
 ```typescript
-const DRAFT_EXPIRY_HOURS = 24;        // How long drafts last
-const AUTO_SAVE_INTERVAL = 30000;     // 30 seconds auto-save
-const MAX_DRAFT_SIZE = 1024 * 1024;   // 1MB max draft size
+const DRAFT_EXPIRY_HOURS = 24; // How long drafts last
+const AUTO_SAVE_INTERVAL = 30000; // 30 seconds auto-save
+const MAX_DRAFT_SIZE = 1024 * 1024; // 1MB max draft size
 ```
 
 ### Auto-Save Behavior
+
 - **Immediate save** on form changes
 - **Background save** on app state change
 - **Periodic save** every 30 seconds
@@ -218,12 +239,14 @@ const MAX_DRAFT_SIZE = 1024 * 1024;   // 1MB max draft size
 ## Performance Considerations
 
 ### Storage Efficiency
+
 - **JSON compression** - Minimal storage footprint
 - **Photo handling** - Only stores URIs, not full images
 - **Cleanup** - Automatic expiry after 24 hours
 - **Single draft** - Only one draft per cigar at a time
 
 ### Memory Usage
+
 - **Lazy loading** - Drafts only loaded when needed
 - **Cleanup** - Drafts cleared after successful save
 - **Efficient updates** - Only changed fields saved
@@ -233,24 +256,29 @@ const MAX_DRAFT_SIZE = 1024 * 1024;   // 1MB max draft size
 ### Common Issues & Solutions
 
 **Issue:** "Draft not restoring"
+
 - **Check:** AsyncStorage permissions
 - **Solution:** Clear app data and retry
 
 **Issue:** "Photos not saving"
+
 - **Check:** Photo URI validity
 - **Solution:** Re-take photos if needed
 
 **Issue:** "Draft expired"
+
 - **Check:** System clock accuracy
 - **Solution:** Start fresh (expected behavior)
 
 **Issue:** "Storage full"
+
 - **Check:** Device storage space
 - **Solution:** Clear old drafts manually
 
 ## Future Enhancements
 
 ### Potential Improvements
+
 1. **Cloud sync** - Sync drafts across devices
 2. **Draft sharing** - Share drafts with friends
 3. **Draft templates** - Save common journal patterns
@@ -259,6 +287,7 @@ const MAX_DRAFT_SIZE = 1024 * 1024;   // 1MB max draft size
 6. **Smart suggestions** - AI-powered draft completion
 
 ### Advanced Features
+
 1. **Draft analytics** - Track journaling patterns
 2. **Draft backup** - Export/import drafts
 3. **Draft collaboration** - Multiple users on same entry
@@ -267,6 +296,7 @@ const MAX_DRAFT_SIZE = 1024 * 1024;   // 1MB max draft size
 ## Monitoring & Analytics
 
 ### Key Metrics to Track
+
 - **Draft creation rate** - How often users start drafts
 - **Draft completion rate** - How many drafts get finished
 - **Draft restoration rate** - How often drafts are restored
@@ -274,6 +304,7 @@ const MAX_DRAFT_SIZE = 1024 * 1024;   // 1MB max draft size
 - **Interruption frequency** - How often users leave mid-session
 
 ### Console Logging
+
 ```typescript
 // Key events to monitor
 console.log('📝 Journal Draft - New draft started');
@@ -285,6 +316,7 @@ console.log('⚠️ Journal Draft - Draft has expired');
 ## Deployment Checklist
 
 ### Pre-Deployment
+
 - [ ] Test draft creation and saving
 - [ ] Test background persistence
 - [ ] Test app kill recovery
@@ -293,6 +325,7 @@ console.log('⚠️ Journal Draft - Draft has expired');
 - [ ] Test error scenarios
 
 ### Post-Deployment
+
 - [ ] Monitor draft creation metrics
 - [ ] Monitor restoration success rate
 - [ ] Monitor storage usage
@@ -310,7 +343,3 @@ This solution provides a robust, user-friendly way to handle long cigar smoking 
 ✅ **Have confidence** that their journaling progress is always saved
 
 The system is designed to be invisible to users during normal usage but provides a safety net for the common use case of long smoking sessions with phone interruptions.
-
-
-
-

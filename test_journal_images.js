@@ -12,7 +12,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 async function testJournalImages() {
   try {
     console.log('🔍 Testing journal entry image functionality...\n');
-    
+
     // Check if image_url column exists
     console.log('1. Checking if image_url column exists in journal_entries table...');
     const { data: columns, error: columnError } = await supabase
@@ -20,12 +20,12 @@ async function testJournalImages() {
       .select('column_name')
       .eq('table_name', 'journal_entries')
       .eq('column_name', 'image_url');
-    
+
     if (columnError) {
       console.error('❌ Error checking columns:', columnError);
       return;
     }
-    
+
     if (columns && columns.length > 0) {
       console.log('✅ image_url column exists');
     } else {
@@ -34,7 +34,7 @@ async function testJournalImages() {
       console.log('   ALTER TABLE journal_entries ADD COLUMN IF NOT EXISTS image_url TEXT;');
       return;
     }
-    
+
     // Check existing journal entries
     console.log('\n2. Checking existing journal entries...');
     const { data: entries, error: entriesError } = await supabase
@@ -42,29 +42,32 @@ async function testJournalImages() {
       .select('id, image_url, photos, created_at')
       .order('created_at', { ascending: false })
       .limit(5);
-    
+
     if (entriesError) {
       console.error('❌ Error fetching journal entries:', entriesError);
       return;
     }
-    
+
     console.log(`Found ${entries.length} recent journal entries:`);
     entries.forEach((entry, index) => {
       console.log(`  ${index + 1}. ID: ${entry.id}`);
       console.log(`     Image URL: ${entry.image_url || 'None'}`);
-      console.log(`     Photos: ${entry.photos ? JSON.parse(entry.photos).length + ' photos' : 'None'}`);
+      console.log(
+        `     Photos: ${entry.photos ? JSON.parse(entry.photos).length + ' photos' : 'None'}`,
+      );
       console.log(`     Created: ${entry.created_at}`);
       console.log('');
     });
-    
+
     // Check for entries with images
-    const entriesWithImages = entries.filter(entry => entry.image_url || entry.photos);
+    const entriesWithImages = entries.filter((entry) => entry.image_url || entry.photos);
     console.log(`📸 ${entriesWithImages.length} entries have images`);
-    
+
     if (entriesWithImages.length === 0) {
-      console.log('💡 No entries with images found. Try creating a new journal entry with cigar recognition.');
+      console.log(
+        '💡 No entries with images found. Try creating a new journal entry with cigar recognition.',
+      );
     }
-    
   } catch (error) {
     console.error('❌ Test failed:', error);
   }
@@ -72,6 +75,4 @@ async function testJournalImages() {
 
 // Run the test
 testJournalImages();
-
-
 

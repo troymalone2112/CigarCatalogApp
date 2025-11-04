@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
   ImageBackground,
-  ScrollView
+  ScrollView,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -13,14 +13,20 @@ import { RootStackParamList } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { StorageService } from '../storage/storageService';
 
-type OnboardingAgeVerificationNavigationProp = StackNavigationProp<RootStackParamList, 'OnboardingAgeVerification'>;
-type OnboardingAgeVerificationRouteProp = RouteProp<RootStackParamList, 'OnboardingAgeVerification'>;
+type OnboardingAgeVerificationNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'OnboardingAgeVerification'
+>;
+type OnboardingAgeVerificationRouteProp = RouteProp<
+  RootStackParamList,
+  'OnboardingAgeVerification'
+>;
 
 export default function OnboardingAgeVerificationScreen() {
   const navigation = useNavigation<OnboardingAgeVerificationNavigationProp>();
   const route = useRoute<OnboardingAgeVerificationRouteProp>();
   const [ageVerified, setAgeVerified] = useState(false);
-  
+
   const onComplete = route.params?.onComplete;
 
   const handleContinue = () => {
@@ -31,13 +37,13 @@ export default function OnboardingAgeVerificationScreen() {
 
   const handleSkip = async () => {
     console.log('🔄 Skip button pressed - starting onboarding completion...');
-    
+
     try {
       // Mark onboarding as completed in database
       console.log('💾 Updating user profile with onboarding completed...');
       await StorageService.updateUserProfile({ onboardingCompleted: true });
       console.log('✅ User profile updated successfully');
-      
+
       // Call the onComplete callback to trigger the parent component to show the main app
       if (onComplete) {
         console.log('📞 Calling onComplete callback...');
@@ -52,10 +58,10 @@ export default function OnboardingAgeVerificationScreen() {
       }
     } catch (error) {
       console.error('❌ Error marking onboarding as completed:', error);
-      
+
       // Production fix: Still complete onboarding even if database update fails
       console.log('🆘 Database update failed, using fallback completion...');
-      
+
       if (onComplete) {
         console.log('📞 Calling onComplete callback (fallback)...');
         onComplete();
@@ -71,7 +77,7 @@ export default function OnboardingAgeVerificationScreen() {
   };
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.fullScreenBackground}
       imageStyle={styles.tobaccoBackgroundImage}
@@ -90,22 +96,20 @@ export default function OnboardingAgeVerificationScreen() {
           <View style={styles.iconContainer}>
             <Ionicons name="shield-checkmark" size={80} color="#DC851F" />
           </View>
-          
+
           <Text style={styles.title}>Age Verification</Text>
-          
-          <Text style={styles.subtitle}>
-            You must be 18 years or older to use this app
-          </Text>
+
+          <Text style={styles.subtitle}>You must be 18 years or older to use this app</Text>
 
           <View style={styles.ageVerificationContainer}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.checkboxContainer, ageVerified && styles.checkboxContainerActive]}
               onPress={() => setAgeVerified(!ageVerified)}
             >
-              <Ionicons 
-                name={ageVerified ? "checkmark-circle" : "ellipse-outline"} 
-                size={24} 
-                color={ageVerified ? "#7C2D12" : "#999"} 
+              <Ionicons
+                name={ageVerified ? 'checkmark-circle' : 'ellipse-outline'}
+                size={24}
+                color={ageVerified ? '#7C2D12' : '#999'}
               />
               <Text style={[styles.checkboxText, ageVerified && styles.checkboxTextActive]}>
                 I am 18 years or older
@@ -116,23 +120,26 @@ export default function OnboardingAgeVerificationScreen() {
           <View style={styles.disclaimerContainer}>
             <Text style={styles.disclaimerTitle}>Legal Notice</Text>
             <Text style={styles.disclaimerText}>
-              This app is intended for adults only. Tobacco products are not recommended for minors, 
-              pregnant women, or individuals with certain health conditions. Please smoke responsibly.
+              This app is intended for adults only. Tobacco products are not recommended for minors,
+              pregnant women, or individuals with certain health conditions. Please smoke
+              responsibly.
             </Text>
           </View>
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity 
-            style={[styles.continueButton, !ageVerified && styles.continueButtonDisabled]} 
+          <TouchableOpacity
+            style={[styles.continueButton, !ageVerified && styles.continueButtonDisabled]}
             onPress={handleContinue}
             disabled={!ageVerified}
           >
-            <Text style={[styles.continueButtonText, !ageVerified && styles.continueButtonTextDisabled]}>
+            <Text
+              style={[styles.continueButtonText, !ageVerified && styles.continueButtonTextDisabled]}
+            >
               Continue
             </Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
             <Text style={styles.skipButtonText}>Skip for now</Text>
           </TouchableOpacity>
@@ -284,4 +291,3 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
 });
-

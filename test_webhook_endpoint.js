@@ -13,7 +13,7 @@ function testWebhookEndpoint() {
   console.log('🌐 Testing RevenueCat webhook endpoint...');
   console.log('URL:', WEBHOOK_URL);
   console.log('User ID:', TEST_USER_ID);
-  
+
   const webhookPayload = {
     api_version: '1.0',
     event: {
@@ -23,41 +23,41 @@ function testWebhookEndpoint() {
       product_id: 'premium_monthly',
       period_type: 'NORMAL',
       purchased_at_ms: Date.now(),
-      expiration_at_ms: Date.now() + (30 * 24 * 60 * 60 * 1000), // 30 days
+      expiration_at_ms: Date.now() + 30 * 24 * 60 * 60 * 1000, // 30 days
       store: 'APP_STORE',
       is_trial_period: false,
       auto_renew_status: true,
       original_transaction_id: 'test-webhook-' + Date.now(),
       transaction_id: 'test-webhook-' + Date.now(),
-      environment: 'SANDBOX'
-    }
+      environment: 'SANDBOX',
+    },
   };
-  
+
   const postData = JSON.stringify(webhookPayload);
-  
+
   const options = {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Content-Length': Buffer.byteLength(postData)
-    }
+      'Content-Length': Buffer.byteLength(postData),
+    },
   };
-  
+
   console.log('\n📤 Sending webhook payload:');
   console.log(JSON.stringify(webhookPayload, null, 2));
-  
+
   const req = https.request(WEBHOOK_URL, options, (res) => {
     console.log(`\n📥 Response status: ${res.statusCode}`);
     console.log('📥 Response headers:', res.headers);
-    
+
     let responseData = '';
     res.on('data', (chunk) => {
       responseData += chunk;
     });
-    
+
     res.on('end', () => {
       console.log('📥 Response body:', responseData);
-      
+
       if (res.statusCode === 200) {
         console.log('✅ Webhook test successful!');
       } else {
@@ -65,11 +65,11 @@ function testWebhookEndpoint() {
       }
     });
   });
-  
+
   req.on('error', (error) => {
     console.error('❌ Request error:', error.message);
   });
-  
+
   req.write(postData);
   req.end();
 }
@@ -93,5 +93,4 @@ console.log('🚀 Run testWebhookEndpoint() when ready...\n');
 
 // Uncomment the line below when you're ready to test
 // testWebhookEndpoint();
-
 

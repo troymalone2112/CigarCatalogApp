@@ -22,14 +22,14 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 app.post('/webhook/revenuecat', async (req, res) => {
   try {
     console.log('📨 RevenueCat webhook received:', JSON.stringify(req.body, null, 2));
-    
+
     const { api_version, event } = req.body;
-    
+
     if (!event) {
       console.error('❌ No event data in webhook payload');
       return res.status(400).json({ error: 'No event data' });
     }
-    
+
     const {
       type: event_type,
       app_user_id,
@@ -43,11 +43,11 @@ app.post('/webhook/revenuecat', async (req, res) => {
       auto_renew_status,
       original_transaction_id,
       transaction_id,
-      environment
+      environment,
     } = event;
-    
+
     console.log(`🔄 Processing ${event_type} for user ${app_user_id}`);
-    
+
     // Call the webhook handler function in Supabase
     const { data, error } = await supabase.rpc('handle_revenuecat_webhook', {
       event_type,
@@ -62,17 +62,16 @@ app.post('/webhook/revenuecat', async (req, res) => {
       auto_renew_status: Boolean(auto_renew_status),
       original_transaction_id,
       transaction_id,
-      environment
+      environment,
     });
-    
+
     if (error) {
       console.error('❌ Webhook processing error:', error);
       return res.status(500).json({ error: error.message });
     }
-    
+
     console.log('✅ Webhook processed successfully:', data);
     res.json({ success: true, data });
-    
   } catch (error) {
     console.error('❌ Webhook error:', error);
     res.status(500).json({ error: error.message });

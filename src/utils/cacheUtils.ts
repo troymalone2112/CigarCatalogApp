@@ -13,16 +13,14 @@ export class CacheUtils {
     try {
       const stats = await JournalCacheService.getCacheStats();
       const cacheSize = await this.getCacheSize();
-      
+
       return {
         ...stats,
         cacheSizeKB: cacheSize,
-        lastUpdatedFormatted: stats.lastUpdated 
-          ? new Date(stats.lastUpdated).toLocaleString() 
+        lastUpdatedFormatted: stats.lastUpdated
+          ? new Date(stats.lastUpdated).toLocaleString()
           : 'Never',
-        status: stats.hasCache 
-          ? (stats.isExpired ? 'Expired' : 'Valid') 
-          : 'No Cache'
+        status: stats.hasCache ? (stats.isExpired ? 'Expired' : 'Valid') : 'No Cache',
       };
     } catch (error) {
       console.error('Error getting cache info:', error);
@@ -33,7 +31,7 @@ export class CacheUtils {
         isExpired: true,
         cacheSizeKB: 0,
         lastUpdatedFormatted: 'Error',
-        status: 'Error'
+        status: 'Error',
       };
     }
   }
@@ -110,6 +108,4 @@ export class CacheUtils {
     }
   }
 }
-
-
 

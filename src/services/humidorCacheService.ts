@@ -3,7 +3,7 @@ import { HumidorStats, UserHumidorAggregate } from '../types';
 
 /**
  * Humidor Cache Service
- * 
+ *
  * This service caches humidor data to prevent repeated database calls
  * and improve performance in the humidor flow.
  */
@@ -29,8 +29,8 @@ export const getCachedHumidorData = async (userId: string): Promise<CachedHumido
     // First check in-memory cache
     if (humidorCache && humidorCache.userId === userId) {
       const now = Date.now();
-      const isExpired = (now - humidorCache.lastUpdated) > CACHE_DURATION;
-      
+      const isExpired = now - humidorCache.lastUpdated > CACHE_DURATION;
+
       if (!isExpired) {
         console.log('✅ Using in-memory humidor cache');
         return humidorCache;
@@ -42,8 +42,8 @@ export const getCachedHumidorData = async (userId: string): Promise<CachedHumido
     if (cachedData) {
       const parsedCache: CachedHumidorData = JSON.parse(cachedData);
       const now = Date.now();
-      const isExpired = (now - parsedCache.lastUpdated) > CACHE_DURATION;
-      
+      const isExpired = now - parsedCache.lastUpdated > CACHE_DURATION;
+
       if (!isExpired && parsedCache.userId === userId) {
         // Load into memory cache
         humidorCache = parsedCache;
@@ -68,14 +68,14 @@ export const setCachedHumidorData = async (
   userId: string,
   humidors: any[],
   humidorStats: HumidorStats[],
-  aggregate: UserHumidorAggregate
+  aggregate: UserHumidorAggregate,
 ): Promise<void> => {
   const cacheData: CachedHumidorData = {
     humidors,
     humidorStats,
     aggregate,
     lastUpdated: Date.now(),
-    userId
+    userId,
   };
 
   // Store in memory
@@ -96,7 +96,7 @@ export const setCachedHumidorData = async (
  */
 export const clearHumidorCache = async (userId?: string): Promise<void> => {
   humidorCache = null;
-  
+
   if (userId) {
     try {
       await AsyncStorage.removeItem(`${CACHE_KEY}_${userId}`);
@@ -123,7 +123,9 @@ export const invalidateHumidorCache = (userId: string): void => {
  * Check if humidor data is cached
  */
 export const isHumidorDataCached = (userId: string): boolean => {
-  return humidorCache !== null && 
-         humidorCache.userId === userId && 
-         (Date.now() - humidorCache.lastUpdated) <= CACHE_DURATION;
+  return (
+    humidorCache !== null &&
+    humidorCache.userId === userId &&
+    Date.now() - humidorCache.lastUpdated <= CACHE_DURATION
+  );
 };

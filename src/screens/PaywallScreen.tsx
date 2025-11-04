@@ -18,14 +18,20 @@ import { PurchasesPackage } from 'react-native-purchases';
 
 export default function PaywallScreen() {
   const navigation = useNavigation();
-  const { subscriptionStatus, subscriptionPlans, createPremiumSubscription, loading, refreshSubscription } = useSubscription();
+  const {
+    subscriptionStatus,
+    subscriptionPlans,
+    createPremiumSubscription,
+    loading,
+    refreshSubscription,
+  } = useSubscription();
   const [selectedTab, setSelectedTab] = useState<'monthly' | 'yearly'>('yearly'); // Default to yearly
   const [purchasing, setPurchasing] = useState(false);
   const [revenueCatPackages, setRevenueCatPackages] = useState<PurchasesPackage[]>([]);
   const [loadingPackages, setLoadingPackages] = useState(true);
 
-  const monthlyPlan = subscriptionPlans.find(plan => plan.name === 'Premium Monthly');
-  const yearlyPlan = subscriptionPlans.find(plan => plan.name === 'Premium Yearly');
+  const monthlyPlan = subscriptionPlans.find((plan) => plan.name === 'Premium Monthly');
+  const yearlyPlan = subscriptionPlans.find((plan) => plan.name === 'Premium Yearly');
   const currentPlan = selectedTab === 'monthly' ? monthlyPlan : yearlyPlan;
 
   // Load RevenueCat packages on component mount
@@ -37,18 +43,21 @@ export default function PaywallScreen() {
     try {
       setLoadingPackages(true);
       console.log('🔄 Loading RevenueCat packages via PaymentService...');
-      
+
       // Get packages through PaymentService (centralized SDK access)
       const packages = await PaymentService.getRawPackages();
-      
+
       if (packages && packages.length > 0) {
         setRevenueCatPackages(packages);
-        console.log('📦 Available packages loaded:', packages.map(pkg => ({
-          identifier: pkg.identifier,
-          productId: pkg.product.identifier,
-          title: pkg.product.title,
-          price: pkg.product.priceString
-        })));
+        console.log(
+          '📦 Available packages loaded:',
+          packages.map((pkg) => ({
+            identifier: pkg.identifier,
+            productId: pkg.product.identifier,
+            title: pkg.product.title,
+            price: pkg.product.priceString,
+          })),
+        );
       } else {
         console.warn('⚠️ No packages available from PaymentService');
       }
@@ -63,33 +72,33 @@ export default function PaywallScreen() {
     try {
       setPurchasing(true);
       console.log('🔄 Restoring purchases...');
-      
+
       const restoreResult = await PaymentService.restorePurchases();
       console.log('✅ Restore result:', restoreResult);
-      
+
       // Check if restore was successful
       const hasAccess = restoreResult.success;
-      
+
       if (hasAccess) {
         // Sync with our database
         const { supabase } = await import('../services/supabaseService');
-        const { data: { user } } = await supabase.auth.getUser();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
         if (user) {
           // PaymentService handles database sync automatically
           console.log('✅ Database sync handled by PaymentService webhook');
         }
-        
+
         Alert.alert(
           'Purchases Restored!',
           'Your premium subscription has been restored. Welcome back!',
-          [{ text: 'Continue', onPress: () => navigation.goBack() }]
+          [{ text: 'Continue', onPress: () => navigation.goBack() }],
         );
       } else {
-        Alert.alert(
-          'No Purchases Found',
-          'No previous purchases were found for this account.',
-          [{ text: 'OK' }]
-        );
+        Alert.alert('No Purchases Found', 'No previous purchases were found for this account.', [
+          { text: 'OK' },
+        ]);
       }
     } catch (error) {
       console.error('❌ Restore failed:', error);
@@ -101,67 +110,77 @@ export default function PaywallScreen() {
 
   const handlePurchase = async () => {
     console.log('🚀 Purchase button pressed - starting purchase flow...');
-    
+
     // Double-tap protection at UI level
     if (purchasing) {
       console.warn('⚠️ Purchase already in progress - ignoring button tap');
       return;
     }
-    
+
     if (!currentPlan) {
       console.error('❌ No current plan selected');
       Alert.alert('Error', 'No plan selected');
       return;
     }
-    
+
     console.log('📋 Selected plan:', currentPlan.name);
     console.log('📋 Plan details:', {
       name: currentPlan.name,
-      type: selectedTab
+      type: selectedTab,
     });
-    
+
     try {
       setPurchasing(true);
       console.log('🔄 Purchase state set to true (UI guard enabled)');
-      
+
       // PaymentService handles initialization automatically
       console.log('🔧 PaymentService will initialize RevenueCat on-demand...');
-      
+
       // Check if RevenueCat packages are available
       if (!revenueCatPackages || revenueCatPackages.length === 0) {
         console.error('❌ No RevenueCat packages available');
         Alert.alert('Error', 'Subscription packages not available. Please try again later.');
         return;
       }
-      
+
       // Debug: Log available packages
-      console.log('🔍 Available RevenueCat packages:', revenueCatPackages.map(pkg => ({
-        identifier: pkg.identifier,
-        title: pkg.product.title,
-        price: pkg.product.priceString
-      })));
-      
+      console.log(
+        '🔍 Available RevenueCat packages:',
+        revenueCatPackages.map((pkg) => ({
+          identifier: pkg.identifier,
+          title: pkg.product.title,
+          price: pkg.product.priceString,
+        })),
+      );
+
       console.log('🔍 Looking for plan:', currentPlan.name);
-      
+
       // Find the corresponding RevenueCat package
-      const revenueCatPackage = revenueCatPackages.find(pkg => {
+      const revenueCatPackage = revenueCatPackages.find((pkg) => {
         if (currentPlan.name === 'Premium Monthly') {
           // Match by package identifier or product identifier
-          return pkg.identifier === '$rc_monthly' || pkg.product.identifier === 'premium_monthly_2025';
+          return (
+            pkg.identifier === '$rc_monthly' || pkg.product.identifier === 'premium_monthly_2025'
+          );
         } else if (currentPlan.name === 'Premium Yearly') {
-          // Match by package identifier or product identifier  
-          return pkg.identifier === '$rc_annual' || pkg.product.identifier === 'premium_yearly_2025';
+          // Match by package identifier or product identifier
+          return (
+            pkg.identifier === '$rc_annual' || pkg.product.identifier === 'premium_yearly_2025'
+          );
         }
         return false;
       });
 
       if (!revenueCatPackage) {
         console.error('❌ Package not found for plan:', currentPlan.name);
-        console.error('❌ Available packages:', revenueCatPackages.map(p => p.identifier));
+        console.error(
+          '❌ Available packages:',
+          revenueCatPackages.map((p) => p.identifier),
+        );
         Alert.alert('Error', 'Subscription package not available. Please try again later.');
         return;
       }
-      
+
       console.log('✅ Found matching package:', revenueCatPackage.identifier);
 
       console.log('🛒 Purchasing package:', revenueCatPackage.identifier);
@@ -169,43 +188,47 @@ export default function PaywallScreen() {
         identifier: revenueCatPackage.identifier,
         productId: revenueCatPackage.product.identifier,
         price: revenueCatPackage.product.priceString,
-        currencyCode: revenueCatPackage.product.currencyCode
+        currencyCode: revenueCatPackage.product.currencyCode,
       });
-      
+
       // Make the purchase through PaymentService to ensure single flow
       const purchaseResult = await PaymentService.purchasePackage(revenueCatPackage as any);
-      
+
       console.log('📊 Purchase result:', purchaseResult);
-      
+
       if (!purchaseResult.success || !purchaseResult.customerInfo) {
         throw new Error(purchaseResult.error || 'Purchase failed');
       }
-      
+
       // If we reach here, the purchase was successful
       const { supabase } = await import('../services/supabaseService');
-      const { data: { user } } = await supabase.auth.getUser();
-      
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
       if (!user) {
         throw new Error('User not found');
       }
-      
+
       console.log('✅ Purchase successful - starting immediate refresh...');
-      
+
       // STEP 1: Immediate sync to Supabase from RevenueCat customer info
       // This writes premium status directly to DB for instant UI update
       console.log('⚡ Step 1: Immediately syncing RevenueCat customer info to Supabase...');
       const { RevenueCatService } = await import('../services/revenueCatService');
       await RevenueCatService.syncSubscriptionWithSupabase(purchaseResult.customerInfo);
       console.log('✅ Immediate sync complete - premium status written to database');
-      
+
       // STEP 2: Clear cache and refresh subscription context
       // This ensures UI shows premium status immediately
       console.log('🔄 Step 2: Clearing cache and refreshing subscription context...');
-      const { DatabaseSubscriptionManager } = await import('../services/databaseSubscriptionManager');
+      const { DatabaseSubscriptionManager } = await import(
+        '../services/databaseSubscriptionManager'
+      );
       DatabaseSubscriptionManager.clearUserCache(user.id);
       await refreshSubscription();
       console.log('✅ Subscription context refreshed');
-      
+
       // STEP 3: Brief polling to verify webhook also processed (redundancy check)
       // The webhook will also update the DB, but we already wrote it in Step 1
       // This is just to confirm webhook is working (logs only, doesn't block UI)
@@ -222,14 +245,12 @@ export default function PaywallScreen() {
           console.warn('⚠️ Webhook verification warning (non-critical):', error);
         }
       }, 2000); // Check after 2 seconds (non-blocking)
-      
+
       // Show success message and navigate back
       // Note: iOS may show its own success message, so we keep this brief
-      Alert.alert(
-        'Welcome to Premium!',
-        'Your subscription is now active!',
-        [{ text: 'Continue', onPress: () => navigation.goBack() }]
-      );
+      Alert.alert('Welcome to Premium!', 'Your subscription is now active!', [
+        { text: 'Continue', onPress: () => navigation.goBack() },
+      ]);
     } catch (error) {
       console.error('❌ Purchase error:', error);
       Alert.alert('Purchase Failed', 'Please try again later');
@@ -238,9 +259,8 @@ export default function PaywallScreen() {
     }
   };
 
-
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.backgroundImage}
       imageStyle={styles.tobaccoBackgroundImage}
@@ -249,7 +269,7 @@ export default function PaywallScreen() {
         {/* Pricing Plans */}
         <View style={styles.plansSection}>
           <Text style={styles.plansTitle}>Choose Your Plan</Text>
-          
+
           {loadingPackages ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color="#7C2D12" />
@@ -284,15 +304,18 @@ export default function PaywallScreen() {
                     <Text style={styles.planName}>{currentPlan.name.replace('Premium ', '')}</Text>
                     <View style={styles.priceContainer}>
                       <Text style={styles.price}>
-                        ${selectedTab === 'monthly' ? currentPlan.price_monthly : currentPlan.price_yearly}
+                        $
+                        {selectedTab === 'monthly'
+                          ? currentPlan.price_monthly
+                          : currentPlan.price_yearly}
                       </Text>
-                      <Text style={styles.period}>/{selectedTab === 'monthly' ? 'month' : 'year'}</Text>
+                      <Text style={styles.period}>
+                        /{selectedTab === 'monthly' ? 'month' : 'year'}
+                      </Text>
                     </View>
-                    {selectedTab === 'yearly' && (
-                      <Text style={styles.savings}>Save 1 month!</Text>
-                    )}
+                    {selectedTab === 'yearly' && <Text style={styles.savings}>Save 1 month!</Text>}
                   </View>
-                  
+
                   <View style={styles.featuresContainer}>
                     {currentPlan.features.slice(0, 4).map((feature, index) => (
                       <View key={index} style={styles.featureRow}>
@@ -310,14 +333,26 @@ export default function PaywallScreen() {
         {/* Benefits Section */}
         <View style={styles.benefitsSection}>
           <Text style={styles.benefitsTitle}>Premium Access</Text>
-          
+
           <View style={styles.benefitsList}>
             {[
-              { icon: 'camera', title: 'Unlimited AI Recognition', desc: 'Identify any cigar instantly' },
-              { icon: 'archive', title: 'Unlimited Inventory', desc: 'Track your entire collection' },
+              {
+                icon: 'camera',
+                title: 'Unlimited AI Recognition',
+                desc: 'Identify any cigar instantly',
+              },
+              {
+                icon: 'archive',
+                title: 'Unlimited Inventory',
+                desc: 'Track your entire collection',
+              },
               { icon: 'book', title: 'Detailed Journal', desc: 'Record every smoking experience' },
-              { icon: 'star', title: 'Smart Recommendations', desc: 'Discover cigars you\'ll love' },
-              { icon: 'analytics', title: 'Advanced Analytics', desc: 'Insights into your preferences' },
+              { icon: 'star', title: 'Smart Recommendations', desc: "Discover cigars you'll love" },
+              {
+                icon: 'analytics',
+                title: 'Advanced Analytics',
+                desc: 'Insights into your preferences',
+              },
             ].map((benefit, index) => (
               <View key={index} style={styles.benefitRow}>
                 <View style={styles.benefitIcon}>
@@ -340,7 +375,9 @@ export default function PaywallScreen() {
             disabled={purchasing}
           >
             <Text style={styles.purchaseButtonText}>
-              {purchasing ? 'Processing...' : `Start Premium - $${selectedTab === 'monthly' ? currentPlan.price_monthly : currentPlan.price_yearly}`}
+              {purchasing
+                ? 'Processing...'
+                : `Start Premium - $${selectedTab === 'monthly' ? currentPlan.price_monthly : currentPlan.price_yearly}`}
             </Text>
           </TouchableOpacity>
         )}
@@ -361,7 +398,7 @@ export default function PaywallScreen() {
             onPress={async () => {
               try {
                 console.log('🔍 Debug button pressed - checking RevenueCat status...');
-                
+
                 // Show subscription status from our database
                 const debugSummary = `
 Debug Info:
@@ -370,7 +407,7 @@ Debug Info:
 • Is Trial Active: ${subscriptionStatus?.isTrialActive ? 'Yes' : 'No'}
 • Payment System: Using PaymentService with on-demand initialization
                 `;
-                
+
                 Alert.alert('Payment Debug Info', debugSummary, [{ text: 'OK' }]);
               } catch (error) {
                 console.error('❌ Debug failed:', error);
@@ -397,9 +434,7 @@ Debug Info:
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Cancel anytime • Secure payment • Instant access
-          </Text>
+          <Text style={styles.footerText}>Cancel anytime • Secure payment • Instant access</Text>
         </View>
       </ScrollView>
     </ImageBackground>
@@ -680,7 +715,3 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 });
-
-
-
-

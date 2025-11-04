@@ -26,11 +26,11 @@ export default function PurchaseScreen() {
   const loadOfferings = async () => {
     try {
       setLoading(true);
-      
+
       // RevenueCat initializes on-demand here (not on app startup!)
       const availableOfferings = await PaymentService.getOfferings();
       setOfferings(availableOfferings);
-      
+
     } catch (error) {
       console.error('Error loading offerings:', error);
       Alert.alert('Error', 'Unable to load subscription plans. Please try again.');
@@ -64,10 +64,10 @@ export default function PurchaseScreen() {
         await DatabaseSubscriptionManager.refreshSubscriptionStatus(user.id);
 
         Alert.alert('Success!', 'Your subscription has been activated. Enjoy premium features!');
-        
+
         // Navigate back or to premium features
         // navigation.goBack();
-        
+
       } else {
         Alert.alert('Purchase Failed', result.error || 'Unable to complete purchase');
       }
@@ -98,7 +98,7 @@ export default function PurchaseScreen() {
       if (result.success && result.customerInfo) {
         // Sync with database
         await PaymentService.syncWithDatabase(user.id, result.customerInfo);
-        
+
         // Refresh subscription status
         await DatabaseSubscriptionManager.refreshSubscriptionStatus(user.id);
 
@@ -135,14 +135,14 @@ export default function PurchaseScreen() {
           <Text style={{ fontSize: 18, fontWeight: 'bold' }}>
             {offering.serverDescription}
           </Text>
-          
+
           {offering.packages.map((pkg) => (
-            <View key={pkg.identifier} style={{ 
-              borderWidth: 1, 
-              borderColor: '#ccc', 
-              padding: 15, 
+            <View key={pkg.identifier} style={{
+              borderWidth: 1,
+              borderColor: '#ccc',
+              padding: 15,
               marginTop: 10,
-              borderRadius: 8 
+              borderRadius: 8
             }}>
               <Text style={{ fontSize: 16, fontWeight: 'bold' }}>
                 {pkg.product.description}
@@ -150,7 +150,7 @@ export default function PurchaseScreen() {
               <Text style={{ fontSize: 14, color: '#666', marginVertical: 5 }}>
                 {pkg.product.priceString}
               </Text>
-              
+
               <Button
                 title={purchasing ? 'Processing...' : 'Subscribe'}
                 onPress={() => handlePurchase(pkg.identifier, offering.identifier)}
@@ -168,14 +168,14 @@ export default function PurchaseScreen() {
           disabled={purchasing}
         />
       </View>
-      
+
       {purchasing && (
-        <View style={{ 
-          position: 'absolute', 
-          top: 0, 
-          left: 0, 
-          right: 0, 
-          bottom: 0, 
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           backgroundColor: 'rgba(0,0,0,0.3)',
           justifyContent: 'center',
           alignItems: 'center'
@@ -194,7 +194,7 @@ export default function PurchaseScreen() {
 ### **Key Benefits of This Implementation**
 
 1. **On-Demand RevenueCat**: Only initializes when user actually wants to purchase
-2. **Error Handling**: Comprehensive error handling for all failure scenarios  
+2. **Error Handling**: Comprehensive error handling for all failure scenarios
 3. **Database Sync**: Automatically syncs RevenueCat state with database
 4. **UI Updates**: Immediately updates subscription state in the app
 5. **Restore Purchases**: Full restore functionality for users switching devices
@@ -223,7 +223,7 @@ await DatabaseSubscriptionManager.createTrial(userId, 14); // 14-day trial
 await DatabaseSubscriptionManager.updateSubscriptionStatus(userId, {
   status: 'active',
   isPremium: true,
-  subscriptionEndDate: new Date('2024-12-31')
+  subscriptionEndDate: new Date('2024-12-31'),
 });
 
 // Check subscription details for support

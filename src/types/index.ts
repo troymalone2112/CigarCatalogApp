@@ -1,10 +1,10 @@
 // Core data types for the Cigar Catalog App
 
 export enum RecognitionMode {
-  HYBRID = 'hybrid',           // ChatGPT Vision + Perplexity (default)
-  BUDGET = 'budget',           // ChatGPT Vision only
-  MANUAL = 'manual',           // Manual entry + Perplexity
-  PERPLEXITY_ONLY = 'perplexity_only' // Perplexity with user description
+  HYBRID = 'hybrid', // ChatGPT Vision + Perplexity (default)
+  BUDGET = 'budget', // ChatGPT Vision only
+  MANUAL = 'manual', // Manual entry + Perplexity
+  PERPLEXITY_ONLY = 'perplexity_only', // Perplexity with user description
 }
 
 import { StrengthLevel } from '../utils/strengthUtils';
@@ -112,7 +112,7 @@ export interface InventoryItem {
   location?: string; // Humidor location
   notes?: string;
   humidorId?: string; // Reference to specific humidor
-  
+
   // New cigar specification fields
   dateAcquired?: Date; // When the cigar was acquired
   agingPreferenceMonths?: number; // Preferred aging time in months (0-24)
@@ -245,7 +245,9 @@ export type RootStackParamList = {
   Onboarding: undefined;
   OnboardingAgeVerification: { onComplete?: () => void } | undefined;
   OnboardingExperience: { onComplete?: () => void } | undefined;
-  OnboardingTastePreferences: { smokingDuration?: string; experienceLevel?: string; onComplete?: () => void } | undefined;
+  OnboardingTastePreferences:
+    | { smokingDuration?: string; experienceLevel?: string; onComplete?: () => void }
+    | undefined;
   AdminDashboard: undefined;
 };
 
@@ -258,9 +260,17 @@ export type TabParamList = {
 
 // Nested Stack Navigator Types
 export type HumidorStackParamList = {
-  HumidorListMain: { fromRecognition?: boolean; cigar?: Cigar; singleStickPrice?: string; humidorName?: string } | undefined;
+  HumidorListMain:
+    | { fromRecognition?: boolean; cigar?: Cigar; singleStickPrice?: string; humidorName?: string }
+    | undefined;
   Inventory: { humidorId?: string; humidorName?: string; highlightItemId?: string };
-  AddToInventory: { cigar: Cigar; singleStickPrice?: string; existingItem?: InventoryItem; mode?: 'addMore' | 'edit'; humidorId?: string };
+  AddToInventory: {
+    cigar: Cigar;
+    singleStickPrice?: string;
+    existingItem?: InventoryItem;
+    mode?: 'addMore' | 'edit';
+    humidorId?: string;
+  };
   CigarDetails: { cigar: Cigar };
   EditOptions: { item: InventoryItem };
   CreateHumidor: undefined;
@@ -272,8 +282,20 @@ export type JournalStackParamList = {
   JournalCigarRecognition: undefined;
   JournalManualEntry: undefined;
   JournalInitialNotes: { cigar: Cigar };
-  JournalRating: { cigar: Cigar; initialNotes: string; location?: { city: string; state?: string; country?: string; }; photos?: string[] };
-  JournalNotes: { cigar: Cigar; rating: number; selectedFlavors: string[]; initialNotes: string; location?: { city: string; state?: string; country?: string; }; photos?: string[] };
+  JournalRating: {
+    cigar: Cigar;
+    initialNotes: string;
+    location?: { city: string; state?: string; country?: string };
+    photos?: string[];
+  };
+  JournalNotes: {
+    cigar: Cigar;
+    rating: number;
+    selectedFlavors: string[];
+    initialNotes: string;
+    location?: { city: string; state?: string; country?: string };
+    photos?: string[];
+  };
   JournalEntryDetails: { entry: JournalEntry };
 };
 

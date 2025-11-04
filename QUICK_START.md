@@ -3,12 +3,14 @@
 ## Step 1: Get Your API Keys
 
 ### OpenAI API Key
+
 1. Go to [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
 2. Sign up/login
 3. Click "Create new secret key"
 4. Copy the key (starts with `sk-...`)
 
-### Perplexity API Key  
+### Perplexity API Key
+
 1. Go to [perplexity.ai/settings/api](https://www.perplexity.ai/settings/api)
 2. Sign up/login
 3. Generate API key
@@ -26,6 +28,7 @@ EXPO_PUBLIC_PERPLEXITY_API_KEY=pplx-your-actual-perplexity-key-here
 ## Step 3: Test Configuration
 
 Run the test script:
+
 ```bash
 node test-api-keys.js
 ```
@@ -46,12 +49,3 @@ npm start
 ## Need Help?
 
 See `API_SETUP_GUIDE.md` for detailed instructions and troubleshooting.
-
-
-
-
-
-
-
-
-

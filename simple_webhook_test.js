@@ -10,10 +10,12 @@ console.log('');
 // Test 1: Health Check
 async function testHealthCheck() {
   console.log('1️⃣ Testing Health Check...');
-  
+
   try {
-    const response = await makeRequest(`${NETLIFY_SITE_URL}/.netlify/functions/revenuecat-webhook/health`);
-    
+    const response = await makeRequest(
+      `${NETLIFY_SITE_URL}/.netlify/functions/revenuecat-webhook/health`,
+    );
+
     if (response.statusCode === 200) {
       console.log('✅ Health check passed');
       console.log('📊 Response:', JSON.parse(response.body));
@@ -33,37 +35,40 @@ async function testHealthCheck() {
 // Test 2: Test with a real UUID format (but non-existent user)
 async function testWebhookLogic() {
   console.log('2️⃣ Testing Webhook Logic (with non-existent user)...');
-  
+
   const testWebhookPayload = {
-    api_version: "1.0",
+    api_version: '1.0',
     event: {
-      type: "INITIAL_PURCHASE",
-      app_user_id: "00000000-0000-0000-0000-000000000000", // Non-existent but valid UUID
-      product_id: "premium_monthly",
-      period_type: "NORMAL",
-      purchased_at_ms: "1698123456789",
-      expiration_at_ms: "1700715456789", // 30 days later
-      store: "APP_STORE",
+      type: 'INITIAL_PURCHASE',
+      app_user_id: '00000000-0000-0000-0000-000000000000', // Non-existent but valid UUID
+      product_id: 'premium_monthly',
+      period_type: 'NORMAL',
+      purchased_at_ms: '1698123456789',
+      expiration_at_ms: '1700715456789', // 30 days later
+      store: 'APP_STORE',
       is_trial_period: false,
       auto_renew_status: true,
-      original_transaction_id: "1000000123456789",
-      transaction_id: "1000000123456789",
-      environment: "SANDBOX"
-    }
+      original_transaction_id: '1000000123456789',
+      transaction_id: '1000000123456789',
+      environment: 'SANDBOX',
+    },
   };
-  
+
   try {
-    const response = await makeRequest(`${NETLIFY_SITE_URL}/.netlify/functions/revenuecat-webhook`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
+    const response = await makeRequest(
+      `${NETLIFY_SITE_URL}/.netlify/functions/revenuecat-webhook`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testWebhookPayload),
       },
-      body: JSON.stringify(testWebhookPayload)
-    });
-    
+    );
+
     console.log('📊 Status:', response.statusCode);
     console.log('📊 Response:', response.body);
-    
+
     if (response.statusCode === 200) {
       console.log('✅ Webhook processed successfully');
       return true;
@@ -81,37 +86,40 @@ async function testWebhookLogic() {
 // Test 3: Test with problematic dates (3 minutes apart)
 async function testProblematicDates() {
   console.log('3️⃣ Testing Problematic Dates (3 minutes apart)...');
-  
+
   const problematicWebhookPayload = {
-    api_version: "1.0",
+    api_version: '1.0',
     event: {
-      type: "INITIAL_PURCHASE",
-      app_user_id: "00000000-0000-0000-0000-000000000000", // Non-existent but valid UUID
-      product_id: "premium_monthly",
-      period_type: "NORMAL",
-      purchased_at_ms: "1698123456789",
-      expiration_at_ms: "1698123636789", // Only 3 minutes later (problematic!)
-      store: "APP_STORE",
+      type: 'INITIAL_PURCHASE',
+      app_user_id: '00000000-0000-0000-0000-000000000000', // Non-existent but valid UUID
+      product_id: 'premium_monthly',
+      period_type: 'NORMAL',
+      purchased_at_ms: '1698123456789',
+      expiration_at_ms: '1698123636789', // Only 3 minutes later (problematic!)
+      store: 'APP_STORE',
       is_trial_period: false,
       auto_renew_status: true,
-      original_transaction_id: "1000000123456790",
-      transaction_id: "1000000123456790",
-      environment: "SANDBOX"
-    }
+      original_transaction_id: '1000000123456790',
+      transaction_id: '1000000123456790',
+      environment: 'SANDBOX',
+    },
   };
-  
+
   try {
-    const response = await makeRequest(`${NETLIFY_SITE_URL}/.netlify/functions/revenuecat-webhook`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
+    const response = await makeRequest(
+      `${NETLIFY_SITE_URL}/.netlify/functions/revenuecat-webhook`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(problematicWebhookPayload),
       },
-      body: JSON.stringify(problematicWebhookPayload)
-    });
-    
+    );
+
     console.log('📊 Status:', response.statusCode);
     console.log('📊 Response:', response.body);
-    
+
     // Check if the response indicates date correction
     if (response.statusCode === 200) {
       const responseData = JSON.parse(response.body);
@@ -120,11 +128,12 @@ async function testProblematicDates() {
         return true;
       }
     }
-    
+
     // Even if it fails due to non-existent user, we can check the logs
-    console.log('📝 Check the webhook logs in Netlify dashboard to see if date correction logic was triggered');
+    console.log(
+      '📝 Check the webhook logs in Netlify dashboard to see if date correction logic was triggered',
+    );
     return true;
-    
   } catch (error) {
     console.log('❌ Problematic dates test error:', error.message);
     return false;
@@ -140,9 +149,9 @@ function makeRequest(url, options = {}) {
       port: urlObj.port || 443,
       path: urlObj.pathname + urlObj.search,
       method: options.method || 'GET',
-      headers: options.headers || {}
+      headers: options.headers || {},
     };
-    
+
     const req = https.request(requestOptions, (res) => {
       let body = '';
       res.on('data', (chunk) => {
@@ -151,19 +160,19 @@ function makeRequest(url, options = {}) {
       res.on('end', () => {
         resolve({
           statusCode: res.statusCode,
-          body: body
+          body: body,
         });
       });
     });
-    
+
     req.on('error', (error) => {
       reject(error);
     });
-    
+
     if (options.body) {
       req.write(options.body);
     }
-    
+
     req.end();
   });
 }
@@ -172,16 +181,16 @@ function makeRequest(url, options = {}) {
 async function runAllTests() {
   console.log('🚀 Starting Simple Webhook Tests...');
   console.log('');
-  
+
   const healthCheck = await testHealthCheck();
   console.log('');
-  
+
   const webhookLogic = await testWebhookLogic();
   console.log('');
-  
+
   const problematicDates = await testProblematicDates();
   console.log('');
-  
+
   console.log('🏁 All tests completed!');
   console.log('');
   console.log('📋 Summary:');

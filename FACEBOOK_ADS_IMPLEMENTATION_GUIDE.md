@@ -15,6 +15,7 @@ npx expo install expo-dev-client
 ### **Step 2: Configure Your App**
 
 #### **Update app.json**
+
 ```json
 {
   "expo": {
@@ -29,9 +30,7 @@ npx expo install expo-dev-client
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yourcompany.cigarcatalog",
@@ -89,19 +88,18 @@ export class FacebookAdsService {
 
     try {
       console.log('📊 Initializing Facebook Ads SDK...');
-      
+
       // Set user data collection
       Settings.setDataProcessingOptions(['LDU'], 0, 0);
-      
+
       // Enable automatic event logging
       Settings.setAutoLogAppEventsEnabled(true);
-      
+
       // Set advertiser tracking
       Settings.setAdvertiserTrackingEnabled(true);
-      
+
       this.isInitialized = true;
       console.log('✅ Facebook Ads SDK initialized successfully');
-      
     } catch (error) {
       console.error('❌ Facebook Ads initialization failed:', error);
       throw error;
@@ -120,7 +118,6 @@ export class FacebookAdsService {
 
       AppEvents.logEvent(eventName, parameters);
       console.log(`📊 Facebook event logged: ${eventName}`, parameters);
-      
     } catch (error) {
       console.error('❌ Failed to log Facebook event:', error);
     }
@@ -132,7 +129,7 @@ export class FacebookAdsService {
   static trackRegistration(method: string = 'email'): void {
     this.logEvent('fb_mobile_complete_registration', {
       fb_registration_method: method,
-      app_name: 'Cigar Catalog'
+      app_name: 'Cigar Catalog',
     });
   }
 
@@ -142,19 +139,23 @@ export class FacebookAdsService {
   static trackTrialStart(): void {
     this.logEvent('fb_mobile_start_trial', {
       fb_content_type: 'subscription',
-      fb_content_name: 'Free Trial'
+      fb_content_name: 'Free Trial',
     });
   }
 
   /**
    * Track subscription purchase
    */
-  static trackSubscriptionPurchase(planType: string, price: number, currency: string = 'USD'): void {
+  static trackSubscriptionPurchase(
+    planType: string,
+    price: number,
+    currency: string = 'USD',
+  ): void {
     this.logEvent('fb_mobile_purchase', {
       fb_currency: currency,
       fb_content_type: 'subscription',
       fb_content_name: planType,
-      value: price
+      value: price,
     });
   }
 
@@ -165,7 +166,7 @@ export class FacebookAdsService {
     this.logEvent('cigar_recognition', {
       success: success,
       method: method,
-      app_name: 'Cigar Catalog'
+      app_name: 'Cigar Catalog',
     });
   }
 
@@ -174,7 +175,7 @@ export class FacebookAdsService {
    */
   static trackJournalEntry(): void {
     this.logEvent('journal_entry_created', {
-      app_name: 'Cigar Catalog'
+      app_name: 'Cigar Catalog',
     });
   }
 
@@ -184,7 +185,7 @@ export class FacebookAdsService {
   static trackHumidorAction(action: string): void {
     this.logEvent('humidor_action', {
       action: action,
-      app_name: 'Cigar Catalog'
+      app_name: 'Cigar Catalog',
     });
   }
 
@@ -205,7 +206,7 @@ export class FacebookAdsService {
    */
   static trackCustomEvent(eventName: string, value?: number, currency?: string): void {
     const parameters: { [key: string]: any } = {
-      app_name: 'Cigar Catalog'
+      app_name: 'Cigar Catalog',
     };
 
     if (value !== undefined) {
@@ -223,6 +224,7 @@ export class FacebookAdsService {
 ### **Step 4: Integrate with Your App**
 
 #### **Update App.tsx**
+
 ```typescript
 import React, { useEffect } from 'react';
 import { FacebookAdsService } from './src/services/facebookAdsService';
@@ -247,6 +249,7 @@ export default function App() {
 ```
 
 #### **Update AuthContext.tsx**
+
 ```typescript
 import { FacebookAdsService } from '../services/facebookAdsService';
 
@@ -254,11 +257,11 @@ import { FacebookAdsService } from '../services/facebookAdsService';
 const signUp = async (email: string, password: string, fullName: string) => {
   try {
     const result = await AuthService.signUp(email, password, fullName);
-    
+
     // Track registration with Facebook
     FacebookAdsService.trackRegistration('email');
     FacebookAdsService.setUserId(result.user?.id);
-    
+
     return result;
   } catch (error) {
     throw error;
@@ -267,6 +270,7 @@ const signUp = async (email: string, password: string, fullName: string) => {
 ```
 
 #### **Update RevenueCatService.tsx**
+
 ```typescript
 import { FacebookAdsService } from './facebookAdsService';
 
@@ -274,14 +278,14 @@ import { FacebookAdsService } from './facebookAdsService';
 static async purchasePackage(packageToPurchase: PurchasesPackage): Promise<{ success: boolean; error?: string }> {
   try {
     const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
-    
+
     // Track purchase with Facebook
     FacebookAdsService.trackSubscriptionPurchase(
       packageToPurchase.product.identifier,
       parseFloat(packageToPurchase.product.priceString.replace('$', '')),
       packageToPurchase.product.currencyCode
     );
-    
+
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
@@ -290,6 +294,7 @@ static async purchasePackage(packageToPurchase: PurchasesPackage): Promise<{ suc
 ```
 
 #### **Update EnhancedCigarRecognitionScreen.tsx**
+
 ```typescript
 import { FacebookAdsService } from '../services/facebookAdsService';
 
@@ -378,11 +383,13 @@ const styles = StyleSheet.create({
 ## 🔧 **How It Works**
 
 ### **1. Event Tracking Flow**
+
 ```
 User Action → Your App → FacebookAdsService → Facebook SDK → Facebook Servers → Ads Manager
 ```
 
 ### **2. Key Events Tracked**
+
 - **Registration**: When user signs up
 - **Trial Start**: When user starts free trial
 - **Purchase**: When user upgrades to premium
@@ -391,6 +398,7 @@ User Action → Your App → FacebookAdsService → Facebook SDK → Facebook Se
 - **Humidor Actions**: When user adds cigars to humidor
 
 ### **3. Facebook Ads Manager Integration**
+
 - **Events appear** in Facebook Events Manager
 - **Create custom audiences** based on events
 - **Optimize ad campaigns** for specific events

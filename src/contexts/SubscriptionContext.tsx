@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { SubscriptionService, SubscriptionStatus, SubscriptionPlan } from '../services/subscriptionService';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
+import { SubscriptionService, SubscriptionPlan } from '../services/subscriptionService';
+import { DatabaseSubscriptionManager } from '../services/databaseSubscriptionManager';
 import { RevenueCatService } from '../services/revenueCatService';
 import { useAuth } from './AuthContext';
 
@@ -9,7 +10,10 @@ interface SubscriptionContextType {
   loading: boolean;
   refreshSubscription: () => Promise<void>;
   trackUsage: (action: string, metadata?: any) => Promise<void>;
-  createPremiumSubscription: (planId: string, paymentMethodId: string) => Promise<{ success: boolean; error?: string }>;
+  createPremiumSubscription: (
+    planId: string,
+    paymentMethodId: string,
+  ) => Promise<{ success: boolean; error?: string }>;
   cancelSubscription: () => Promise<{ success: boolean; error?: string }>;
   hasFeatureAccess: (feature: string) => boolean;
   showPaywall: boolean;
@@ -36,7 +40,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     if (user) {
       // Load subscription data in background - don't block app startup
       console.log('🔄 Loading subscription data in background for user:', user.id);
-      loadSubscriptionData().catch(error => {
+      loadSubscriptionData().catch((error) => {
         console.error('❌ Background subscription load failed:', error);
         // Don't block the app if subscription loading fails
       });
@@ -44,7 +48,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setSubscriptionStatus(null);
       setLoading(false);
     }
-  }, [user]);
+  }, [user, loadSubscriptionData]);
 
   useEffect(() => {
     // Check if we should show paywall
@@ -56,7 +60,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   }, [subscriptionStatus]);
 
-  const loadSubscriptionData = async (forceRefresh = false) => {
+  const loadSubscriptionData = useCallback(async (forceRefresh = false) => {
     if (!user) {
       console.log('🔍 SubscriptionContext - No user, skipping subscription data load');
       return;
@@ -64,13 +68,25 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     try {
       setLoading(true);
-      console.log('🔍 SubscriptionContext - Loading subscription data for user:', user.id, forceRefresh ? '(forced refresh)' : '');
-      
-      // Use database as source of truth for subscription status
+      console.log(
+        '🔍 SubscriptionContext - Loading subscription data for user:',
+        user.id,
+        forceRefresh ? '(forced refresh)' : '',
+      );
+
+      // Use DatabaseSubscriptionManager as source of truth for subscription status
       console.log('📊 Getting subscription status from database...');
-      const status = await SubscriptionService.checkSubscriptionStatus(user.id);
+      const dbStatus = await DatabaseSubscriptionManager.getSubscriptionStatus(user.id);
+      const status = {
+        hasAccess: dbStatus.hasAccess,
+        isTrialActive: dbStatus.isTrialActive,
+        isPremium: dbStatus.isPremium,
+        status: dbStatus.status,
+        daysRemaining: dbStatus.daysRemaining,
+        plan: dbStatus.planId ? { id: dbStatus.planId, name: dbStatus.planName || '', description: '' } : undefined,
+      } as any;
       console.log('🔍 SubscriptionContext - Database status result:', status);
-      
+
       // Only sync with RevenueCat if user is premium (has upgraded)
       if (status.isPremium && forceRefresh) {
         console.log('🔄 Premium user - syncing with RevenueCat...');
@@ -81,7 +97,7 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
           console.log('⚠️ RevenueCat sync failed, using database status:', error.message);
         }
       }
-      
+
       // Get subscription plans
       const plans = await SubscriptionService.getSubscriptionPlans();
 
@@ -94,73 +110,89 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const refreshSubscription = async () => {
-    await loadSubscriptionData(true); // Force refresh from database
-  };
+  const refreshSubscription = useCallback(async () => {
+    await loadSubscriptionData(true);
+  }, [loadSubscriptionData]);
 
-  const trackUsage = async (action: string, metadata?: any) => {
-    if (!user) return;
-    await SubscriptionService.trackUsage(user.id, action, metadata);
-  };
+  const trackUsage = useCallback(
+    async (action: string, metadata?: any) => {
+      if (!user) return;
+      await SubscriptionService.trackUsage(user.id, action, metadata);
+    },
+    [user],
+  );
 
-  const createPremiumSubscription = async (planId: string, paymentMethodId: string) => {
-    if (!user) return { success: false, error: 'No user logged in' };
+  const createPremiumSubscription = useCallback(
+    async (planId: string, paymentMethodId: string) => {
+      if (!user) return { success: false, error: 'No user logged in' };
 
-    const result = await SubscriptionService.createPremiumSubscription(user.id, planId, paymentMethodId);
-    
-    if (result.success) {
-      await refreshSubscription();
-    }
-    
-    return result;
-  };
+      const result = await SubscriptionService.createPremiumSubscription(
+        user.id,
+        planId,
+        paymentMethodId,
+      );
 
-  const cancelSubscription = async () => {
+      if (result.success) {
+        await refreshSubscription();
+      }
+
+      return result;
+    },
+    [user, refreshSubscription],
+  );
+
+  const cancelSubscription = useCallback(async () => {
     if (!user) return { success: false, error: 'No user logged in' };
 
     const result = await SubscriptionService.cancelSubscription(user.id);
-    
+
     if (result.success) {
       await refreshSubscription();
     }
-    
+
     return result;
-  };
+  }, [user, refreshSubscription]);
 
-  const hasFeatureAccess = (feature: string): boolean => {
-    if (!subscriptionStatus) return false;
-    
-    // During trial or active subscription, all features are available
-    if (subscriptionStatus.hasAccess) return true;
-    
-    // Define free features (if any)
-    const freeFeatures = ['basic_catalog_view'];
-    return freeFeatures.includes(feature);
-  };
+  const hasFeatureAccess = useCallback(
+    (feature: string): boolean => {
+      if (!subscriptionStatus) return false;
 
-  const value = {
-    subscriptionStatus,
-    subscriptionPlans,
-    loading,
-    refreshSubscription,
-    trackUsage,
-    createPremiumSubscription,
-    cancelSubscription,
-    hasFeatureAccess,
-    showPaywall,
-  };
+      // During trial or active subscription, all features are available
+      if (subscriptionStatus.hasAccess) return true;
 
-  return (
-    <SubscriptionContext.Provider value={value}>
-      {children}
-    </SubscriptionContext.Provider>
+      // Define free features (if any)
+      const freeFeatures = ['basic_catalog_view'];
+      return freeFeatures.includes(feature);
+    },
+    [subscriptionStatus],
   );
+
+  const value = useMemo(
+    () => ({
+      subscriptionStatus,
+      subscriptionPlans,
+      loading,
+      refreshSubscription,
+      trackUsage,
+      createPremiumSubscription,
+      cancelSubscription,
+      hasFeatureAccess,
+      showPaywall,
+    }),
+    [
+      subscriptionStatus,
+      subscriptionPlans,
+      loading,
+      refreshSubscription,
+      trackUsage,
+      createPremiumSubscription,
+      cancelSubscription,
+      hasFeatureAccess,
+      showPaywall,
+    ],
+  );
+
+  return <SubscriptionContext.Provider value={value}>{children}</SubscriptionContext.Provider>;
 };
-
-
-
-
-
-

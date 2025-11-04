@@ -16,45 +16,47 @@ export const RevenueCatTest: React.FC = () => {
 
     try {
       setLoading(true);
-      
+
       console.log('🧪 Testing RevenueCat API connection...');
-      
+
       // Test 1: Get offerings (this will test the API key)
       console.log('📦 Testing offerings...');
       const offerings = await RevenueCatService.getOfferings();
       console.log('✅ Offerings retrieved:', offerings);
-      
+
       // Test 2: Get customer info
       console.log('👤 Testing customer info...');
       const customerInfo = await RevenueCatService.getCustomerInfo();
       console.log('✅ Customer info:', customerInfo);
-      
+
       // Test 3: Check subscription status
       console.log('🔍 Testing subscription status...');
       const subscriptionStatus = await RevenueCatService.getSubscriptionStatus();
       console.log('✅ Subscription status:', subscriptionStatus);
-      
+
       // Test 4: Sync with database
       console.log('🔄 Testing database sync...');
       const syncedStatus = await RevenueCatService.syncSubscriptionStatus(user.id);
       console.log('✅ Synced status:', syncedStatus);
-      
+
       setStatus({
-        offerings: offerings.map(offering => ({
+        offerings: offerings.map((offering) => ({
           identifier: offering.identifier,
-          packages: offering.availablePackages.map(pkg => ({
+          packages: offering.availablePackages.map((pkg) => ({
             identifier: pkg.identifier,
             title: pkg.product.title,
-            price: pkg.product.priceString
-          }))
+            price: pkg.product.priceString,
+          })),
         })),
         customerInfo,
         subscriptionStatus,
-        syncedStatus
+        syncedStatus,
       });
-      
-      Alert.alert('Success', `RevenueCat is working!\n\nFound ${offerings.length} offerings with ${offerings.reduce((total, offering) => total + offering.availablePackages.length, 0)} packages.`);
-      
+
+      Alert.alert(
+        'Success',
+        `RevenueCat is working!\n\nFound ${offerings.length} offerings with ${offerings.reduce((total, offering) => total + offering.availablePackages.length, 0)} packages.`,
+      );
     } catch (error) {
       console.error('❌ RevenueCat test failed:', error);
       Alert.alert('Error', `RevenueCat test failed:\n\n${error.message || error}`);
@@ -71,20 +73,22 @@ export const RevenueCatTest: React.FC = () => {
 
     try {
       setLoading(true);
-      
+
       console.log('🔄 Force migrating RevenueCat user ID...');
-      
+
       const success = await RevenueCatService.forceUserMigration(user.id);
-      
+
       if (success) {
-        Alert.alert('Success', 'User ID migration completed! Your purchases should now sync correctly.');
-        
+        Alert.alert(
+          'Success',
+          'User ID migration completed! Your purchases should now sync correctly.',
+        );
+
         // Refresh the status
         await testRevenueCat();
       } else {
         Alert.alert('Error', 'User ID migration failed. Check logs for details.');
       }
-      
     } catch (error) {
       console.error('❌ Migration failed:', error);
       Alert.alert('Error', `Migration failed:\n\n${error.message || error}`);
@@ -104,19 +108,15 @@ export const RevenueCatTest: React.FC = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>RevenueCat Test</Text>
-      
-      <TouchableOpacity 
-        style={styles.button} 
-        onPress={testRevenueCat}
-        disabled={loading}
-      >
+
+      <TouchableOpacity style={styles.button} onPress={testRevenueCat} disabled={loading}>
         <Text style={styles.buttonText}>
           {loading ? 'Testing...' : 'Test RevenueCat Connection'}
         </Text>
       </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={[styles.button, styles.migrationButton]} 
+      <TouchableOpacity
+        style={[styles.button, styles.migrationButton]}
         onPress={forceUserMigration}
         disabled={loading}
       >
@@ -124,14 +124,12 @@ export const RevenueCatTest: React.FC = () => {
           {loading ? 'Migrating...' : 'Force User ID Migration'}
         </Text>
       </TouchableOpacity>
-      
+
       {status && (
         <View style={styles.statusContainer}>
           <Text style={styles.statusTitle}>Test Results:</Text>
-          
-          <Text style={styles.statusText}>
-            Offerings: {status.offerings?.length || 0}
-          </Text>
+
+          <Text style={styles.statusText}>Offerings: {status.offerings?.length || 0}</Text>
           {status.offerings?.map((offering, index) => (
             <View key={index} style={styles.offeringContainer}>
               <Text style={styles.offeringTitle}>Offering: {offering.identifier}</Text>
@@ -142,16 +140,14 @@ export const RevenueCatTest: React.FC = () => {
               ))}
             </View>
           ))}
-          
+
           <Text style={styles.statusText}>
             Customer ID: {status.customerInfo?.originalAppUserId || 'N/A'}
           </Text>
           <Text style={styles.statusText}>
             Has Access: {status.syncedStatus?.hasAccess ? 'Yes' : 'No'}
           </Text>
-          <Text style={styles.statusText}>
-            Status: {status.syncedStatus?.status || 'Unknown'}
-          </Text>
+          <Text style={styles.statusText}>Status: {status.syncedStatus?.status || 'Unknown'}</Text>
           <Text style={styles.statusText}>
             Days Remaining: {status.syncedStatus?.daysRemaining || 'N/A'}
           </Text>

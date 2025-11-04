@@ -23,10 +23,10 @@ export class FastSubscriptionService {
   static async getFastSubscriptionStatus(userId: string): Promise<FastSubscriptionStatus> {
     try {
       console.log('💎 Getting fast subscription status via DatabaseSubscriptionManager...');
-      
+
       // Use the new DatabaseSubscriptionManager as single source of truth
       const dbStatus = await DatabaseSubscriptionManager.getSubscriptionStatus(userId);
-      
+
       // Convert to legacy format for backward compatibility
       const legacyStatus: FastSubscriptionStatus = {
         hasAccess: dbStatus.hasAccess,
@@ -34,7 +34,7 @@ export class FastSubscriptionService {
         isTrialActive: dbStatus.isTrialActive,
         status: dbStatus.status,
         planId: dbStatus.planId,
-        daysRemaining: dbStatus.daysRemaining
+        daysRemaining: dbStatus.daysRemaining,
       };
 
       console.log('💎 Fast subscription status (via DatabaseSubscriptionManager):', {
@@ -42,20 +42,19 @@ export class FastSubscriptionService {
         isPremium: legacyStatus.isPremium,
         isTrialActive: legacyStatus.isTrialActive,
         status: legacyStatus.status,
-        source: dbStatus.source
+        source: dbStatus.source,
       });
 
       return legacyStatus;
-
     } catch (error) {
       console.error('❌ Error in getFastSubscriptionStatus:', error);
-      
+
       // Return fallback status on error
       return {
         hasAccess: false,
         isPremium: false,
         isTrialActive: false,
-        status: 'error'
+        status: 'error',
       };
     }
   }
@@ -78,7 +77,7 @@ export class FastSubscriptionService {
     const stats = DatabaseSubscriptionManager.getCacheStats();
     return {
       size: stats.size,
-      entries: stats.entries.map(e => e.userId)
+      entries: stats.entries.map((e) => e.userId),
     };
   }
 }

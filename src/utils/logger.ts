@@ -1,6 +1,6 @@
 /**
  * Production-Safe Logger
- * 
+ *
  * This logger automatically adjusts logging levels based on the environment.
  * In production, it minimizes console output while preserving critical information.
  */
@@ -12,7 +12,7 @@ export enum LogLevel {
   INFO = 1,
   WARN = 2,
   ERROR = 3,
-  CRITICAL = 4
+  CRITICAL = 4,
 }
 
 export class Logger {

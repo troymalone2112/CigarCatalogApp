@@ -51,18 +51,13 @@ const Dropdown: React.FC<DropdownProps> = ({ label, value, options, onSelect, pl
     setIsVisible(false);
   };
 
-  const displayValue = options.find(opt => opt.value === value)?.label || placeholder;
+  const displayValue = options.find((opt) => opt.value === value)?.label || placeholder;
 
   return (
     <View style={styles.fieldContainer}>
       <Text style={styles.fieldLabel}>{label}</Text>
-      <TouchableOpacity
-        style={styles.dropdownButton}
-        onPress={() => setIsVisible(true)}
-      >
-        <Text style={[styles.dropdownText, !value && styles.placeholderText]}>
-          {displayValue}
-        </Text>
+      <TouchableOpacity style={styles.dropdownButton} onPress={() => setIsVisible(true)}>
+        <Text style={[styles.dropdownText, !value && styles.placeholderText]}>{displayValue}</Text>
         <Ionicons name="chevron-down" size={20} color="#999" />
       </TouchableOpacity>
 
@@ -76,10 +71,7 @@ const Dropdown: React.FC<DropdownProps> = ({ label, value, options, onSelect, pl
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>{label}</Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setIsVisible(false)}
-              >
+              <TouchableOpacity style={styles.closeButton} onPress={() => setIsVisible(false)}>
                 <Ionicons name="close" size={24} color="#FFFFFF" />
               </TouchableOpacity>
             </View>
@@ -88,21 +80,15 @@ const Dropdown: React.FC<DropdownProps> = ({ label, value, options, onSelect, pl
               keyExtractor={(item) => item.value.toString()}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={[
-                    styles.optionItem,
-                    value === item.value && styles.selectedOption
-                  ]}
+                  style={[styles.optionItem, value === item.value && styles.selectedOption]}
                   onPress={() => handleSelect(item.value)}
                 >
-                  <Text style={[
-                    styles.optionText,
-                    value === item.value && styles.selectedOptionText
-                  ]}>
+                  <Text
+                    style={[styles.optionText, value === item.value && styles.selectedOptionText]}
+                  >
                     {item.label}
                   </Text>
-                  {value === item.value && (
-                    <Ionicons name="checkmark" size={20} color="#DC851F" />
-                  )}
+                  {value === item.value && <Ionicons name="checkmark" size={20} color="#DC851F" />}
                 </TouchableOpacity>
               )}
               style={styles.optionsList}
@@ -126,11 +112,10 @@ export const CigarSpecificationForm: React.FC<CigarSpecificationFormProps> = ({
   onRingGaugeChange,
   onVitolaChange,
 }) => {
-
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       <Text style={styles.sectionTitle}>Cigar Specifications</Text>
-      
+
       {/* Date Acquired */}
       <View style={styles.fieldContainer}>
         <Text style={styles.fieldLabel}>Date Acquired</Text>
@@ -144,17 +129,17 @@ export const CigarSpecificationForm: React.FC<CigarSpecificationFormProps> = ({
             yesterday.setDate(yesterday.getDate() - 1);
             const weekAgo = new Date(today);
             weekAgo.setDate(weekAgo.getDate() - 7);
-            
+
             const dates = [today, yesterday, weekAgo];
-            const currentIndex = dates.findIndex(d => d.toDateString() === dateAcquired.toDateString());
+            const currentIndex = dates.findIndex(
+              (d) => d.toDateString() === dateAcquired.toDateString(),
+            );
             const nextIndex = (currentIndex + 1) % dates.length;
             onDateAcquiredChange(dates[nextIndex]);
           }}
         >
           <Ionicons name="calendar-outline" size={20} color="#DC851F" />
-          <Text style={styles.dateText}>
-            {dateAcquired.toLocaleDateString()}
-          </Text>
+          <Text style={styles.dateText}>{dateAcquired.toLocaleDateString()}</Text>
           <Ionicons name="chevron-down" size={20} color="#999" />
         </TouchableOpacity>
       </View>
@@ -194,7 +179,6 @@ export const CigarSpecificationForm: React.FC<CigarSpecificationFormProps> = ({
         onSelect={onVitolaChange}
         placeholder="Select shape"
       />
-
     </ScrollView>
   );
 };

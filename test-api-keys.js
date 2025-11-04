@@ -64,12 +64,3 @@ if (hasOpenAI && hasPerplexity) {
 }
 
 console.log('\n📖 For setup instructions, see: API_SETUP_GUIDE.md');
-
-
-
-
-
-
-
-
-

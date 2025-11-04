@@ -25,10 +25,9 @@ export default function JournalInitialNotesScreen() {
   const navigation = useNavigation<JournalInitialNotesScreenNavigationProp>();
   const route = useRoute<JournalInitialNotesScreenRouteProp>();
   const { cigar } = route.params;
-  
+
   const [notes, setNotes] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
-
 
   const takePicture = async () => {
     try {
@@ -46,7 +45,7 @@ export default function JournalInitialNotesScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setPhotos(prev => [...prev, result.assets[0].uri]);
+        setPhotos((prev) => [...prev, result.assets[0].uri]);
       }
     } catch (error) {
       console.error('Error taking picture:', error);
@@ -55,26 +54,26 @@ export default function JournalInitialNotesScreen() {
   };
 
   const removePhoto = (index: number) => {
-    setPhotos(prev => prev.filter((_, i) => i !== index));
+    setPhotos((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleContinue = () => {
-    navigation.navigate('JournalRating', { 
-      cigar, 
+    navigation.navigate('JournalRating', {
+      cigar,
       initialNotes: notes.trim() || '',
-      photos: photos
+      photos: photos,
     });
   };
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <ImageBackground 
+      <ImageBackground
         source={require('../../assets/tobacco-leaves-bg.jpg')}
         style={styles.fullScreenBackground}
         imageStyle={styles.tobaccoBackgroundImage}
       >
-        <ScrollView 
-          style={styles.container} 
+        <ScrollView
+          style={styles.container}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -83,7 +82,10 @@ export default function JournalInitialNotesScreen() {
               {cigar.imageUrl && cigar.imageUrl !== 'placeholder' ? (
                 <Image source={{ uri: cigar.imageUrl }} style={styles.cigarImage} />
               ) : (
-                <Image source={require('../../assets/cigar-placeholder.jpg')} style={styles.cigarImage} />
+                <Image
+                  source={require('../../assets/cigar-placeholder.jpg')}
+                  style={styles.cigarImage}
+                />
               )}
               <View style={styles.cigarTextInfo}>
                 <Text style={styles.cigarBrand}>{cigar.brand}</Text>
@@ -92,7 +94,6 @@ export default function JournalInitialNotesScreen() {
               </View>
             </View>
           </View>
-
 
           <View style={styles.notesSection}>
             <Text style={styles.sectionTitle}>Initial Thoughts</Text>
@@ -113,15 +114,13 @@ export default function JournalInitialNotesScreen() {
 
           <View style={styles.photosSection}>
             <Text style={styles.sectionTitle}>Photos</Text>
-            <Text style={styles.notesSubtitle}>
-              Capture moments from your smoking experience
-            </Text>
-            
+            <Text style={styles.notesSubtitle}>Capture moments from your smoking experience</Text>
+
             <View style={styles.photosContainer}>
               {photos.map((photo, index) => (
                 <View key={index} style={styles.photoItem}>
                   <Image source={{ uri: photo }} style={styles.photoPreview} />
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.removePhotoButton}
                     onPress={() => removePhoto(index)}
                   >
@@ -129,20 +128,14 @@ export default function JournalInitialNotesScreen() {
                   </TouchableOpacity>
                 </View>
               ))}
-              
-              <TouchableOpacity 
-                style={styles.addPhotoButton}
-                onPress={takePicture}
-              >
+
+              <TouchableOpacity style={styles.addPhotoButton} onPress={takePicture}>
                 <Ionicons name="camera" size={48} color="#DC851F" />
               </TouchableOpacity>
             </View>
           </View>
 
-          <TouchableOpacity 
-            style={styles.continueButton}
-            onPress={handleContinue}
-          >
+          <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
             <Text style={styles.continueButtonText}>Continue to Rating</Text>
             <Ionicons name="arrow-forward" size={20} color="white" />
           </TouchableOpacity>

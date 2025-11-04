@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { Cigar } from '../types';
 
 interface RecognitionFlowState {
@@ -48,15 +48,12 @@ export const RecognitionFlowProvider: React.FC<{ children: React.ReactNode }> = 
     });
   }, []);
 
+  const value = useMemo(
+    () => ({ recognitionFlow, startRecognitionFlow, clearRecognitionFlow }),
+    [recognitionFlow, startRecognitionFlow, clearRecognitionFlow],
+  );
+
   return (
-    <RecognitionFlowContext.Provider value={{ recognitionFlow, startRecognitionFlow, clearRecognitionFlow }}>
-      {children}
-    </RecognitionFlowContext.Provider>
+    <RecognitionFlowContext.Provider value={value}>{children}</RecognitionFlowContext.Provider>
   );
 };
-
-
-
-
-
-

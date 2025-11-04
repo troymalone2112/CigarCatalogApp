@@ -23,18 +23,22 @@ export class RecognitionErrorHandler {
         message: 'Recognition service quota exceeded',
         type: 'quota',
         canRetry: false,
-        fallbackOptions: ['Manual Entry', 'Try Later']
+        fallbackOptions: ['Manual Entry', 'Try Later'],
       };
     }
 
     // Network connectivity issues
-    if (errorMessage.includes('network') || errorMessage.includes('timeout') || errorMessage.includes('fetch')) {
+    if (
+      errorMessage.includes('network') ||
+      errorMessage.includes('timeout') ||
+      errorMessage.includes('fetch')
+    ) {
       return {
         code: errorCode,
         message: 'Network connection issue',
         type: 'network',
         canRetry: true,
-        fallbackOptions: ['Try Again', 'Manual Entry']
+        fallbackOptions: ['Try Again', 'Manual Entry'],
       };
     }
 
@@ -45,7 +49,7 @@ export class RecognitionErrorHandler {
         message: 'API authentication failed',
         type: 'api',
         canRetry: false,
-        fallbackOptions: ['Manual Entry']
+        fallbackOptions: ['Manual Entry'],
       };
     }
 
@@ -56,18 +60,21 @@ export class RecognitionErrorHandler {
         message: 'Data processing error',
         type: 'parsing',
         canRetry: true,
-        fallbackOptions: ['Try Again', 'Manual Entry']
+        fallbackOptions: ['Try Again', 'Manual Entry'],
       };
     }
 
     // Generic API errors
-    if (errorMessage.includes('Failed to identify') || errorMessage.includes('Failed to recognize')) {
+    if (
+      errorMessage.includes('Failed to identify') ||
+      errorMessage.includes('Failed to recognize')
+    ) {
       return {
         code: errorCode,
         message: 'Unable to identify cigar details',
         type: 'api',
         canRetry: true,
-        fallbackOptions: ['Try Again', 'Manual Entry', 'Try Different Photo']
+        fallbackOptions: ['Try Again', 'Manual Entry', 'Try Different Photo'],
       };
     }
 
@@ -77,7 +84,7 @@ export class RecognitionErrorHandler {
       message: 'Recognition failed',
       type: 'unknown',
       canRetry: true,
-      fallbackOptions: ['Try Again', 'Manual Entry']
+      fallbackOptions: ['Try Again', 'Manual Entry'],
     };
   }
 
@@ -89,7 +96,7 @@ export class RecognitionErrorHandler {
     onRetry?: () => void,
     onManualEntry?: () => void,
     onTryLater?: () => void,
-    onTryDifferentPhoto?: () => void
+    onTryDifferentPhoto?: () => void,
   ): void {
     const buttons = [];
 
@@ -98,7 +105,7 @@ export class RecognitionErrorHandler {
       buttons.push({
         text: 'Try Again',
         onPress: onRetry,
-        style: 'default' as const
+        style: 'default' as const,
       });
     }
 
@@ -107,7 +114,7 @@ export class RecognitionErrorHandler {
       buttons.push({
         text: 'Manual Entry',
         onPress: onManualEntry,
-        style: 'default' as const
+        style: 'default' as const,
       });
     }
 
@@ -115,7 +122,7 @@ export class RecognitionErrorHandler {
       buttons.push({
         text: 'Try Different Photo',
         onPress: onTryDifferentPhoto,
-        style: 'default' as const
+        style: 'default' as const,
       });
     }
 
@@ -123,21 +130,17 @@ export class RecognitionErrorHandler {
       buttons.push({
         text: 'Try Later',
         onPress: onTryLater,
-        style: 'default' as const
+        style: 'default' as const,
       });
     }
 
     // Always add cancel option
     buttons.push({
       text: 'Cancel',
-      style: 'cancel' as const
+      style: 'cancel' as const,
     });
 
-    Alert.alert(
-      this.getErrorTitle(error),
-      this.getErrorMessage(error),
-      buttons
-    );
+    Alert.alert(this.getErrorTitle(error), this.getErrorMessage(error), buttons);
   }
 
   /**
@@ -168,7 +171,7 @@ export class RecognitionErrorHandler {
       case 'network':
         return 'Please check your internet connection and try again.';
       case 'api':
-        return 'We couldn\'t identify the cigar details from this image. Try a clearer photo or manual entry.';
+        return "We couldn't identify the cigar details from this image. Try a clearer photo or manual entry.";
       case 'parsing':
         return 'There was an issue processing the recognition data. Please try again.';
       default:
@@ -199,12 +202,3 @@ export class RecognitionErrorHandler {
     return actions;
   }
 }
-
-
-
-
-
-
-
-
-

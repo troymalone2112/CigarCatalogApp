@@ -3,14 +3,14 @@ import axios from 'axios';
 import { ChatGPTRecognitionResponse, PerplexitySearchResponse, Cigar } from '../types';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import { StrengthLevel } from '../utils/strengthUtils';
-import { 
-  CIGAR_RECOGNITION_SYSTEM_PROMPT, 
+import {
+  CIGAR_RECOGNITION_SYSTEM_PROMPT,
   CIGAR_RECOGNITION_EXAMPLES,
   CIGAR_SEARCH_SYSTEM_PROMPT,
   CIGAR_SEARCH_EXAMPLES,
   MANUAL_ENTRY_SYSTEM_PROMPT,
   RECOMMENDATION_SYSTEM_PROMPT,
-  RECOMMENDATION_EXAMPLES
+  RECOMMENDATION_EXAMPLES,
 } from './prompts';
 
 // Configuration - API Keys from environment variables
@@ -35,10 +35,10 @@ const openai = new OpenAI({
 });
 
 export enum RecognitionMode {
-  HYBRID = 'hybrid',           // ChatGPT Vision + Perplexity (default)
-  BUDGET = 'budget',           // ChatGPT Vision only
-  MANUAL = 'manual',           // Manual entry + Perplexity
-  PERPLEXITY_ONLY = 'perplexity_only' // Perplexity with user description
+  HYBRID = 'hybrid', // ChatGPT Vision + Perplexity (default)
+  BUDGET = 'budget', // ChatGPT Vision only
+  MANUAL = 'manual', // Manual entry + Perplexity
+  PERPLEXITY_ONLY = 'perplexity_only', // Perplexity with user description
 }
 
 export class APIService {
@@ -47,7 +47,9 @@ export class APIService {
    */
   static async recognizeCigarFromImage(imageUri: string): Promise<ChatGPTRecognitionResponse> {
     if (!OPENAI_API_KEY) {
-      throw new Error('OpenAI API key not configured. Please add EXPO_PUBLIC_OPENAI_API_KEY to your .env file.');
+      throw new Error(
+        'OpenAI API key not configured. Please add EXPO_PUBLIC_OPENAI_API_KEY to your .env file.',
+      );
     }
 
     try {
@@ -55,21 +57,21 @@ export class APIService {
         console.log('🔍 Starting OpenAI Vision API call...');
       }
       const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: 'gpt-4o',
         messages: [
           {
-            role: "system",
-            content: CIGAR_RECOGNITION_SYSTEM_PROMPT
+            role: 'system',
+            content: CIGAR_RECOGNITION_SYSTEM_PROMPT,
           },
           {
-            role: "user",
+            role: 'user',
             content: [
               {
-                type: "text",
-                text: "Analyze this cigar image and provide identification details in the specified JSON format."
+                type: 'text',
+                text: 'Analyze this cigar image and provide identification details in the specified JSON format.',
               },
               {
-                type: "image_url",
+                type: 'image_url',
                 image_url: {
                   url: imageUri,
                 },
@@ -87,14 +89,14 @@ export class APIService {
 
       // Extract JSON from the response (handle markdown code blocks)
       let jsonString = content.trim();
-      
+
       // Remove markdown code blocks if present
       if (jsonString.startsWith('```json')) {
         jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
       } else if (jsonString.startsWith('```')) {
         jsonString = jsonString.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
-      
+
       // Try to find JSON object in the response
       const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -109,7 +111,7 @@ export class APIService {
       return JSON.parse(jsonString) as ChatGPTRecognitionResponse;
     } catch (error: any) {
       console.error('Error recognizing cigar:', error);
-      
+
       // Preserve original error context
       if (error?.message) {
         throw new Error(error.message);
@@ -121,9 +123,16 @@ export class APIService {
   /**
    * Use Perplexity to search for comprehensive cigar information
    */
-  static async searchCigarDetails(brand: string, line?: string, name?: string, size?: string): Promise<PerplexitySearchResponse> {
+  static async searchCigarDetails(
+    brand: string,
+    line?: string,
+    name?: string,
+    size?: string,
+  ): Promise<PerplexitySearchResponse> {
     if (!PERPLEXITY_API_KEY) {
-      throw new Error('Perplexity API key not configured. Please add EXPO_PUBLIC_PERPLEXITY_API_KEY to your .env file.');
+      throw new Error(
+        'Perplexity API key not configured. Please add EXPO_PUBLIC_PERPLEXITY_API_KEY to your .env file.',
+      );
     }
 
     try {
@@ -132,7 +141,7 @@ export class APIService {
         console.log('📚 Search query:', [brand, line, name, size].filter(Boolean).join(' '));
       }
       const searchQuery = [brand, line, name, size].filter(Boolean).join(' ');
-      
+
       const response = await axios.post(
         'https://api.perplexity.ai/chat/completions',
         {
@@ -140,18 +149,18 @@ export class APIService {
           messages: [
             {
               role: 'user',
-              content: `Research comprehensive information about this cigar: "${searchQuery}". ${CIGAR_SEARCH_SYSTEM_PROMPT}\n\nProvide detailed data in the specified JSON format.`
-            }
+              content: `Research comprehensive information about this cigar: "${searchQuery}". ${CIGAR_SEARCH_SYSTEM_PROMPT}\n\nProvide detailed data in the specified JSON format.`,
+            },
           ],
           temperature: 0.1,
-          max_tokens: 1500
+          max_tokens: 1500,
         },
         {
           headers: {
-            'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+            Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
       const content = response.data.choices[0]?.message?.content;
@@ -161,14 +170,14 @@ export class APIService {
 
       // Extract JSON from the response (handle markdown code blocks)
       let jsonString = content.trim();
-      
+
       // Remove markdown code blocks if present
       if (jsonString.startsWith('```json')) {
         jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
       } else if (jsonString.startsWith('```')) {
         jsonString = jsonString.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
-      
+
       // Try to find JSON object in the response
       const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -184,7 +193,10 @@ export class APIService {
     } catch (error) {
       console.error('Error searching cigar details:', error);
       if (error.response) {
-        console.error('Perplexity API error response:', JSON.stringify(error.response.data, null, 2));
+        console.error(
+          'Perplexity API error response:',
+          JSON.stringify(error.response.data, null, 2),
+        );
         console.error('Perplexity API error status:', error.response.status);
         console.error('Perplexity API error headers:', error.response.headers);
       }
@@ -200,16 +212,16 @@ export class APIService {
     line?: string,
     name?: string,
     size?: string,
-    userDescription?: string
+    userDescription?: string,
   ): Promise<PerplexitySearchResponse> {
     try {
       const searchQuery = [brand, line, name, size].filter(Boolean).join(' ');
-      const enhancedQuery = userDescription 
+      const enhancedQuery = userDescription
         ? `${searchQuery} - User notes: ${userDescription}`
         : searchQuery;
 
       console.log('🔍 Manual search for:', enhancedQuery);
-      
+
       return await this.searchCigarDetails(brand, line, name, size);
     } catch (error) {
       console.error('Error in manual cigar search:', error);
@@ -221,15 +233,17 @@ export class APIService {
    * Search for cigar information using user description only
    */
   static async searchCigarByDescription(
-    userDescription: string
+    userDescription: string,
   ): Promise<PerplexitySearchResponse> {
     if (!PERPLEXITY_API_KEY) {
-      throw new Error('Perplexity API key not configured. Please add EXPO_PUBLIC_PERPLEXITY_API_KEY to your .env file.');
+      throw new Error(
+        'Perplexity API key not configured. Please add EXPO_PUBLIC_PERPLEXITY_API_KEY to your .env file.',
+      );
     }
 
     try {
       console.log('🔍 Description-based search for:', userDescription);
-      
+
       const response = await axios.post(
         'https://api.perplexity.ai/chat/completions',
         {
@@ -237,18 +251,18 @@ export class APIService {
           messages: [
             {
               role: 'user',
-              content: `Based on this description, identify the cigar and provide comprehensive information: "${userDescription}". ${CIGAR_SEARCH_SYSTEM_PROMPT}\n\nProvide detailed data in the specified JSON format.`
-            }
+              content: `Based on this description, identify the cigar and provide comprehensive information: "${userDescription}". ${CIGAR_SEARCH_SYSTEM_PROMPT}\n\nProvide detailed data in the specified JSON format.`,
+            },
           ],
           temperature: 0.1,
-          max_tokens: 1500
+          max_tokens: 1500,
         },
         {
           headers: {
-            'Authorization': `Bearer ${PERPLEXITY_API_KEY}`,
+            Authorization: `Bearer ${PERPLEXITY_API_KEY}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
       const content = response.data.choices[0]?.message?.content;
@@ -292,15 +306,15 @@ export class APIService {
   }> {
     try {
       console.log('💰 Using budget mode (ChatGPT only)...');
-      
+
       const response = await openai.chat.completions.create({
-        model: "gpt-4o",
+        model: 'gpt-4o',
         messages: [
           {
-            role: "user",
+            role: 'user',
             content: [
               {
-                type: "text",
+                type: 'text',
                 text: `You are an expert cigar sommelier. Analyze this cigar image and provide comprehensive information based on your training data.
 
                 IDENTIFICATION & ANALYSIS:
@@ -351,10 +365,10 @@ export class APIService {
                   "reasoning": "detailed explanation",
                   "identifyingFeatures": ["feature1", "feature2"],
                   "dataSource": "training_data_only"
-                }`
+                }`,
               },
               {
-                type: "image_url",
+                type: 'image_url',
                 image_url: { url: imageUri },
               },
             ],
@@ -370,14 +384,14 @@ export class APIService {
 
       // Extract JSON from the response (handle markdown code blocks)
       let jsonString = content.trim();
-      
+
       // Remove markdown code blocks if present
       if (jsonString.startsWith('```json')) {
         jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
       } else if (jsonString.startsWith('```')) {
         jsonString = jsonString.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
-      
+
       // Try to find JSON object in the response
       const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -385,35 +399,35 @@ export class APIService {
       }
 
       const result = JSON.parse(jsonString);
-      
+
       console.log(`📋 Full API Response:`, JSON.stringify(result, null, 2));
       console.log(`🍷 Drink Pairings from API:`, result.drinkPairings);
-      
+
       // Provide fallback drink pairings if API didn't return them
       let drinkPairings = result.drinkPairings;
       if (!drinkPairings || !drinkPairings.alcoholic || !drinkPairings.nonAlcoholic) {
         console.log('⚠️ API did not return drink pairings, using fallback based on strength');
         const strength = result.strength?.toLowerCase() || 'medium';
-        
+
         if (strength.includes('mild') || strength.includes('light')) {
           drinkPairings = {
             alcoholic: ['Light Beer', 'White Wine', 'Champagne'],
-            nonAlcoholic: ['Iced Tea', 'Lemonade', 'Sparkling Water']
+            nonAlcoholic: ['Iced Tea', 'Lemonade', 'Sparkling Water'],
           };
         } else if (strength.includes('strong') || strength.includes('full')) {
           drinkPairings = {
             alcoholic: ['Cognac', 'Port Wine', 'Single Malt Scotch'],
-            nonAlcoholic: ['Espresso', 'Dark Roast Coffee', 'Black Tea']
+            nonAlcoholic: ['Espresso', 'Dark Roast Coffee', 'Black Tea'],
           };
         } else {
           drinkPairings = {
             alcoholic: ['Bourbon', 'Scotch', 'Dark Rum'],
-            nonAlcoholic: ['Coffee', 'Hot Chocolate', 'Cola']
+            nonAlcoholic: ['Coffee', 'Hot Chocolate', 'Cola'],
           };
         }
         console.log('✅ Using fallback drink pairings:', drinkPairings);
       }
-      
+
       const recognition: ChatGPTRecognitionResponse = {
         brand: result.brand,
         line: result.line,
@@ -460,7 +474,7 @@ export class APIService {
       // Step 1: Recognize cigar from image
       console.log('🔍 Starting cigar recognition...');
       const recognition = await this.recognizeCigarFromImage(imageUri);
-      
+
       let details: PerplexitySearchResponse | null = null;
       let enrichedCigar: Partial<Cigar> = {
         brand: recognition.brand || 'Unknown Brand',
@@ -481,18 +495,18 @@ export class APIService {
             recognition.brand,
             recognition.line,
             recognition.name,
-            recognition.size
+            recognition.size,
           );
 
           // Merge detailed information
           if (details) {
-          if (DEBUG_API_CALLS) {
-            console.log('📚 Perplexity details received:', JSON.stringify(details, null, 2));
-            console.log('📚 FlavorTags:', details.flavorTags);
-            console.log('📚 FlavorProfile:', details.flavorProfile);
-            console.log('📚 MSRP:', details.msrp);
-            console.log('📚 SingleStickPrice:', details.singleStickPrice);
-          }
+            if (DEBUG_API_CALLS) {
+              console.log('📚 Perplexity details received:', JSON.stringify(details, null, 2));
+              console.log('📚 FlavorTags:', details.flavorTags);
+              console.log('📚 FlavorProfile:', details.flavorProfile);
+              console.log('📚 MSRP:', details.msrp);
+              console.log('📚 SingleStickPrice:', details.singleStickPrice);
+            }
             // Helper function to clean reference numbers from text
             const cleanText = (text: string | undefined): string | undefined => {
               if (!text) return text;
@@ -540,12 +554,12 @@ export class APIService {
       }
 
       // Calculate overall confidence
-      const overallConfidence = details 
+      const overallConfidence = details
         ? Math.round((recognition.confidence + (details.confidence || 70)) / 2)
         : recognition.confidence;
 
       console.log(`✅ Cigar identification complete. Confidence: ${overallConfidence}%`);
-      
+
       if (DEBUG_API_CALLS) {
         console.log('📊 Final enriched cigar data:', JSON.stringify(enrichedCigar, null, 2));
       }
@@ -574,7 +588,7 @@ export class APIService {
       name?: string;
       size?: string;
       userDescription?: string;
-    }
+    },
   ): Promise<{
     recognition?: ChatGPTRecognitionResponse;
     details?: PerplexitySearchResponse;
@@ -589,7 +603,7 @@ export class APIService {
       switch (mode) {
         case RecognitionMode.HYBRID: {
           if (!options.imageUri) throw new Error('Image required for hybrid mode');
-          
+
           const result = await this.identifyAndEnrichCigar(options.imageUri);
           return {
             recognition: result.recognition,
@@ -603,7 +617,7 @@ export class APIService {
 
         case RecognitionMode.BUDGET: {
           if (!options.imageUri) throw new Error('Image required for budget mode');
-          
+
           const result = await this.recognizeCigarBudgetMode(options.imageUri);
           return {
             recognition: result.recognition,
@@ -616,13 +630,13 @@ export class APIService {
 
         case RecognitionMode.MANUAL: {
           if (!options.brand) throw new Error('Brand required for manual mode');
-          
+
           const details = await this.searchCigarByManualEntry(
             options.brand,
             options.line,
             options.name,
             options.size,
-            options.userDescription
+            options.userDescription,
           );
 
           const enrichedCigar: Partial<Cigar> = {
@@ -645,10 +659,11 @@ export class APIService {
         }
 
         case RecognitionMode.PERPLEXITY_ONLY: {
-          if (!options.userDescription) throw new Error('User description required for perplexity-only mode');
-          
+          if (!options.userDescription)
+            throw new Error('User description required for perplexity-only mode');
+
           const details = await this.searchCigarByDescription(options.userDescription);
-          
+
           const enrichedCigar: Partial<Cigar> = {
             id: '',
             brand: details.cigar.brand || 'Unknown',
@@ -687,7 +702,7 @@ export class APIService {
       }
     } catch (error: any) {
       console.error(`❌ Error in ${mode} recognition:`, error);
-      
+
       // Preserve original error context for better debugging
       if (error?.message) {
         throw new Error(error.message);
@@ -701,14 +716,14 @@ export class APIService {
    */
   static async generateRecommendations(
     userPreferences: any,
-    journalEntries: any[]
+    journalEntries: any[],
   ): Promise<string[]> {
     try {
       const response = await openai.chat.completions.create({
-        model: "gpt-4",
+        model: 'gpt-4',
         messages: [
           {
-            role: "user",
+            role: 'user',
             content: `Based on these user preferences and smoking history, recommend 5 cigars:
             
             Preferences: ${JSON.stringify(userPreferences)}
@@ -718,8 +733,8 @@ export class APIService {
             Focus on cigars that match their flavor preferences and strength levels.
             
             Respond in JSON format:
-            ["Recommendation 1: Brand Line - Reason", "Recommendation 2: Brand Line - Reason", ...]`
-          }
+            ["Recommendation 1: Brand Line - Reason", "Recommendation 2: Brand Line - Reason", ...]`,
+          },
         ],
         max_tokens: 800,
         temperature: 0.7,
@@ -732,14 +747,14 @@ export class APIService {
 
       // Extract JSON from the response (handle markdown code blocks)
       let jsonString = content.trim();
-      
+
       // Remove markdown code blocks if present
       if (jsonString.startsWith('```json')) {
         jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
       } else if (jsonString.startsWith('```')) {
         jsonString = jsonString.replace(/^```\s*/, '').replace(/\s*```$/, '');
       }
-      
+
       // Try to find JSON array in the response
       const jsonMatch = jsonString.match(/\[[\s\S]*\]/);
       if (jsonMatch) {

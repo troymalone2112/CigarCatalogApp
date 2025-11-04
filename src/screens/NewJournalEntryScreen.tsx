@@ -22,21 +22,51 @@ import { StorageService } from '../storage/storageService';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import { useJournalDraft } from '../contexts/JournalDraftContext';
 
-type NewJournalEntryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'NewJournalEntry'>;
+type NewJournalEntryScreenNavigationProp = StackNavigationProp<
+  RootStackParamList,
+  'NewJournalEntry'
+>;
 type NewJournalEntryScreenRouteProp = RouteProp<RootStackParamList, 'NewJournalEntry'>;
 
 const FLAVOR_TAGS = [
-  'Woody', 'Earthy', 'Spicy', 'Sweet', 'Creamy', 'Nutty', 'Chocolate', 'Coffee',
-  'Leather', 'Cedar', 'Pepper', 'Vanilla', 'Caramel', 'Honey', 'Fruity', 'Citrus',
-  'Floral', 'Herbal', 'Smoky', 'Toasty', 'Rich', 'Smooth', 'Bold', 'Complex',
-  'Balanced', 'Elegant', 'Robust', 'Refined', 'Intense', 'Subtle'
+  'Woody',
+  'Earthy',
+  'Spicy',
+  'Sweet',
+  'Creamy',
+  'Nutty',
+  'Chocolate',
+  'Coffee',
+  'Leather',
+  'Cedar',
+  'Pepper',
+  'Vanilla',
+  'Caramel',
+  'Honey',
+  'Fruity',
+  'Citrus',
+  'Floral',
+  'Herbal',
+  'Smoky',
+  'Toasty',
+  'Rich',
+  'Smooth',
+  'Bold',
+  'Complex',
+  'Balanced',
+  'Elegant',
+  'Robust',
+  'Refined',
+  'Intense',
+  'Subtle',
 ];
 
 export default function NewJournalEntryScreen() {
   const navigation = useNavigation<NewJournalEntryScreenNavigationProp>();
   const route = useRoute<NewJournalEntryScreenRouteProp>();
   const { cigar, recognitionImageUrl } = route.params;
-  const { currentDraft, saveDraft, loadDraft, clearDraft, isDraftActive, hasUnsavedChanges } = useJournalDraft();
+  const { currentDraft, saveDraft, loadDraft, clearDraft, isDraftActive, hasUnsavedChanges } =
+    useJournalDraft();
 
   // Form state
   const [notes, setNotes] = useState('');
@@ -55,10 +85,10 @@ export default function NewJournalEntryScreen() {
   const initializeScreen = async () => {
     try {
       setIsLoadingDraft(true);
-      
+
       // Try to load existing draft for this cigar
       const existingDraft = await loadDraft(cigar.id);
-      
+
       if (existingDraft) {
         console.log('📝 Restoring draft for cigar:', cigar.brand, cigar.line);
         setNotes(existingDraft.notes);
@@ -66,12 +96,12 @@ export default function NewJournalEntryScreen() {
         setSelectedFlavors(existingDraft.selectedFlavors);
         setPhotos(existingDraft.photos);
         setLocation(existingDraft.location);
-        
+
         // Show restoration message
         Alert.alert(
           'Draft Restored',
           'We found your previous journal entry for this cigar. Your progress has been restored.',
-          [{ text: 'Continue', style: 'default' }]
+          [{ text: 'Continue', style: 'default' }],
         );
       } else {
         console.log('📝 No existing draft found, starting fresh');
@@ -89,7 +119,7 @@ export default function NewJournalEntryScreen() {
     try {
       setLocationLoading(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
-      
+
       if (status !== 'granted') {
         console.log('Location permission not granted');
         return;
@@ -97,10 +127,12 @@ export default function NewJournalEntryScreen() {
 
       const location = await Location.getCurrentPositionAsync({});
       const { latitude, longitude } = location.coords;
-      
+
       const [address] = await Location.reverseGeocodeAsync({ latitude, longitude });
       if (address) {
-        const locationString = [address.city, address.region, address.country].filter(Boolean).join(', ');
+        const locationString = [address.city, address.region, address.country]
+          .filter(Boolean)
+          .join(', ');
         setLocation(locationString);
       }
     } catch (error) {
@@ -143,12 +175,12 @@ export default function NewJournalEntryScreen() {
   };
 
   const toggleFlavor = (flavor: string) => {
-    const newFlavors = selectedFlavors.includes(flavor) 
-      ? selectedFlavors.filter(f => f !== flavor)
+    const newFlavors = selectedFlavors.includes(flavor)
+      ? selectedFlavors.filter((f) => f !== flavor)
       : [...selectedFlavors, flavor];
-    
+
     setSelectedFlavors(newFlavors);
-    
+
     // Auto-save draft
     saveDraft({ selectedFlavors: newFlavors });
   };
@@ -178,11 +210,7 @@ export default function NewJournalEntryScreen() {
             onPress={() => handleRatingChange(star)}
             style={styles.starButton}
           >
-            <Ionicons
-              name={star <= rating ? 'star' : 'star-outline'}
-              size={28}
-              color="#DC851F"
-            />
+            <Ionicons name={star <= rating ? 'star' : 'star-outline'} size={28} color="#DC851F" />
           </TouchableOpacity>
         ))}
       </View>
@@ -195,16 +223,15 @@ export default function NewJournalEntryScreen() {
         {FLAVOR_TAGS.map((flavor) => (
           <TouchableOpacity
             key={flavor}
-            style={[
-              styles.flavorTag,
-              selectedFlavors.includes(flavor) && styles.selectedFlavorTag
-            ]}
+            style={[styles.flavorTag, selectedFlavors.includes(flavor) && styles.selectedFlavorTag]}
             onPress={() => toggleFlavor(flavor)}
           >
-            <Text style={[
-              styles.flavorTagText,
-              selectedFlavors.includes(flavor) && styles.selectedFlavorTagText
-            ]}>
+            <Text
+              style={[
+                styles.flavorTagText,
+                selectedFlavors.includes(flavor) && styles.selectedFlavorTagText,
+              ]}
+            >
               {flavor}
             </Text>
           </TouchableOpacity>
@@ -235,10 +262,7 @@ export default function NewJournalEntryScreen() {
           {photos.map((photo, index) => (
             <View key={index} style={styles.photoItem}>
               <Image source={{ uri: photo }} style={styles.photo} />
-              <TouchableOpacity
-                style={styles.removePhotoButton}
-                onPress={() => removePhoto(index)}
-              >
+              <TouchableOpacity style={styles.removePhotoButton} onPress={() => removePhoto(index)}>
                 <Ionicons name="close-circle" size={24} color="#EF4444" />
               </TouchableOpacity>
             </View>
@@ -254,9 +278,9 @@ export default function NewJournalEntryScreen() {
 
       // Generate a proper UUID v4
       const generateUUID = () => {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-          const r = Math.random() * 16 | 0;
-          const v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+          const r = (Math.random() * 16) | 0;
+          const v = c == 'x' ? r : (r & 0x3) | 0x8;
           return v.toString(16);
         });
       };
@@ -270,33 +294,36 @@ export default function NewJournalEntryScreen() {
         },
         selectedFlavors,
         notes: notes.trim() || '',
-        location: location ? {
-          city: location.split(',')[0]?.trim() || '',
-          state: location.split(',')[1]?.trim() || undefined,
-          country: location.split(',')[2]?.trim() || undefined,
-        } : undefined,
-        imageUrl: recognitionImageUrl || (cigar.imageUrl === 'placeholder' ? 'placeholder' : undefined), // Store the recognition image or placeholder
+        location: location
+          ? {
+              city: location.split(',')[0]?.trim() || '',
+              state: location.split(',')[1]?.trim() || undefined,
+              country: location.split(',')[2]?.trim() || undefined,
+            }
+          : undefined,
+        imageUrl:
+          recognitionImageUrl || (cigar.imageUrl === 'placeholder' ? 'placeholder' : undefined), // Store the recognition image or placeholder
         photos: photos.length > 0 ? photos : undefined, // Store all photos in the photos array
       };
 
       await StorageService.saveJournalEntry(journalEntry);
-      
+
       // Clear the draft after successful save
       await clearDraft();
-      
+
       // Navigate back to journal list
       navigation.navigate('MainTabs', { screen: 'Journal' });
     } catch (error: any) {
       console.error('Error saving journal entry:', error);
-      
+
       // Check if it's a network error
       if (error.message?.includes('Network request failed')) {
         Alert.alert(
-          'Network Error', 
+          'Network Error',
           'Your journal entry has been saved locally and will sync when your connection is restored.',
-          [{ text: 'OK', style: 'default' }]
+          [{ text: 'OK', style: 'default' }],
         );
-        
+
         // Still navigate to journal since entry is saved locally
         navigation.navigate('MainTabs', { screen: 'Journal' });
       } else {
@@ -309,21 +336,17 @@ export default function NewJournalEntryScreen() {
 
   const handleCancel = () => {
     if (hasUnsavedChanges) {
-      Alert.alert(
-        'Unsaved Changes',
-        'You have unsaved changes. Are you sure you want to leave?',
-        [
-          { text: 'Stay', style: 'cancel' },
-          { 
-            text: 'Leave', 
-            style: 'destructive',
-            onPress: () => {
-              // Draft will be preserved for when they return
-              navigation.goBack();
-            }
-          }
-        ]
-      );
+      Alert.alert('Unsaved Changes', 'You have unsaved changes. Are you sure you want to leave?', [
+        { text: 'Stay', style: 'cancel' },
+        {
+          text: 'Leave',
+          style: 'destructive',
+          onPress: () => {
+            // Draft will be preserved for when they return
+            navigation.goBack();
+          },
+        },
+      ]);
     } else {
       navigation.goBack();
     }
@@ -345,21 +368,17 @@ export default function NewJournalEntryScreen() {
           </TouchableOpacity>
           <View style={styles.headerCenter}>
             <Text style={styles.headerTitle}>New Journal Entry</Text>
-            {isLoadingDraft && (
-              <Text style={styles.draftStatus}>Loading draft...</Text>
-            )}
+            {isLoadingDraft && <Text style={styles.draftStatus}>Loading draft...</Text>}
             {hasUnsavedChanges && !isLoadingDraft && (
               <Text style={styles.draftStatus}>Draft saved</Text>
             )}
           </View>
-          <TouchableOpacity 
-            onPress={handleSave} 
+          <TouchableOpacity
+            onPress={handleSave}
             style={[styles.saveButton, isSaving && styles.disabledButton]}
             disabled={isSaving}
           >
-            <Text style={styles.saveButtonText}>
-              {isSaving ? 'Saving...' : 'Save'}
-            </Text>
+            <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save'}</Text>
           </TouchableOpacity>
         </View>
 
@@ -370,19 +389,32 @@ export default function NewJournalEntryScreen() {
               {recognitionImageUrl ? (
                 <Image source={{ uri: recognitionImageUrl }} style={styles.cigarImage} />
               ) : (
-                <Image source={require('../../assets/cigar-placeholder.jpg')} style={styles.cigarImage} />
+                <Image
+                  source={require('../../assets/cigar-placeholder.jpg')}
+                  style={styles.cigarImage}
+                />
               )}
               <View style={styles.cigarDetails}>
                 <Text style={styles.cigarBrand}>{cigar.brand}</Text>
                 <Text style={styles.cigarName}>{cigar.line}</Text>
-                <View style={[styles.strengthBadge, {
-                  backgroundColor: getStrengthInfo(cigar.strength).backgroundColor,
-                  borderColor: getStrengthInfo(cigar.strength).borderColor,
-                  borderWidth: 1,
-                }]}>
-                  <Text style={[styles.strengthBadgeText, {
-                    color: getStrengthInfo(cigar.strength).color,
-                  }]}>
+                <View
+                  style={[
+                    styles.strengthBadge,
+                    {
+                      backgroundColor: getStrengthInfo(cigar.strength).backgroundColor,
+                      borderColor: getStrengthInfo(cigar.strength).borderColor,
+                      borderWidth: 1,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.strengthBadgeText,
+                      {
+                        color: getStrengthInfo(cigar.strength).color,
+                      },
+                    ]}
+                  >
                     {cigar.strength}
                   </Text>
                 </View>
@@ -435,7 +467,9 @@ export default function NewJournalEntryScreen() {
               style={styles.locationInput}
               value={location}
               onChangeText={handleLocationChange}
-              placeholder={locationLoading ? "Getting location..." : "Where did you enjoy this cigar?"}
+              placeholder={
+                locationLoading ? 'Getting location...' : 'Where did you enjoy this cigar?'
+              }
               placeholderTextColor="#666"
             />
           </View>

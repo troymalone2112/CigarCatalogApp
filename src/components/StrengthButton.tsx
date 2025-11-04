@@ -10,15 +10,15 @@ interface StrengthButtonProps {
   disabled?: boolean;
 }
 
-export default function StrengthButton({ 
-  strength, 
-  onPress, 
-  selected = false, 
+export default function StrengthButton({
+  strength,
+  onPress,
+  selected = false,
   size = 'medium',
-  disabled = false 
+  disabled = false,
 }: StrengthButtonProps) {
   const strengthInfo = getStrengthInfo(strength);
-  
+
   const buttonStyle = [
     styles.button,
     styles[size],
@@ -26,7 +26,7 @@ export default function StrengthButton({
       backgroundColor: selected ? strengthInfo.color : strengthInfo.backgroundColor,
       borderColor: strengthInfo.borderColor,
     },
-    disabled && styles.disabled
+    disabled && styles.disabled,
   ];
 
   const textStyle = [
@@ -35,16 +35,11 @@ export default function StrengthButton({
     {
       color: selected ? '#FFFFFF' : strengthInfo.color,
     },
-    disabled && styles.disabledText
+    disabled && styles.disabledText,
   ];
 
   return (
-    <TouchableOpacity
-      style={buttonStyle}
-      onPress={onPress}
-      disabled={disabled}
-      activeOpacity={0.7}
-    >
+    <TouchableOpacity style={buttonStyle} onPress={onPress} disabled={disabled} activeOpacity={0.7}>
       <Text style={textStyle}>{strengthInfo.label}</Text>
     </TouchableOpacity>
   );
@@ -100,10 +95,10 @@ interface StrengthSelectorProps {
   size?: 'small' | 'medium' | 'large';
 }
 
-export function StrengthSelector({ 
-  selectedStrength, 
-  onStrengthSelect, 
-  size = 'medium' 
+export function StrengthSelector({
+  selectedStrength,
+  onStrengthSelect,
+  size = 'medium',
 }: StrengthSelectorProps) {
   const strengthLevels: StrengthLevel[] = ['Mild', 'Mild-Medium', 'Medium', 'Medium-Full', 'Full'];
 

@@ -17,6 +17,7 @@
 ### **Step 1: Fix Database RLS Policies**
 
 **Go to your Supabase dashboard:**
+
 1. Open **SQL Editor**
 2. Run the contents of `fix_subscription_rls.sql`
 3. This will:
@@ -27,19 +28,22 @@
 ### **Step 2: Verify the Fix**
 
 **Run this command to check the results:**
+
 ```bash
 node check_subscription_status.js
 ```
 
 **You should see:**
+
 - ✅ All users now have subscription records
-- ✅ Status shows "trial" 
+- ✅ Status shows "trial"
 - ✅ `is_premium` shows `false`
 - ✅ Trial end date is 3 days from now
 
 ### **Step 3: Test the App**
 
 **After applying the database fix:**
+
 1. **Open your app** - You should now see the trial banner
 2. **Check profile screen** - Should show "Free trial" status
 3. **Look for upgrade button** - Should show "Upgrade to Premium"
@@ -48,12 +52,14 @@ node check_subscription_status.js
 ## Expected Results After Fix 🎯
 
 ### **Before Fix (Current State):**
-- ❌ App shows "already upgraded" 
+
+- ❌ App shows "already upgraded"
 - ❌ No trial banner
 - ❌ No upgrade button
 - ❌ Profile shows premium status
 
 ### **After Fix (Correct State):**
+
 - ✅ App shows trial banner: "X days left in your free trial"
 - ✅ Profile shows "Free trial" status
 - ✅ Upgrade button shows "Upgrade to Premium"
@@ -85,16 +91,19 @@ node check_subscription_status.js
 ## Debug Commands 🛠️
 
 ### **Check Current Status:**
+
 ```bash
 node check_subscription_status.js
 ```
 
 ### **Check Database Schema:**
+
 ```bash
 node check_database_schema.js
 ```
 
 ### **Clear User for Testing:**
+
 ```bash
 node clear_user_for_testing.js --reset USER_ID_HERE
 ```
@@ -116,7 +125,3 @@ node clear_user_for_testing.js --reset USER_ID_HERE
 **The result:** Users will see the correct trial status and can test the upgrade flow.
 
 Once you apply the database fix, your users should see the trial banner and upgrade button, allowing you to properly test the subscription upgrade flow! 🎉
-
-
-
-

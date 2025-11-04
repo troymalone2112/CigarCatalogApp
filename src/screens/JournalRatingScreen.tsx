@@ -19,10 +19,36 @@ type JournalRatingScreenNavigationProp = StackNavigationProp<RootStackParamList,
 type JournalRatingScreenRouteProp = RouteProp<RootStackParamList, 'JournalRating'>;
 
 const FLAVOR_TAGS = [
-  'Woody', 'Earthy', 'Spicy', 'Sweet', 'Creamy', 'Nutty', 'Chocolate', 'Coffee',
-  'Leather', 'Cedar', 'Pepper', 'Vanilla', 'Caramel', 'Honey', 'Fruity', 'Citrus',
-  'Floral', 'Herbal', 'Smoky', 'Toasty', 'Rich', 'Smooth', 'Bold', 'Complex',
-  'Balanced', 'Elegant', 'Robust', 'Refined', 'Intense', 'Subtle'
+  'Woody',
+  'Earthy',
+  'Spicy',
+  'Sweet',
+  'Creamy',
+  'Nutty',
+  'Chocolate',
+  'Coffee',
+  'Leather',
+  'Cedar',
+  'Pepper',
+  'Vanilla',
+  'Caramel',
+  'Honey',
+  'Fruity',
+  'Citrus',
+  'Floral',
+  'Herbal',
+  'Smoky',
+  'Toasty',
+  'Rich',
+  'Smooth',
+  'Bold',
+  'Complex',
+  'Balanced',
+  'Elegant',
+  'Robust',
+  'Refined',
+  'Intense',
+  'Subtle',
 ];
 
 export default function JournalRatingScreen() {
@@ -50,7 +76,7 @@ export default function JournalRatingScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setPhotos(prev => [...prev, result.assets[0].uri]);
+        setPhotos((prev) => [...prev, result.assets[0].uri]);
       }
     } catch (error) {
       console.error('Error taking picture:', error);
@@ -59,21 +85,19 @@ export default function JournalRatingScreen() {
   };
 
   const handleFlavorToggle = (flavor: string) => {
-    setSelectedFlavors(prev => 
-      prev.includes(flavor) 
-        ? prev.filter(f => f !== flavor)
-        : [...prev, flavor]
+    setSelectedFlavors((prev) =>
+      prev.includes(flavor) ? prev.filter((f) => f !== flavor) : [...prev, flavor],
     );
   };
 
   const handleContinue = () => {
-    navigation.navigate('JournalNotes', { 
-      cigar, 
-      rating, 
+    navigation.navigate('JournalNotes', {
+      cigar,
+      rating,
       selectedFlavors,
       initialNotes,
       location,
-      photos: photos
+      photos: photos,
     });
   };
 
@@ -85,26 +109,27 @@ export default function JournalRatingScreen() {
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
             <TouchableOpacity
               key={num}
-              style={[
-                styles.ratingButton,
-                rating === num && styles.ratingButtonSelected
-              ]}
+              style={[styles.ratingButton, rating === num && styles.ratingButtonSelected]}
               onPress={() => setRating(num)}
             >
-              <Text style={[
-                styles.ratingButtonText,
-                rating === num && styles.ratingButtonTextSelected
-              ]}>
+              <Text
+                style={[styles.ratingButtonText, rating === num && styles.ratingButtonTextSelected]}
+              >
                 {num}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
         <Text style={styles.ratingDescription}>
-          {rating <= 3 ? 'Poor' : 
-           rating <= 5 ? 'Fair' : 
-           rating <= 7 ? 'Good' : 
-           rating <= 9 ? 'Excellent' : 'Outstanding'}
+          {rating <= 3
+            ? 'Poor'
+            : rating <= 5
+              ? 'Fair'
+              : rating <= 7
+                ? 'Good'
+                : rating <= 9
+                  ? 'Excellent'
+                  : 'Outstanding'}
         </Text>
       </View>
     );
@@ -121,14 +146,16 @@ export default function JournalRatingScreen() {
               key={flavor}
               style={[
                 styles.flavorTag,
-                selectedFlavors.includes(flavor) && styles.flavorTagSelected
+                selectedFlavors.includes(flavor) && styles.flavorTagSelected,
               ]}
               onPress={() => handleFlavorToggle(flavor)}
             >
-              <Text style={[
-                styles.flavorTagText,
-                selectedFlavors.includes(flavor) && styles.flavorTagTextSelected
-              ]}>
+              <Text
+                style={[
+                  styles.flavorTagText,
+                  selectedFlavors.includes(flavor) && styles.flavorTagTextSelected,
+                ]}
+              >
                 {flavor}
               </Text>
             </TouchableOpacity>
@@ -139,13 +166,12 @@ export default function JournalRatingScreen() {
   };
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.fullScreenBackground}
       imageStyle={styles.tobaccoBackgroundImage}
     >
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-
         <View style={styles.cigarInfo}>
           <Text style={styles.cigarBrand}>{cigar.brand}</Text>
           <Text style={styles.cigarLine}>{cigar.line}</Text>
@@ -162,28 +188,22 @@ export default function JournalRatingScreen() {
             {photos.map((photo, index) => (
               <View key={index} style={styles.photoWrapper}>
                 <Image source={{ uri: photo }} style={styles.photo} />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.deletePhotoButton}
-                  onPress={() => setPhotos(prev => prev.filter((_, i) => i !== index))}
+                  onPress={() => setPhotos((prev) => prev.filter((_, i) => i !== index))}
                 >
                   <Ionicons name="close" size={16} color="#dc3545" />
                 </TouchableOpacity>
               </View>
             ))}
-            
-            <TouchableOpacity 
-              style={styles.addPhotoButton}
-              onPress={takePicture}
-            >
+
+            <TouchableOpacity style={styles.addPhotoButton} onPress={takePicture}>
               <Ionicons name="camera" size={48} color="#DC851F" />
             </TouchableOpacity>
           </View>
         </View>
 
-        <TouchableOpacity 
-          style={styles.continueButton}
-          onPress={handleContinue}
-        >
+        <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
           <Text style={styles.continueButtonText}>Continue to Notes</Text>
           <Ionicons name="arrow-forward" size={20} color="white" />
         </TouchableOpacity>

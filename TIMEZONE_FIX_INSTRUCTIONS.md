@@ -1,9 +1,11 @@
 # Timezone Fix for Trial Dates
 
 ## Problem
+
 The current trial dates are using UTC time, but we need to use the user's actual timezone for accurate trial tracking.
 
 ## Solution
+
 Run this SQL in your Supabase SQL Editor:
 
 ```sql
@@ -22,18 +24,18 @@ DECLARE
 BEGIN
   -- Extract timezone from user metadata, default to 'UTC' if not provided
   user_timezone := COALESCE(NEW.raw_user_meta_data->>'timezone', 'UTC');
-  
+
   -- Convert current UTC time to user's timezone for trial start
   trial_start_utc := NOW() AT TIME ZONE 'UTC';
-  
+
   -- Calculate trial end (3 days from now in user's timezone, then convert back to UTC)
   trial_end_utc := (NOW() AT TIME ZONE user_timezone + INTERVAL '3 days') AT TIME ZONE 'UTC';
-  
+
   -- Insert profile with ON CONFLICT to handle duplicates
   INSERT INTO public.profiles (id, email, full_name, created_at, updated_at, onboarding_completed)
   VALUES (
-    NEW.id, 
-    NEW.email, 
+    NEW.id,
+    NEW.email,
     COALESCE(NEW.raw_user_meta_data->>'full_name', 'New User'),
     trial_start_utc, -- Use UTC for created_at
     trial_start_utc, -- Use UTC for updated_at
@@ -45,17 +47,17 @@ BEGIN
     updated_at = trial_start_utc;
 
   -- Get the trial plan ID
-  SELECT id INTO trial_plan_id 
-  FROM public.subscription_plans 
-  WHERE name = 'Free Trial' 
+  SELECT id INTO trial_plan_id
+  FROM public.subscription_plans
+  WHERE name = 'Free Trial'
   AND is_active = true
   LIMIT 1;
 
   -- Create trial subscription if plan exists
   IF trial_plan_id IS NOT NULL THEN
     INSERT INTO public.user_subscriptions (
-      user_id, 
-      plan_id, 
+      user_id,
+      plan_id,
       status,
       trial_start_date,
       trial_end_date,
@@ -76,8 +78,8 @@ BEGIN
   -- Create default humidor for new user
   INSERT INTO public.humidors (
     id,
-    user_id, 
-    name, 
+    user_id,
+    name,
     description,
     capacity,
     created_at,
@@ -117,12 +119,13 @@ CREATE TRIGGER on_auth_user_created
 ## Example
 
 - **User in New York (EST)**: Trial ends at 11:59 PM EST 3 days later
-- **User in Tokyo (JST)**: Trial ends at 11:59 PM JST 3 days later  
+- **User in Tokyo (JST)**: Trial ends at 11:59 PM JST 3 days later
 - **User in London (GMT)**: Trial ends at 11:59 PM GMT 3 days later
 
 ## Testing
 
 After applying this fix, create a new user account and check that:
+
 1. The trial starts immediately
 2. The trial ends exactly 3 days later in the user's local timezone
 3. The upgrade banner shows correctly based on the user's timezone

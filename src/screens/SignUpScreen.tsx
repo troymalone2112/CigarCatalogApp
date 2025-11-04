@@ -33,7 +33,7 @@ export default function SignUpScreen() {
 
   const handleSignUp = async () => {
     if (isSubmitting || loading) return;
-    
+
     if (!fullName || !email || !password || !confirmPassword) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
@@ -67,33 +67,46 @@ export default function SignUpScreen() {
   };
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.backgroundImage}
       imageStyle={styles.tobaccoBackgroundImage}
     >
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
-        <ScrollView 
+        <ScrollView
           ref={scrollViewRef}
-          contentContainerStyle={styles.scrollContainer} 
+          contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.content}>
             {/* Header */}
             <View style={styles.header}>
-              <Text style={styles.title}>Create Account</Text>
-              <Text style={styles.subtitle}>Join the cigar community</Text>
+              <Text style={styles.title}>Welcome to Your Personal Humidor</Text>
+              <Text style={styles.subtitle}>
+                To bring you a tailored experience, securely save your cigar collection, and
+                preserve your tasting notes and ratings across all your devices, please create an
+                account.
+              </Text>
+              <Text style={styles.helperText}>
+                Your account keeps your unique cigar journey private, safe, and always at your
+                fingertips.
+              </Text>
             </View>
 
             {/* Sign Up Form */}
             <View style={styles.form}>
               {/* Screen Name Input */}
               <View style={styles.inputContainer}>
-                <Ionicons name="person-outline" size={20} color="#DC851F" style={styles.inputIcon} />
+                <Ionicons
+                  name="person-outline"
+                  size={20}
+                  color="#DC851F"
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Screen Name"
@@ -122,7 +135,12 @@ export default function SignUpScreen() {
 
               {/* Password Input */}
               <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#DC851F" style={styles.inputIcon} />
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color="#DC851F"
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Password"
@@ -136,17 +154,22 @@ export default function SignUpScreen() {
                   onPress={() => setShowPassword(!showPassword)}
                   style={styles.eyeIcon}
                 >
-                  <Ionicons 
-                    name={showPassword ? 'eye-outline' : 'eye-off-outline'} 
-                    size={20} 
-                    color="#999" 
+                  <Ionicons
+                    name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={20}
+                    color="#999"
                   />
                 </TouchableOpacity>
               </View>
 
               {/* Confirm Password Input */}
               <View style={styles.inputContainer}>
-                <Ionicons name="lock-closed-outline" size={20} color="#DC851F" style={styles.inputIcon} />
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color="#DC851F"
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={styles.input}
                   placeholder="Confirm Password"
@@ -160,22 +183,25 @@ export default function SignUpScreen() {
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                   style={styles.eyeIcon}
                 >
-                  <Ionicons 
-                    name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'} 
-                    size={20} 
-                    color="#999" 
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
+                    size={20}
+                    color="#999"
                   />
                 </TouchableOpacity>
               </View>
 
               {/* Sign Up Button */}
-              <TouchableOpacity 
-                style={[styles.signUpButton, (loading || isSubmitting) && styles.signUpButtonDisabled]} 
+              <TouchableOpacity
+                style={[
+                  styles.signUpButton,
+                  (loading || isSubmitting) && styles.signUpButtonDisabled,
+                ]}
                 onPress={handleSignUp}
                 disabled={loading || isSubmitting}
               >
                 <Text style={styles.signUpButtonText}>
-                  {(loading || isSubmitting) ? 'Creating Account...' : 'Create Account'}
+                  {loading || isSubmitting ? 'Creating Account...' : 'Create Account'}
                 </Text>
               </TouchableOpacity>
 
@@ -233,6 +259,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FFA737',
     textAlign: 'center',
+  },
+  helperText: {
+    fontSize: 12,
+    color: '#999999',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 18,
   },
   form: {
     backgroundColor: '#1a1a1a',
@@ -299,6 +332,3 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
 });
-
-
-

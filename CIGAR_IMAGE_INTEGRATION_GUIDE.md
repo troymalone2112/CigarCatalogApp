@@ -1,21 +1,25 @@
 # Cigar Image Integration Guide
 
 ## Overview
+
 This guide explains how to integrate the cigar images with your database and display them in your React Native app.
 
 ## What's Been Set Up
 
 ### 1. Database Schema Updates
+
 - **File**: `cigar_database_schema.sql`
 - **Changes**: Added `image_url` and `image_path` fields to the `cigars` table
 - **Purpose**: Store image filenames and full paths for each cigar
 
 ### 2. Image Mapping Script
+
 - **File**: `cigar_image_mapping.js`
 - **Purpose**: Maps cigar images to database entries
 - **Usage**: `npm run map-images`
 
 ### 3. Image Service
+
 - **File**: `src/services/cigarImageService.ts`
 - **Purpose**: Handles image loading, fallbacks, and path resolution
 - **Features**:
@@ -24,16 +28,19 @@ This guide explains how to integrate the cigar images with your database and dis
   - Preloading capabilities
 
 ### 4. Updated Types
+
 - **File**: `src/types/index.ts`
 - **Changes**: Added `DatabaseCigar` interface for database cigars
 - **Purpose**: Type safety for database operations
 
 ### 5. Recommendation Service Updates
+
 - **File**: `src/services/recommendationService.ts`
 - **Changes**: Updated to use `DatabaseCigar` type and include image handling
 - **Purpose**: Seamless integration with existing recommendation system
 
 ### 6. React Native Component
+
 - **File**: `src/components/CigarRecommendationCard.tsx`
 - **Purpose**: Display cigar recommendations with images
 - **Features**:
@@ -44,6 +51,7 @@ This guide explains how to integrate the cigar images with your database and dis
 ## Image Mapping Results
 
 ### ✅ Perfect Matches (23 cigars):
+
 1. **My Father - The Judge Grand Robusto** → `01_my_father_judge_grand_robusto.jpeg`
 2. **Montecristo - 1935 Anniversary Nicaragua Espeso** → `02_montecristo_1935_anniversary_nicaragua_espeso.jpeg`
 3. **Partagás - Línea Maestra Maestro** → `05_partagas_linea_maestra_maestro.jpeg`
@@ -69,12 +77,14 @@ This guide explains how to integrate the cigar images with your database and dis
 23. **Rocky Patel - Conviction Toro** → `Rocky_Patel_Conviction_Toro.jpeg`
 
 ### ⚠️ Missing Images (2 cigars):
+
 1. **Arturo Fuente - Don Carlos No. 4** (2024 #3)
 2. **Drew Estate - Liga Privada No. 9 Toro** (2024 #4)
 
 ## Next Steps
 
 ### 1. Run the Migration
+
 ```bash
 # First, migrate the cigar data
 npm run migrate-data
@@ -84,6 +94,7 @@ npm run map-images
 ```
 
 ### 2. Test the Integration
+
 ```typescript
 // Example usage in your React Native component
 import { CigarImageService } from '../services/cigarImageService';
@@ -93,8 +104,8 @@ import CigarRecommendationCard from '../components/CigarRecommendationCard';
 const imageSource = CigarImageService.getCigarImageSource(cigar);
 
 // Display recommendation with image
-<CigarRecommendationCard 
-  cigar={cigar} 
+<CigarRecommendationCard
+  cigar={cigar}
   matchScore={0.95}
   reason="Top-rated cigar with exceptional flavor profile"
   onPress={() => navigation.navigate('CigarDetails', { cigar })}
@@ -102,10 +113,13 @@ const imageSource = CigarImageService.getCigarImageSource(cigar);
 ```
 
 ### 3. Add to Recommendations Screen
+
 You can now use the `CigarRecommendationCard` component in your recommendations screen to display cigars with their images.
 
 ### 4. Preload Images (Optional)
+
 For better performance, you can preload images during app initialization:
+
 ```typescript
 import { CigarImageService } from '../services/cigarImageService';
 
@@ -116,6 +130,7 @@ useEffect(() => {
 ```
 
 ## File Structure
+
 ```
 src/
 ├── services/
@@ -149,16 +164,19 @@ Root/
 ## Troubleshooting
 
 ### Images Not Loading
+
 - Check that image files are in `assets/Cigar_Images/` folder
 - Verify image filenames match exactly (case-sensitive)
 - Ensure images are properly bundled with the app
 
 ### Database Issues
+
 - Make sure Supabase environment variables are set
 - Verify the `cigars` table exists with image fields
 - Check that the migration scripts ran successfully
 
 ### Performance Issues
+
 - Consider implementing image caching
 - Use image preloading for frequently accessed cigars
 - Optimize image sizes for mobile devices

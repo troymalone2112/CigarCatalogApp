@@ -61,12 +61,7 @@ export default function HumidorCapacitySetupModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView
         style={styles.overlay}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -79,9 +74,7 @@ export default function HumidorCapacitySetupModal({
                 <Ionicons name="cube" size={32} color="#DC851F" />
               </View>
               <Text style={styles.title}>Set Humidor Capacity</Text>
-              <Text style={styles.subtitle}>
-                How many cigars can your "{humidorName}" hold?
-              </Text>
+              <Text style={styles.subtitle}>How many cigars can your "{humidorName}" hold?</Text>
             </View>
 
             {/* Input Section */}
@@ -89,10 +82,7 @@ export default function HumidorCapacitySetupModal({
               <Text style={styles.inputLabel}>Capacity (optional)</Text>
               <View style={styles.inputContainer}>
                 <TextInput
-                  style={[
-                    styles.input,
-                    !isValid && capacity !== '' && styles.inputError
-                  ]}
+                  style={[styles.input, !isValid && capacity !== '' && styles.inputError]}
                   value={capacity}
                   onChangeText={handleCapacityChange}
                   placeholder="e.g., 100"
@@ -104,9 +94,7 @@ export default function HumidorCapacitySetupModal({
                 <Text style={styles.inputSuffix}>cigars</Text>
               </View>
               {!isValid && capacity !== '' && (
-                <Text style={styles.errorText}>
-                  Please enter a number between 1 and 10,000
-                </Text>
+                <Text style={styles.errorText}>Please enter a number between 1 and 10,000</Text>
               )}
               <Text style={styles.helpText}>
                 This helps track how full your humidor is. You can change this later in settings.
@@ -115,18 +103,12 @@ export default function HumidorCapacitySetupModal({
 
             {/* Action Buttons */}
             <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                style={styles.skipButton}
-                onPress={handleSkip}
-              >
+              <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
                 <Text style={styles.skipButtonText}>Skip</Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
-                style={[
-                  styles.saveButton,
-                  capacity.trim() === '' && styles.saveButtonDisabled
-                ]}
+                style={[styles.saveButton, capacity.trim() === '' && styles.saveButtonDisabled]}
                 onPress={handleSave}
                 disabled={capacity.trim() !== '' && !isValid}
               >
@@ -269,4 +251,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-

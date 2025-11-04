@@ -71,30 +71,21 @@ export const VITOLA_OPTIONS = [
 
 // Helper functions
 export const getAgingLabel = (months: number): string => {
-  const option = AGING_PREFERENCE_OPTIONS.find(opt => opt.value === months);
+  const option = AGING_PREFERENCE_OPTIONS.find((opt) => opt.value === months);
   return option ? option.label : 'Unknown';
 };
 
 export const getLengthLabel = (inches: number): string => {
-  const option = LENGTH_OPTIONS.find(opt => opt.value === inches);
+  const option = LENGTH_OPTIONS.find((opt) => opt.value === inches);
   return option ? option.label : 'Unknown';
 };
 
 export const getRingGaugeLabel = (gauge: number): string => {
-  const option = RING_GAUGE_OPTIONS.find(opt => opt.value === gauge);
+  const option = RING_GAUGE_OPTIONS.find((opt) => opt.value === gauge);
   return option ? option.label : 'Unknown';
 };
 
 export const getVitolaLabel = (vitola: string): string => {
-  const option = VITOLA_OPTIONS.find(opt => opt.value === vitola);
+  const option = VITOLA_OPTIONS.find((opt) => opt.value === vitola);
   return option ? option.label : vitola;
 };
-
-
-
-
-
-
-
-
-

@@ -12,12 +12,12 @@ export class CacheClear {
   static async clearJournalCache(): Promise<void> {
     try {
       console.log('🧹 Clearing journal cache...');
-      
+
       await Promise.all([
         AsyncStorage.removeItem('journal_entries_cache'),
-        AsyncStorage.removeItem('journal_cache_metadata')
+        AsyncStorage.removeItem('journal_cache_metadata'),
       ]);
-      
+
       console.log('✅ Journal cache cleared successfully');
     } catch (error) {
       console.error('❌ Error clearing journal cache:', error);
@@ -31,15 +31,16 @@ export class CacheClear {
   static async clearAllCache(): Promise<void> {
     try {
       console.log('🧹 Clearing all app cache...');
-      
+
       const keys = await AsyncStorage.getAllKeys();
-      const cacheKeys = keys.filter(key => 
-        key.includes('cache') || 
-        key.includes('journal') || 
-        key.includes('inventory') ||
-        key.includes('humidor')
+      const cacheKeys = keys.filter(
+        (key) =>
+          key.includes('cache') ||
+          key.includes('journal') ||
+          key.includes('inventory') ||
+          key.includes('humidor'),
       );
-      
+
       if (cacheKeys.length > 0) {
         await AsyncStorage.multiRemove(cacheKeys);
         console.log(`✅ Cleared ${cacheKeys.length} cache keys`);
@@ -62,13 +63,14 @@ export class CacheClear {
   }> {
     try {
       const keys = await AsyncStorage.getAllKeys();
-      const cacheKeys = keys.filter(key => 
-        key.includes('cache') || 
-        key.includes('journal') || 
-        key.includes('inventory') ||
-        key.includes('humidor')
+      const cacheKeys = keys.filter(
+        (key) =>
+          key.includes('cache') ||
+          key.includes('journal') ||
+          key.includes('inventory') ||
+          key.includes('humidor'),
       );
-      
+
       let totalSize = 0;
       for (const key of cacheKeys) {
         const value = await AsyncStorage.getItem(key);
@@ -76,22 +78,20 @@ export class CacheClear {
           totalSize += value.length;
         }
       }
-      
+
       return {
         totalKeys: keys.length,
         cacheKeys,
-        totalSize
+        totalSize,
       };
     } catch (error) {
       console.error('❌ Error getting cache stats:', error);
       return {
         totalKeys: 0,
         cacheKeys: [],
-        totalSize: 0
+        totalSize: 0,
       };
     }
   }
 }
-
-
 

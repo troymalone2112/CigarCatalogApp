@@ -1,13 +1,15 @@
 # 🔄 Git Workflow Guide - Safe Development with Fallbacks
 
 ## 🎯 **Current Setup**
+
 ✅ **Git repository initialized**  
 ✅ **Stable checkpoint created** (current working code)  
-✅ **All TestFlight fixes committed**  
+✅ **All TestFlight fixes committed**
 
 ## 🏗️ **Recommended Workflow**
 
 ### 1. **Branch Strategy**
+
 ```bash
 # Main branch = Production-ready code
 # Feature branches = Work in progress
@@ -26,6 +28,7 @@ git merge feature/new-feature-name
 ```
 
 ### 2. **Before Making Risky Changes**
+
 ```bash
 # Create a backup branch:
 git checkout -b backup/before-risky-change
@@ -37,6 +40,7 @@ git checkout backup/before-risky-change
 ```
 
 ### 3. **Quick Rollback Commands**
+
 ```bash
 # Undo last commit (keeps changes):
 git reset --soft HEAD~1
@@ -52,6 +56,7 @@ git checkout <commit-hash>
 ## 🎯 **For Your Next Changes**
 
 ### Option A: Feature Branch (Recommended)
+
 ```bash
 git checkout -b feature/next-improvement
 # Make changes
@@ -63,6 +68,7 @@ git merge feature/next-improvement  # Only when working
 ```
 
 ### Option B: Backup Point
+
 ```bash
 git checkout -b backup/working-testflight-build
 git checkout main
@@ -71,6 +77,7 @@ git checkout main
 ```
 
 ## 🚨 **Emergency Rollback**
+
 If you ever break something and need to get back to working code:
 
 ```bash
@@ -83,7 +90,9 @@ git reset --hard <commit-hash-of-stable-version>
 ```
 
 ## 📱 **EAS Build Versioning**
+
 Your EAS builds are also versioned:
+
 ```bash
 # List recent builds:
 eas build:list
@@ -93,13 +102,15 @@ eas build:list
 ```
 
 ## 🏆 **Best Practices**
+
 1. **Commit frequently** - small, working changes
-2. **Use descriptive commit messages** 
+2. **Use descriptive commit messages**
 3. **Test before committing to main**
 4. **Create branches for experiments**
 5. **Tag stable releases**: `git tag v1.0.0`
 
 ## 🔄 **Daily Workflow**
+
 ```bash
 # Start of day:
 git status  # Check what's changed

@@ -100,7 +100,7 @@ curl -X POST https://your-netlify-site.netlify.app/.netlify/functions/revenuecat
 `);
 
 console.log('\n🔧 COMMON ISSUES:');
-console.log('1. Function doesn\'t exist - Run create_handle_revenuecat_webhook.sql');
+console.log("1. Function doesn't exist - Run create_handle_revenuecat_webhook.sql");
 console.log('2. Wrong product IDs - Check RevenueCat dashboard vs code');
 console.log('3. User ID mismatch - RevenueCat user ID vs Supabase user ID');
 console.log('4. Webhook not deployed - Check Netlify deployment');
@@ -118,5 +118,4 @@ console.log('2. Check the results and identify the issue');
 console.log('3. Test the webhook function manually');
 console.log('4. Verify the webhook endpoint is working');
 console.log('5. Check RevenueCat webhook configuration');
-
 

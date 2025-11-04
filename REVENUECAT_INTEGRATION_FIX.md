@@ -19,6 +19,7 @@ The IAP purchases work because RevenueCat SDK handles them, but the data isn't s
 **Problem:** The `get_user_subscription_status` and `update_subscription_from_revenuecat` functions have foreign key constraint errors.
 
 **Solution:**
+
 1. Go to [Supabase SQL Editor](https://supabase.com/dashboard/project/lkkbstwmzdbmlfsowwgt/sql)
 2. Copy and paste the contents of `fix_revenuecat_database_functions.sql`
 3. Click "Run"
@@ -36,18 +37,19 @@ This will create proper database functions that handle the foreign key constrain
 1. **Create Vercel account** at [vercel.com](https://vercel.com)
 
 2. **Deploy webhook:**
+
    ```bash
    # Install Vercel CLI
    npm i -g vercel
-   
+
    # Create webhook directory
    mkdir revenuecat-webhook
    cd revenuecat-webhook
-   
+
    # Copy webhook files
    cp ../revenuecat_webhook_endpoint.js index.js
    cp ../webhook_package.json package.json
-   
+
    # Deploy
    vercel --prod
    ```
@@ -61,19 +63,18 @@ This will create proper database functions that handle the foreign key constrain
 #### **Option B: Deploy to Netlify Functions**
 
 1. **Create netlify/functions directory:**
+
    ```bash
    mkdir -p netlify/functions
    ```
 
 2. **Create netlify/functions/revenuecat-webhook.js:**
+
    ```javascript
    const { createClient } = require('@supabase/supabase-js');
-   
-   const supabase = createClient(
-     process.env.SUPABASE_URL,
-     process.env.SUPABASE_SERVICE_ROLE_KEY
-   );
-   
+
+   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
    exports.handler = async (event, context) => {
      // Your webhook logic here
    };
@@ -93,6 +94,7 @@ This will create proper database functions that handle the foreign key constrain
 **Problem:** RevenueCat doesn't know where to send webhook events.
 
 **Solution:**
+
 1. Go to [RevenueCat Dashboard](https://app.revenuecat.com/)
 2. Navigate to **Project Settings** → **Webhooks**
 3. **Add Webhook URL:** `https://your-deployed-url.com/webhook/revenuecat`
@@ -109,6 +111,7 @@ This will create proper database functions that handle the foreign key constrain
 **Test the complete flow:**
 
 1. **Test webhook endpoint:**
+
    ```bash
    curl -X POST https://your-webhook-url.com/webhook/revenuecat \
      -H "Content-Type: application/json" \
@@ -126,11 +129,13 @@ This will create proper database functions that handle the foreign key constrain
 ## 🔄 **How It Works After Fix**
 
 ### **Before (Broken Flow):**
+
 ```
 User Purchase → RevenueCat → ❌ No Webhook → ❌ Database Not Updated
 ```
 
 ### **After (Fixed Flow):**
+
 ```
 User Purchase → RevenueCat → ✅ Webhook → ✅ Database Updated → ✅ App Shows Premium
 ```
@@ -163,6 +168,7 @@ After implementing this fix:
 ## 🔍 **Verification**
 
 After completing all steps, test by:
+
 1. Making a test purchase in your app
 2. Checking that your database shows the subscription as 'active'
 3. Verifying that the app shows premium features

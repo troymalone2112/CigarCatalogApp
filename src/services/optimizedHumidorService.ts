@@ -1,6 +1,6 @@
 /**
  * OptimizedHumidorService - High-Performance Humidor Data Loading
- * 
+ *
  * This service provides optimized, cached access to humidor data with:
  * - Aggressive multi-layer caching
  * - Parallel database queries
@@ -11,7 +11,11 @@
 import { supabase, executeWithResilience } from './supabaseService';
 import { DatabaseService } from './supabaseService';
 import { HumidorStats, UserHumidorAggregate } from '../types';
-import { getCachedHumidorData, setCachedHumidorData, clearHumidorCache } from './humidorCacheService';
+import {
+  getCachedHumidorData,
+  setCachedHumidorData,
+  clearHumidorCache,
+} from './humidorCacheService';
 
 export interface OptimizedHumidorData {
   humidors: any[];
@@ -34,11 +38,11 @@ export class OptimizedHumidorService {
    * Get optimized humidor data with aggressive caching and parallel loading
    */
   static async getOptimizedHumidorData(
-    userId: string, 
-    options: HumidorLoadOptions = {}
+    userId: string,
+    options: HumidorLoadOptions = {},
   ): Promise<OptimizedHumidorData> {
     const { useCache = true, forceRefresh = false, progressCallback } = options;
-    
+
     // Prevent duplicate requests for the same user
     const cacheKey = `${userId}_${forceRefresh}`;
     if (this.loadingPromises.has(cacheKey)) {
@@ -47,7 +51,11 @@ export class OptimizedHumidorService {
     }
 
     // Create loading promise
-    const loadingPromise = this.performOptimizedLoad(userId, { useCache, forceRefresh, progressCallback });
+    const loadingPromise = this.performOptimizedLoad(userId, {
+      useCache,
+      forceRefresh,
+      progressCallback,
+    });
     this.loadingPromises.set(cacheKey, loadingPromise);
 
     try {
@@ -64,7 +72,7 @@ export class OptimizedHumidorService {
    */
   private static async performOptimizedLoad(
     userId: string,
-    options: HumidorLoadOptions
+    options: HumidorLoadOptions,
   ): Promise<OptimizedHumidorData> {
     const { useCache, forceRefresh, progressCallback } = options;
     const startTime = Date.now();
@@ -81,7 +89,7 @@ export class OptimizedHumidorService {
           return {
             ...cachedData,
             loadTime: Date.now() - startTime,
-            source: 'cache'
+            source: 'cache',
           };
         }
       }
@@ -90,11 +98,11 @@ export class OptimizedHumidorService {
 
       // Step 2: Load fresh data using the existing optimized method
       console.log('🚀 Loading fresh humidor data with optimized method...');
-      
+
       const freshData = await executeWithResilience(
         () => DatabaseService.getHumidorDataOptimized(userId),
         'optimized-humidor-load',
-        { timeoutMs: 15000, maxRetries: 2 }
+        { timeoutMs: 15000, maxRetries: 2 },
       );
 
       progressCallback?.('Processing data', 80);
@@ -104,7 +112,7 @@ export class OptimizedHumidorService {
         humidorStats: freshData.humidorStats,
         aggregate: freshData.aggregate,
         loadTime: Date.now() - startTime,
-        source: 'database'
+        source: 'database',
       };
 
       // Step 3: Cache the successful result
@@ -113,14 +121,17 @@ export class OptimizedHumidorService {
         userId,
         optimizedResult.humidors,
         optimizedResult.humidorStats,
-        optimizedResult.aggregate
+        optimizedResult.aggregate,
       );
 
       progressCallback?.('Complete', 100);
-      console.log('✅ Optimized humidor data loaded successfully in', optimizedResult.loadTime, 'ms');
-      
-      return optimizedResult;
+      console.log(
+        '✅ Optimized humidor data loaded successfully in',
+        optimizedResult.loadTime,
+        'ms',
+      );
 
+      return optimizedResult;
     } catch (error) {
       console.error('❌ Optimized humidor load failed:', error);
 
@@ -135,7 +146,7 @@ export class OptimizedHumidorService {
           return {
             ...cachedData,
             loadTime: Date.now() - startTime,
-            source: 'cache'
+            source: 'cache',
           };
         }
       }
@@ -146,7 +157,7 @@ export class OptimizedHumidorService {
         const basicHumidors = await executeWithResilience(
           () => DatabaseService.getHumidors(userId),
           'basic-humidor-load',
-          { timeoutMs: 8000, maxRetries: 1 }
+          { timeoutMs: 8000, maxRetries: 1 },
         );
 
         return {
@@ -161,9 +172,8 @@ export class OptimizedHumidorService {
             uniqueBrands: 0,
           },
           loadTime: Date.now() - startTime,
-          source: 'partial'
+          source: 'partial',
         };
-
       } catch (fallbackError) {
         console.error('❌ All fallback strategies failed:', fallbackError);
         throw error; // Re-throw original error
@@ -177,13 +187,12 @@ export class OptimizedHumidorService {
   static async getBasicHumidors(userId: string): Promise<any[]> {
     try {
       console.log('🚀 Loading basic humidors for progressive display...');
-      
+
       return await executeWithResilience(
         () => DatabaseService.getHumidors(userId),
         'basic-humidors-progressive',
-        { timeoutMs: 5000, maxRetries: 2 }
+        { timeoutMs: 5000, maxRetries: 2 },
       );
-
     } catch (error) {
       console.error('❌ Failed to load basic humidors:', error);
       return [];
@@ -234,7 +243,6 @@ export class OptimizedHumidorService {
       return results
         .filter((result) => result.status === 'fulfilled' && result.value !== null)
         .map((result) => (result as PromiseFulfilledResult<HumidorStats>).value);
-
     } catch (error) {
       console.error('❌ Failed to load humidor stats:', error);
       return [];
@@ -246,14 +254,16 @@ export class OptimizedHumidorService {
    */
   static async refreshHumidorData(userId: string): Promise<OptimizedHumidorData> {
     console.log('🔄 Force refreshing humidor data for user:', userId);
-    
-    // Clear any existing loading promises
-    const existingKeys = Array.from(this.loadingPromises.keys()).filter(key => key.startsWith(userId));
-    existingKeys.forEach(key => this.loadingPromises.delete(key));
 
-    return this.getOptimizedHumidorData(userId, { 
-      useCache: false, 
-      forceRefresh: true 
+    // Clear any existing loading promises
+    const existingKeys = Array.from(this.loadingPromises.keys()).filter((key) =>
+      key.startsWith(userId),
+    );
+    existingKeys.forEach((key) => this.loadingPromises.delete(key));
+
+    return this.getOptimizedHumidorData(userId, {
+      useCache: false,
+      forceRefresh: true,
     });
   }
 
@@ -263,12 +273,11 @@ export class OptimizedHumidorService {
   static async preloadHumidorData(userId: string): Promise<void> {
     try {
       console.log('🔥 Preloading humidor data for user:', userId);
-      
+
       // Load in background, don't await
-      this.getOptimizedHumidorData(userId, { useCache: true }).catch(error => {
+      this.getOptimizedHumidorData(userId, { useCache: true }).catch((error) => {
         console.warn('⚠️ Humidor preload failed (non-critical):', error);
       });
-
     } catch (error) {
       // Preloading failures are non-critical
       console.warn('⚠️ Humidor preload setup failed:', error);
@@ -285,18 +294,17 @@ export class OptimizedHumidorService {
   }> {
     try {
       const cachedData = await getCachedHumidorData(userId);
-      
+
       if (cachedData) {
         const cacheAge = Date.now() - cachedData.lastUpdated;
         return {
           hasCachedData: true,
           cacheAge: Math.floor(cacheAge / 1000), // Age in seconds
-          cacheSize: JSON.stringify(cachedData).length
+          cacheSize: JSON.stringify(cachedData).length,
         };
       }
 
       return { hasCachedData: false };
-
     } catch (error) {
       return { hasCachedData: false };
     }
@@ -308,14 +316,15 @@ export class OptimizedHumidorService {
   static async clearCache(userId: string): Promise<void> {
     try {
       // Clear loading promises
-      const existingKeys = Array.from(this.loadingPromises.keys()).filter(key => key.startsWith(userId));
-      existingKeys.forEach(key => this.loadingPromises.delete(key));
+      const existingKeys = Array.from(this.loadingPromises.keys()).filter((key) =>
+        key.startsWith(userId),
+      );
+      existingKeys.forEach((key) => this.loadingPromises.delete(key));
 
       // Clear persistent cache using existing HumidorCacheService
       await clearHumidorCache(userId);
-      
-      console.log('🧹 Humidor cache cleared for user:', userId);
 
+      console.log('🧹 Humidor cache cleared for user:', userId);
     } catch (error) {
       console.error('❌ Failed to clear humidor cache:', error);
     }

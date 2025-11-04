@@ -13,12 +13,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../contexts/AuthContext';
 import { UserManagementService } from '../services/userManagementService';
-import { 
-  UserManagementData, 
-  AdminAnalytics, 
-  UserActivityLog,
-  UserRole 
-} from '../types';
+import { UserManagementData, AdminAnalytics, UserActivityLog, UserRole } from '../types';
 
 type AdminDashboardNavigationProp = {
   navigate: (screen: string, params?: any) => void;
@@ -27,7 +22,7 @@ type AdminDashboardNavigationProp = {
 export default function AdminDashboardScreen() {
   const navigation = useNavigation<AdminDashboardNavigationProp>();
   const { user, isSuperUser, canAccessAdmin } = useAuth();
-  
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userStats, setUserStats] = useState({
@@ -47,7 +42,7 @@ export default function AdminDashboardScreen() {
       navigation.navigate('MainTabs', { screen: 'Home' });
       return;
     }
-    
+
     loadAdminData();
   }, [canAccessAdmin]);
 
@@ -58,7 +53,7 @@ export default function AdminDashboardScreen() {
         loadUserStatistics(),
         loadRecentUsers(),
         loadRecentActivity(),
-        loadAnalytics()
+        loadAnalytics(),
       ]);
     } catch (error) {
       console.error('Error loading admin data:', error);
@@ -94,7 +89,12 @@ export default function AdminDashboardScreen() {
 
   const loadRecentActivity = async () => {
     try {
-      const activity = await UserManagementService.getUserActivityLogs(undefined, undefined, undefined, 20);
+      const activity = await UserManagementService.getUserActivityLogs(
+        undefined,
+        undefined,
+        undefined,
+        20,
+      );
       setRecentActivity(activity);
     } catch (error) {
       console.error('Error loading recent activity:', error);
@@ -103,7 +103,11 @@ export default function AdminDashboardScreen() {
 
   const loadAnalytics = async () => {
     try {
-      const analyticsData = await UserManagementService.getAnalytics(undefined, undefined, undefined);
+      const analyticsData = await UserManagementService.getAnalytics(
+        undefined,
+        undefined,
+        undefined,
+      );
       setAnalytics(analyticsData.slice(0, 10)); // Show last 10 analytics entries
     } catch (error) {
       console.error('Error loading analytics:', error);
@@ -125,7 +129,12 @@ export default function AdminDashboardScreen() {
     }
   };
 
-  const StatCard = ({ title, value, icon, color }: {
+  const StatCard = ({
+    title,
+    value,
+    icon,
+    color,
+  }: {
     title: string;
     value: number;
     icon: string;
@@ -147,16 +156,16 @@ export default function AdminDashboardScreen() {
         <Text style={styles.userDate}>
           Joined: {new Date(userData.userCreatedAt).toLocaleDateString()}
         </Text>
-        <Text style={styles.userActivity}>
-          Activity: {userData.activityCount} actions
-        </Text>
+        <Text style={styles.userActivity}>Activity: {userData.activityCount} actions</Text>
       </View>
       <View style={styles.userActions}>
         {userData.roleType && (
-          <View style={[
-            styles.roleBadge,
-            { backgroundColor: UserManagementService.getRoleBadgeColor(userData.roleType) }
-          ]}>
+          <View
+            style={[
+              styles.roleBadge,
+              { backgroundColor: UserManagementService.getRoleBadgeColor(userData.roleType) },
+            ]}
+          >
             <Text style={styles.roleBadgeText}>
               {UserManagementService.formatUserRole(userData.roleType)}
             </Text>
@@ -199,7 +208,7 @@ export default function AdminDashboardScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.navigate('MainTabs', { screen: 'Home' })}
         >
@@ -209,11 +218,9 @@ export default function AdminDashboardScreen() {
         <View style={styles.headerSpacer} />
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* Statistics Cards */}
         <View style={styles.section}>
@@ -472,9 +479,3 @@ const styles = StyleSheet.create({
     color: '#999999',
   },
 });
-
-
-
-
-
-

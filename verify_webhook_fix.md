@@ -16,7 +16,7 @@ Replace `YOUR_SITE_URL` with your actual Netlify site URL and run these commands
 # Test 1: Health Check
 curl -X GET "https://YOUR_SITE_URL/.netlify/functions/revenuecat-webhook/health"
 
-# Test 2: Connection Test  
+# Test 2: Connection Test
 curl -X GET "https://YOUR_SITE_URL/.netlify/functions/revenuecat-webhook/test"
 
 # Test 3: Mock Webhook (Normal Dates)
@@ -65,6 +65,7 @@ curl -X POST "https://YOUR_SITE_URL/.netlify/functions/revenuecat-webhook" \
 ## ✅ Expected Results
 
 ### Health Check Should Return:
+
 ```json
 {
   "status": "healthy",
@@ -74,6 +75,7 @@ curl -X POST "https://YOUR_SITE_URL/.netlify/functions/revenuecat-webhook" \
 ```
 
 ### Connection Test Should Return:
+
 ```json
 {
   "success": true,
@@ -82,6 +84,7 @@ curl -X POST "https://YOUR_SITE_URL/.netlify/functions/revenuecat-webhook" \
 ```
 
 ### Mock Webhook Should Return:
+
 ```json
 {
   "success": true,
@@ -90,6 +93,7 @@ curl -X POST "https://YOUR_SITE_URL/.netlify/functions/revenuecat-webhook" \
 ```
 
 ### Problematic Dates Test Should Return:
+
 ```json
 {
   "success": true,
@@ -101,12 +105,14 @@ curl -X POST "https://YOUR_SITE_URL/.netlify/functions/revenuecat-webhook" \
 ## 🚨 What to Look For
 
 ### ✅ Success Indicators:
+
 - **Status 200** responses
 - **"corrected_dates": true** for problematic dates test
 - **No error messages** in responses
 - **Database connection** working
 
 ### ❌ Failure Indicators:
+
 - **Status 500** responses
 - **"Invalid user ID format"** errors
 - **"Plan not found"** errors
@@ -115,16 +121,19 @@ curl -X POST "https://YOUR_SITE_URL/.netlify/functions/revenuecat-webhook" \
 ## 🔧 Troubleshooting
 
 ### If Health Check Fails:
+
 1. **Check environment variables** in Netlify dashboard
 2. **Verify Supabase service role key** is correct
 3. **Check function logs** in Netlify dashboard
 
 ### If Connection Test Fails:
+
 1. **Verify Supabase URL** is correct
 2. **Check service role key** permissions
 3. **Test Supabase connection** directly
 
 ### If Webhook Tests Fail:
+
 1. **Check database functions** exist (run `revenuecat_webhook_setup.sql`)
 2. **Verify user exists** in database
 3. **Check function logs** for specific errors
@@ -132,6 +141,7 @@ curl -X POST "https://YOUR_SITE_URL/.netlify/functions/revenuecat-webhook" \
 ## 📊 Advanced Testing
 
 ### Using the Test Script:
+
 ```bash
 # Update the URL in test_webhook_deployment.js
 node test_webhook_deployment.js

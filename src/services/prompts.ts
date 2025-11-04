@@ -1,6 +1,6 @@
 /**
  * System Instructions and Few-Shot Examples for Cigar Recognition AI
- * 
+ *
  * This file contains standardized prompts and examples to ensure consistent
  * AI responses across all recognition and search operations.
  */
@@ -27,41 +27,44 @@ RESPONSE FORMAT:
 
 export const CIGAR_RECOGNITION_EXAMPLES = [
   {
-    description: "Clear band identification",
+    description: 'Clear band identification',
     response: {
-      "brand": "Arturo Fuente",
-      "line": "Opus X",
-      "name": "Fuente Fuente Opus X",
-      "size": "52x6",
-      "confidence": 95,
-      "reasoning": "Distinctive red and gold Opus X band clearly visible with 'Arturo Fuente' branding. Classic torpedo shape consistent with Opus X line.",
-      "identifyingFeatures": ["Red and gold Opus X band", "Arturo Fuente logo", "Torpedo shape"]
-    }
+      brand: 'Arturo Fuente',
+      line: 'Opus X',
+      name: 'Fuente Fuente Opus X',
+      size: '52x6',
+      confidence: 95,
+      reasoning:
+        "Distinctive red and gold Opus X band clearly visible with 'Arturo Fuente' branding. Classic torpedo shape consistent with Opus X line.",
+      identifyingFeatures: ['Red and gold Opus X band', 'Arturo Fuente logo', 'Torpedo shape'],
+    },
   },
   {
-    description: "Partial identification",
+    description: 'Partial identification',
     response: {
-      "brand": "Cohiba",
-      "line": "Behike",
-      "name": null,
-      "size": "52x6",
-      "confidence": 85,
-      "reasoning": "Distinctive Cohiba band visible with 'Behike' text. Cannot determine specific vitola from image.",
-      "identifyingFeatures": ["Cohiba band", "Behike text", "Cuban appearance"]
-    }
+      brand: 'Cohiba',
+      line: 'Behike',
+      name: null,
+      size: '52x6',
+      confidence: 85,
+      reasoning:
+        "Distinctive Cohiba band visible with 'Behike' text. Cannot determine specific vitola from image.",
+      identifyingFeatures: ['Cohiba band', 'Behike text', 'Cuban appearance'],
+    },
   },
   {
-    description: "Unclear image with low confidence",
+    description: 'Unclear image with low confidence',
     response: {
-      "brand": "Unknown",
-      "line": null,
-      "name": null,
-      "size": "50x5",
-      "confidence": 25,
-      "reasoning": "Image is blurry and cigar band is not clearly visible. Can only determine approximate size from shape.",
-      "identifyingFeatures": ["Cigar shape", "Approximate size"]
-    }
-  }
+      brand: 'Unknown',
+      line: null,
+      name: null,
+      size: '50x5',
+      confidence: 25,
+      reasoning:
+        'Image is blurry and cigar band is not clearly visible. Can only determine approximate size from shape.',
+      identifyingFeatures: ['Cigar shape', 'Approximate size'],
+    },
+  },
 ];
 
 export const CIGAR_SEARCH_SYSTEM_PROMPT = `You are a cigar research specialist. Your task is to provide a comprehensive overview of the specified cigar with detailed information about tobacco origins, flavor profiles, and professional ratings.
@@ -106,31 +109,48 @@ RESPONSE FORMAT:
 
 export const CIGAR_SEARCH_EXAMPLES = [
   {
-    description: "Well-known premium cigar with complete data",
+    description: 'Well-known premium cigar with complete data',
     response: {
-      "brand": "Rocky Patel",
-      "line": "Vintage 1999",
-      "name": "Connecticut",
-      "size": "50x6",
-      "overview": "A popular mild-bodied cigar known for its distinctive Connecticut Shade wrapper and refined blend of aged tobaccos.",
-      "tobaccoOrigin": "This cigar features a 7-year-old Connecticut Shade wrapper, which is among the oldest of its kind available on the market. The binder is Nicaraguan, while the filler is a blend of Dominican and Nicaraguan long-leaf Ligero tobaccos aged for about 8 years. All of this is hand-rolled in Honduras, at Rocky Patel's state-of-the-art El Paraiso factory.",
-      "flavorProfile": "The Rocky Patel Vintage 1999 Connecticut is often described as a mild to mild-medium bodied cigar. Initial flavors often include mild sweetness and pepper, with hints of citrus and earth. As the cigar progresses, it develops creamier, smoother notes with occasional flavors of cane sugar, oak, and spice. There are also notes of nuts, coffee, brown sugar, wheat bread, cedar, vanilla bean, buttered toast, and baking spices, providing a complex but approachable experience. The overall tone is creamy and mellow, making it suitable for both newcomers to cigars and experienced aficionados looking for something lighter.",
-      "flavorTags": ["mild", "sweet", "pepper", "citrus", "earth", "cream", "oak", "spice", "nuts", "coffee", "cedar", "vanilla"],
-      "cigarAficionadoRating": 90,
-      "strength": "Mild",
-      "wrapper": "Connecticut Shade",
-      "filler": "Dominican and Nicaraguan long-leaf Ligero",
-      "binder": "Nicaraguan",
-      "tobacco": "Connecticut Shade wrapper from Ecuador, Nicaraguan binder, and Dominican/Nicaraguan long-leaf Ligero filler aged 8 years",
-      "msrp": "Robusto (Box of 22): $250\nChurchill (Box of 20): $280\nToro (Box of 22): $300\nTorpedo (Box of 20): $320\nGordo (Box of 20): $350",
-      "singleStickPrice": "Robusto: $11\nChurchill: $14\nToro: $14\nTorpedo: $16\nGordo: $18",
-      "releaseYear": "2006",
-      "limitedEdition": false,
-      "agingPotential": "3-5 years",
-      "wrapperColor": "Connecticut Shade",
-      "dataCompleteness": 95
-    }
-  }
+      brand: 'Rocky Patel',
+      line: 'Vintage 1999',
+      name: 'Connecticut',
+      size: '50x6',
+      overview:
+        'A popular mild-bodied cigar known for its distinctive Connecticut Shade wrapper and refined blend of aged tobaccos.',
+      tobaccoOrigin:
+        "This cigar features a 7-year-old Connecticut Shade wrapper, which is among the oldest of its kind available on the market. The binder is Nicaraguan, while the filler is a blend of Dominican and Nicaraguan long-leaf Ligero tobaccos aged for about 8 years. All of this is hand-rolled in Honduras, at Rocky Patel's state-of-the-art El Paraiso factory.",
+      flavorProfile:
+        'The Rocky Patel Vintage 1999 Connecticut is often described as a mild to mild-medium bodied cigar. Initial flavors often include mild sweetness and pepper, with hints of citrus and earth. As the cigar progresses, it develops creamier, smoother notes with occasional flavors of cane sugar, oak, and spice. There are also notes of nuts, coffee, brown sugar, wheat bread, cedar, vanilla bean, buttered toast, and baking spices, providing a complex but approachable experience. The overall tone is creamy and mellow, making it suitable for both newcomers to cigars and experienced aficionados looking for something lighter.',
+      flavorTags: [
+        'mild',
+        'sweet',
+        'pepper',
+        'citrus',
+        'earth',
+        'cream',
+        'oak',
+        'spice',
+        'nuts',
+        'coffee',
+        'cedar',
+        'vanilla',
+      ],
+      cigarAficionadoRating: 90,
+      strength: 'Mild',
+      wrapper: 'Connecticut Shade',
+      filler: 'Dominican and Nicaraguan long-leaf Ligero',
+      binder: 'Nicaraguan',
+      tobacco:
+        'Connecticut Shade wrapper from Ecuador, Nicaraguan binder, and Dominican/Nicaraguan long-leaf Ligero filler aged 8 years',
+      msrp: 'Robusto (Box of 22): $250\nChurchill (Box of 20): $280\nToro (Box of 22): $300\nTorpedo (Box of 20): $320\nGordo (Box of 20): $350',
+      singleStickPrice: 'Robusto: $11\nChurchill: $14\nToro: $14\nTorpedo: $16\nGordo: $18',
+      releaseYear: '2006',
+      limitedEdition: false,
+      agingPotential: '3-5 years',
+      wrapperColor: 'Connecticut Shade',
+      dataCompleteness: 95,
+    },
+  },
 ];
 
 export const MANUAL_ENTRY_SYSTEM_PROMPT = `You are a cigar identification assistant. The user will provide a text description of a cigar they want to identify. Your task is to search for and provide detailed information about the described cigar.
@@ -158,23 +178,23 @@ RESPONSE FORMAT:
 
 export const RECOMMENDATION_EXAMPLES = [
   {
-    description: "Beginner with mild preferences",
+    description: 'Beginner with mild preferences',
     response: [
-      "Macanudo Cafe - Smooth, mild introduction perfect for beginners",
-      "Romeo y Julieta Reserva Real - Classic mild with excellent construction", 
-      "Arturo Fuente 8-5-8 - Consistent mild-medium with great value",
-      "Ashton Classic - Premium mild with complex flavors",
-      "Montecristo White - Creamy mild with elegant presentation"
-    ]
+      'Macanudo Cafe - Smooth, mild introduction perfect for beginners',
+      'Romeo y Julieta Reserva Real - Classic mild with excellent construction',
+      'Arturo Fuente 8-5-8 - Consistent mild-medium with great value',
+      'Ashton Classic - Premium mild with complex flavors',
+      'Montecristo White - Creamy mild with elegant presentation',
+    ],
   },
   {
-    description: "Experienced smoker preferring full-bodied",
+    description: 'Experienced smoker preferring full-bodied',
     response: [
-      "Padron 1964 Anniversary - Rich, full-bodied with exceptional quality",
-      "Arturo Fuente Opus X - Complex full-bodied with aging potential",
-      "Cohiba Behike - Ultra-premium full-bodied Cuban experience",
-      "Liga Privada No. 9 - Bold, full-bodied with unique flavor profile",
-      "Tatuaje Black Label - Full-bodied with spicy, complex notes"
-    ]
-  }
+      'Padron 1964 Anniversary - Rich, full-bodied with exceptional quality',
+      'Arturo Fuente Opus X - Complex full-bodied with aging potential',
+      'Cohiba Behike - Ultra-premium full-bodied Cuban experience',
+      'Liga Privada No. 9 - Bold, full-bodied with unique flavor profile',
+      'Tatuaje Black Label - Full-bodied with spicy, complex notes',
+    ],
+  },
 ];

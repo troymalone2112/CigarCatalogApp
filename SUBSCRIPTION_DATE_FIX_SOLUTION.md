@@ -1,11 +1,13 @@
 # Subscription Date Fix Solution
 
 ## 🚨 **Problem Identified**
+
 The RevenueCat webhook is receiving timestamps where `subscription_start_date` and `subscription_end_date` are only 3 minutes apart instead of 30 days (monthly) or 365 days (yearly).
 
 ## 🔍 **Root Cause Analysis**
 
 ### **Issue 1: RevenueCat Timestamp Problem**
+
 - RevenueCat is sending incorrect `expiration_at_ms` timestamps
 - The webhook receives timestamps that are too close together
 - This could be due to:
@@ -14,6 +16,7 @@ The RevenueCat webhook is receiving timestamps where `subscription_start_date` a
   - RevenueCat API returning incorrect data
 
 ### **Issue 2: No Date Validation**
+
 - The webhook doesn't validate if dates make sense
 - No fallback logic for incorrect timestamps
 - No logging to identify the problem
@@ -35,14 +38,14 @@ Run the SQL script to correct existing subscriptions:
 
 ```sql
 -- Fix subscriptions with incorrect dates
-UPDATE user_subscriptions 
-SET 
-  subscription_end_date = CASE 
-    WHEN sp.name = 'Premium Yearly' THEN 
+UPDATE user_subscriptions
+SET
+  subscription_end_date = CASE
+    WHEN sp.name = 'Premium Yearly' THEN
       subscription_start_date + INTERVAL '1 year'
-    WHEN sp.name = 'Premium Monthly' THEN 
+    WHEN sp.name = 'Premium Monthly' THEN
       subscription_start_date + INTERVAL '1 month'
-    ELSE 
+    ELSE
       subscription_start_date + INTERVAL '1 month'
   END,
   updated_at = NOW()
@@ -72,18 +75,21 @@ After implementing the fix:
 ## 🔧 **Implementation Steps**
 
 ### **1. Update Webhook Handler**
+
 ```bash
 # Replace your current webhook with the fixed version
 cp fix_revenuecat_webhook_dates.js netlify/functions/revenuecat-webhook.js
 ```
 
 ### **2. Fix Existing Data**
+
 ```bash
 # Run the SQL fix
 psql -h your-db-host -U your-user -d your-database -f fix_existing_subscription_dates.sql
 ```
 
 ### **3. Test the Fix**
+
 ```bash
 # Test with a new subscription to verify dates are correct
 # Check the logs to ensure proper timestamp processing
@@ -92,16 +98,19 @@ psql -h your-db-host -U your-user -d your-database -f fix_existing_subscription_
 ## 🚨 **Prevention Measures**
 
 ### **1. Enhanced Logging**
+
 - Log all timestamp processing
 - Track date differences
 - Alert on suspicious patterns
 
 ### **2. Validation Rules**
+
 - Validate dates make sense (minimum 1 day difference)
 - Check product type matches expected duration
 - Verify timestamps are reasonable
 
 ### **3. Monitoring**
+
 - Set up alerts for date anomalies
 - Monitor subscription durations
 - Track conversion rates

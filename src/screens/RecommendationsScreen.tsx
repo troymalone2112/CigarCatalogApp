@@ -23,7 +23,9 @@ export default function RecommendationsScreen() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'similar' | 'explore' | 'budget'>('all');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'similar' | 'explore' | 'budget'>(
+    'all',
+  );
 
   useEffect(() => {
     loadRecommendations();
@@ -32,24 +34,24 @@ export default function RecommendationsScreen() {
   const loadRecommendations = async () => {
     try {
       setLoading(true);
-      
+
       console.log('🧪 Loading cigar recommendations...');
-      
+
       // Get personalized recommendations (this will use the database and user data)
       const cigarRecs = await RecommendationService.getPersonalizedRecommendations({
         userId: user?.id,
         limit: 5, // Start with 5 recommendations as requested
-        minRating: 90
+        minRating: 90,
       });
-      
+
       // Convert CigarRecommendation to Recommendation format
-      const recs: Recommendation[] = cigarRecs.map(cigarRec => ({
+      const recs: Recommendation[] = cigarRecs.map((cigarRec) => ({
         cigar: cigarRec.cigar,
         matchScore: cigarRec.matchScore, // Now this is already 0-100%
         reasons: cigarRec.reason, // reason is now already an array
-        confidence: cigarRec.matchScore / 100 // Convert to 0-1 scale for compatibility
+        confidence: cigarRec.matchScore / 100, // Convert to 0-1 scale for compatibility
       }));
-      
+
       setRecommendations(recs);
     } catch (error) {
       console.error('Error loading recommendations:', error);
@@ -57,11 +59,11 @@ export default function RecommendationsScreen() {
       try {
         console.log('🔄 Falling back to top-rated cigars...');
         const fallbackCigarRecs = await RecommendationService.getTopRatedCigars(undefined, 12);
-        const fallbackRecs: Recommendation[] = fallbackCigarRecs.map(cigarRec => ({
+        const fallbackRecs: Recommendation[] = fallbackCigarRecs.map((cigarRec) => ({
           cigar: cigarRec.cigar,
           matchScore: cigarRec.matchScore,
           reasons: cigarRec.reason, // reason is now already an array
-          confidence: cigarRec.matchScore / 100
+          confidence: cigarRec.matchScore / 100,
         }));
         setRecommendations(fallbackRecs);
       } catch (fallbackError) {
@@ -79,11 +81,14 @@ export default function RecommendationsScreen() {
     setRefreshing(false);
   };
 
-  const filteredRecommendations = recommendations.filter(rec => {
+  const filteredRecommendations = recommendations.filter((rec) => {
     if (selectedFilter === 'all') return true;
     if (selectedFilter === 'similar') return rec.matchScore >= 80;
     if (selectedFilter === 'explore') return rec.matchScore >= 60 && rec.matchScore < 80;
-    if (selectedFilter === 'budget') return rec.cigar.singleStickPrice && parseFloat(rec.cigar.singleStickPrice.replace('$', '')) <= 15;
+    if (selectedFilter === 'budget')
+      return (
+        rec.cigar.singleStickPrice && parseFloat(rec.cigar.singleStickPrice.replace('$', '')) <= 15
+      );
     return true;
   });
 
@@ -103,28 +108,26 @@ export default function RecommendationsScreen() {
       console.log('🔍 handleLearnMore - cigar object:', JSON.stringify(cigar, null, 2));
       console.log('🔍 handleLearnMore - detailUrl:', cigar.detailUrl);
       console.log('🔍 handleLearnMore - url:', cigar.url);
-      
+
       // Check if cigar has a URL
       if (!cigar.detailUrl && !cigar.url) {
         console.log('❌ No URL found for cigar:', cigar.name);
         Alert.alert(
           'No Information Available',
           'Sorry, no detailed information is available for this cigar at the moment.',
-          [{ text: 'OK' }]
+          [{ text: 'OK' }],
         );
         return;
       }
 
       // Use detailUrl first, then fallback to url
       const url = cigar.detailUrl || cigar.url;
-      
+
       // Check if URL is valid
       if (!url || !url.startsWith('http')) {
-        Alert.alert(
-          'Invalid URL',
-          'Sorry, the link for this cigar is not available.',
-          [{ text: 'OK' }]
-        );
+        Alert.alert('Invalid URL', 'Sorry, the link for this cigar is not available.', [
+          { text: 'OK' },
+        ]);
         return;
       }
 
@@ -133,19 +136,13 @@ export default function RecommendationsScreen() {
       if (supported) {
         await Linking.openURL(url);
       } else {
-        Alert.alert(
-          'Cannot Open Link',
-          'Sorry, we cannot open this link on your device.',
-          [{ text: 'OK' }]
-        );
+        Alert.alert('Cannot Open Link', 'Sorry, we cannot open this link on your device.', [
+          { text: 'OK' },
+        ]);
       }
     } catch (error) {
       console.error('Error opening URL:', error);
-      Alert.alert(
-        'Error',
-        'Sorry, there was an error opening the link.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Error', 'Sorry, there was an error opening the link.', [{ text: 'OK' }]);
     }
   };
 
@@ -235,18 +232,19 @@ export default function RecommendationsScreen() {
   };
 
   const renderRecommendationCard = (recommendation: Recommendation) => {
-
     return (
       <TouchableOpacity key={recommendation.cigar.id} style={styles.recommendationCard}>
         {/* Cigar Image - Now at the top */}
-        <View style={[
-          styles.imageContainer,
-          !recommendation.cigar.imageUrl && styles.placeholderImageContainer
-        ]}>
-          <Image 
-            source={getCigarImageSource(recommendation.cigar.imageUrl)} 
+        <View
+          style={[
+            styles.imageContainer,
+            !recommendation.cigar.imageUrl && styles.placeholderImageContainer,
+          ]}
+        >
+          <Image
+            source={getCigarImageSource(recommendation.cigar.imageUrl)}
             style={styles.cigarImage}
-            resizeMode={recommendation.cigar.imageUrl ? "contain" : "cover"}
+            resizeMode={recommendation.cigar.imageUrl ? 'contain' : 'cover'}
           />
         </View>
 
@@ -255,17 +253,29 @@ export default function RecommendationsScreen() {
           <View style={styles.cigarInfo}>
             <Text style={styles.cigarBrand}>{recommendation.cigar.brand}</Text>
             <Text style={styles.cigarName}>{recommendation.cigar.line}</Text>
-            <View style={[styles.strengthBadge, {
-              backgroundColor: getStrengthInfo(recommendation.cigar.strength).backgroundColor,
-              borderColor: getStrengthInfo(recommendation.cigar.strength).borderColor,
-              borderWidth: 1,
-            }]}>
-              <Text style={[styles.strengthBadgeText, {
-                color: getStrengthInfo(recommendation.cigar.strength).color,
-              }]}>{recommendation.cigar.strength}</Text>
+            <View
+              style={[
+                styles.strengthBadge,
+                {
+                  backgroundColor: getStrengthInfo(recommendation.cigar.strength).backgroundColor,
+                  borderColor: getStrengthInfo(recommendation.cigar.strength).borderColor,
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.strengthBadgeText,
+                  {
+                    color: getStrengthInfo(recommendation.cigar.strength).color,
+                  },
+                ]}
+              >
+                {recommendation.cigar.strength}
+              </Text>
             </View>
           </View>
-          
+
           <View style={styles.matchScoreContainer}>
             <Text style={styles.matchScore}>{recommendation.matchScore}%</Text>
             <Text style={styles.matchLabel}>Match</Text>
@@ -276,44 +286,48 @@ export default function RecommendationsScreen() {
         </View>
 
         <View style={styles.cardContent}>
-        <View style={styles.cigarDetails}>
-          <View style={styles.detailSection}>
-            <Text style={styles.sectionTitle}>Price:</Text>
-            <Text style={styles.sectionValue}>
-              {recommendation.cigar.singleStickPrice || recommendation.cigar.msrp || 'Price not available'}
-            </Text>
+          <View style={styles.cigarDetails}>
+            <View style={styles.detailSection}>
+              <Text style={styles.sectionTitle}>Price:</Text>
+              <Text style={styles.sectionValue}>
+                {recommendation.cigar.singleStickPrice ||
+                  recommendation.cigar.msrp ||
+                  'Price not available'}
+              </Text>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.reasonsContainer}>
-          <Text style={styles.reasonsTitle}>Why we recommend this:</Text>
-          {recommendation.reasons.map((reason, index) => (
-            <Text key={index} style={styles.reasonText}>• {reason}</Text>
-          ))}
-        </View>
-
-        <View style={styles.flavorSection}>
-          <Text style={styles.flavorSectionTitle}>Flavor Profile</Text>
-          <View style={styles.flavorTags}>
-            {recommendation.cigar.flavorProfile.map((flavor, index) => (
-              <View key={index} style={styles.flavorTag}>
-                <Text style={styles.flavorTagText}>{flavor}</Text>
-              </View>
+          <View style={styles.reasonsContainer}>
+            <Text style={styles.reasonsTitle}>Why we recommend this:</Text>
+            {recommendation.reasons.map((reason, index) => (
+              <Text key={index} style={styles.reasonText}>
+                • {reason}
+              </Text>
             ))}
           </View>
-        </View>
-      </View>
 
-      <View style={styles.cardActions}>
-        <TouchableOpacity 
-          style={styles.actionButton}
-          onPress={() => handleLearnMore(recommendation.cigar)}
-        >
-          <Ionicons name="information-circle-outline" size={16} color="#DC851F" />
-          <Text style={styles.actionButtonText}>Learn More</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
+          <View style={styles.flavorSection}>
+            <Text style={styles.flavorSectionTitle}>Flavor Profile</Text>
+            <View style={styles.flavorTags}>
+              {recommendation.cigar.flavorProfile.map((flavor, index) => (
+                <View key={index} style={styles.flavorTag}>
+                  <Text style={styles.flavorTagText}>{flavor}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => handleLearnMore(recommendation.cigar)}
+          >
+            <Ionicons name="information-circle-outline" size={16} color="#DC851F" />
+            <Text style={styles.actionButtonText}>Learn More</Text>
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -322,14 +336,14 @@ export default function RecommendationsScreen() {
       <Ionicons name="bulb-outline" size={64} color="#ccc" />
       <Text style={styles.emptyTitle}>Building Your Recommendations</Text>
       <Text style={styles.emptySubtitle}>
-        We're analyzing your preferences to suggest perfect cigars for you. 
-        Start by adding some cigars to your humidor and journal to get personalized recommendations.
+        We're analyzing your preferences to suggest perfect cigars for you. Start by adding some
+        cigars to your humidor and journal to get personalized recommendations.
       </Text>
     </View>
   );
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.fullScreenBackground}
       imageStyle={styles.tobaccoBackgroundImage}
@@ -348,25 +362,25 @@ export default function RecommendationsScreen() {
         ) : (
           <>
             <View style={styles.filterContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={getFilterButtonStyle('all')}
                 onPress={() => setSelectedFilter('all')}
               >
                 <Text style={getFilterTextStyle('all')}>All</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={getFilterButtonStyle('similar')}
                 onPress={() => setSelectedFilter('similar')}
               >
                 <Text style={getFilterTextStyle('similar')}>Similar</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={getFilterButtonStyle('explore')}
                 onPress={() => setSelectedFilter('explore')}
               >
                 <Text style={getFilterTextStyle('explore')}>Explore</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={getFilterButtonStyle('budget')}
                 onPress={() => setSelectedFilter('budget')}
               >
@@ -374,15 +388,11 @@ export default function RecommendationsScreen() {
               </TouchableOpacity>
             </View>
 
-            <ScrollView 
+            <ScrollView
               style={styles.scrollView}
               showsVerticalScrollIndicator={false}
               refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  tintColor="#DC851F"
-                />
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#DC851F" />
               }
             >
               {filteredRecommendations.length === 0 ? (

@@ -2,10 +2,10 @@ import { Image } from 'react-native';
 
 /**
  * Background Image Service
- * 
+ *
  * This service provides a cached version of the tobacco background image
  * to prevent reloading the same image multiple times throughout the app.
- * 
+ *
  * The image is cached at the module level, so it's only loaded once
  * and reused across all screens that need it.
  */
@@ -33,7 +33,7 @@ export const preloadBackgroundImage = async (): Promise<void> => {
   try {
     console.log('🖼️ Preloading tobacco background image...');
     const imageSource = getBackgroundImageSource();
-    
+
     // Use Image.prefetch to preload the image
     await Image.prefetch(Image.resolveAssetSource(imageSource).uri);
     console.log('✅ Tobacco background image preloaded successfully');
@@ -64,6 +64,4 @@ export const clearBackgroundImageCache = () => {
 export const isBackgroundImageCached = (): boolean => {
   return cachedBackgroundImage !== null;
 };
-
-
 

@@ -60,7 +60,7 @@ async createProfileWithUpdates(userId: string, updates: { full_name?: string; av
     console.error('Error creating profile with updates:', error);
     throw error;
   }
-  
+
   return data;
 }
 ```
@@ -68,6 +68,7 @@ async createProfileWithUpdates(userId: string, updates: { full_name?: string; av
 ## 🔧 **How This Fixes the Issue**
 
 ### **Before (Broken):**
+
 1. User completes onboarding in TestFlight
 2. User switches to Expo development
 3. `updateProfile` tries to update non-existent profile
@@ -75,6 +76,7 @@ async createProfileWithUpdates(userId: string, updates: { full_name?: string; av
 5. Onboarding completion fails
 
 ### **After (Fixed):**
+
 1. User completes onboarding in TestFlight
 2. User switches to Expo development
 3. `updateProfile` tries to update non-existent profile
@@ -85,18 +87,21 @@ async createProfileWithUpdates(userId: string, updates: { full_name?: string; av
 ## 🚀 **Benefits**
 
 ### **Cross-Environment Compatibility:**
+
 - ✅ **TestFlight → Expo** - Works seamlessly
 - ✅ **Expo → TestFlight** - Works seamlessly
 - ✅ **Fresh installs** - Works seamlessly
 - ✅ **Database migrations** - Handles missing profiles
 
 ### **Robust Error Handling:**
+
 - ✅ **Graceful fallback** - Creates profile if missing
 - ✅ **No data loss** - Preserves user's onboarding status
 - ✅ **Automatic recovery** - No manual intervention needed
 - ✅ **Consistent behavior** - Works the same across environments
 
 ### **User Experience:**
+
 - ✅ **No stuck onboarding** - Users can always complete onboarding
 - ✅ **Seamless switching** - No errors when changing environments
 - ✅ **Data persistence** - Onboarding status preserved
@@ -105,12 +110,14 @@ async createProfileWithUpdates(userId: string, updates: { full_name?: string; av
 ## 🧪 **Testing Scenarios**
 
 ### **Scenario 1: Fresh User (No Profile)**
+
 1. New user signs up
 2. Completes onboarding
 3. ✅ Profile created with onboarding_completed: true
 4. ✅ User enters main app
 
 ### **Scenario 2: TestFlight → Expo**
+
 1. User completes onboarding in TestFlight
 2. User switches to Expo development
 3. ✅ Profile automatically created in Expo database
@@ -118,6 +125,7 @@ async createProfileWithUpdates(userId: string, updates: { full_name?: string; av
 5. ✅ User enters main app
 
 ### **Scenario 3: Expo → TestFlight**
+
 1. User completes onboarding in Expo
 2. User switches to TestFlight
 3. ✅ Profile exists in TestFlight database
@@ -125,6 +133,7 @@ async createProfileWithUpdates(userId: string, updates: { full_name?: string; av
 5. ✅ User enters main app
 
 ### **Scenario 4: Database Issues**
+
 1. Profile exists but update fails
 2. ✅ Fallback creates new profile
 3. ✅ Onboarding status preserved
@@ -133,11 +142,13 @@ async createProfileWithUpdates(userId: string, updates: { full_name?: string; av
 ## 🔍 **Error Codes Handled**
 
 ### **PGRST116: "Cannot coerce the result to a single JSON object"**
+
 - **Cause:** No rows found when using `.single()`
 - **Fix:** Detect this error and create profile instead
 - **Result:** Seamless profile creation
 
 ### **23505: "Duplicate key value violates unique constraint"**
+
 - **Cause:** Profile already exists (race condition)
 - **Fix:** Fetch existing profile instead of creating new one
 - **Result:** No duplicate profiles
@@ -145,12 +156,14 @@ async createProfileWithUpdates(userId: string, updates: { full_name?: string; av
 ## 📱 **Implementation Details**
 
 ### **Files Modified:**
+
 - `src/services/supabaseService.ts`
   - Enhanced `updateProfile` method
   - Added `createProfileWithUpdates` method
   - Improved error handling
 
 ### **Error Handling Flow:**
+
 1. **Try to update existing profile**
 2. **If PGRST116 error (no profile found):**
    - Create new profile with updates
@@ -161,6 +174,7 @@ async createProfileWithUpdates(userId: string, updates: { full_name?: string; av
    - Return updated profile
 
 ### **Database Operations:**
+
 - **INSERT** - Creates new profile with correct fields
 - **UPDATE** - Updates existing profile
 - **SELECT** - Verifies profile creation/update
@@ -169,6 +183,7 @@ async createProfileWithUpdates(userId: string, updates: { full_name?: string; av
 ## 🎉 **Result**
 
 The onboarding completion now works seamlessly across all environments:
+
 - ✅ **No more PGRST116 errors**
 - ✅ **Automatic profile creation**
 - ✅ **Cross-environment compatibility**
@@ -176,6 +191,4 @@ The onboarding completion now works seamlessly across all environments:
 - ✅ **Seamless user experience**
 
 Users can now switch between TestFlight and Expo development without any onboarding issues! 🚀
-
-
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { JournalEntry, Cigar } from '../types';
@@ -49,14 +49,14 @@ export const JournalDraftProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
       console.log('📱 Journal Draft - App state changed:', appState, '->', nextAppState);
-      
+
       if (appState.match(/active/) && nextAppState.match(/inactive|background/)) {
         console.log('💾 Journal Draft - App going to background, saving draft...');
         if (currentDraft && hasUnsavedChanges) {
           saveDraftToStorage(currentDraft);
         }
       }
-      
+
       setAppState(nextAppState);
     };
 
@@ -83,7 +83,7 @@ export const JournalDraftProvider: React.FC<{ children: React.ReactNode }> = ({ 
         ...draft,
         lastModified: new Date(),
       };
-      
+
       await AsyncStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draftData));
       console.log('✅ Journal Draft - Draft saved to storage');
     } catch (error) {
@@ -91,42 +91,45 @@ export const JournalDraftProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  const saveDraft = async (draftData: Partial<JournalDraft>) => {
-    try {
-      if (!currentDraft) {
-        console.log('⚠️ Journal Draft - No current draft to update');
-        return;
+  const saveDraft = useCallback(
+    async (draftData: Partial<JournalDraft>) => {
+      try {
+        if (!currentDraft) {
+          console.log('⚠️ Journal Draft - No current draft to update');
+          return;
+        }
+
+        const updatedDraft: JournalDraft = {
+          ...currentDraft,
+          ...draftData,
+          lastModified: new Date(),
+        };
+
+        setCurrentDraft(updatedDraft);
+        setHasUnsavedChanges(true);
+
+        // Save to storage immediately for important changes
+        await saveDraftToStorage(updatedDraft);
+
+        console.log('✅ Journal Draft - Draft updated and saved');
+      } catch (error) {
+        console.error('❌ Journal Draft - Failed to save draft:', error);
       }
+    },
+    [currentDraft],
+  );
 
-      const updatedDraft: JournalDraft = {
-        ...currentDraft,
-        ...draftData,
-        lastModified: new Date(),
-      };
-
-      setCurrentDraft(updatedDraft);
-      setHasUnsavedChanges(true);
-      
-      // Save to storage immediately for important changes
-      await saveDraftToStorage(updatedDraft);
-      
-      console.log('✅ Journal Draft - Draft updated and saved');
-    } catch (error) {
-      console.error('❌ Journal Draft - Failed to save draft:', error);
-    }
-  };
-
-  const loadDraft = async (cigarId: string): Promise<JournalDraft | null> => {
+  const loadDraft = useCallback(async (cigarId: string): Promise<JournalDraft | null> => {
     try {
       const draftData = await AsyncStorage.getItem(DRAFT_STORAGE_KEY);
-      
+
       if (!draftData) {
         console.log('📝 Journal Draft - No draft found');
         return null;
       }
 
       const draft: JournalDraft = JSON.parse(draftData);
-      
+
       // Check if draft is for the same cigar
       if (draft.cigar.id !== cigarId) {
         console.log('📝 Journal Draft - Draft is for different cigar, ignoring');
@@ -137,7 +140,7 @@ export const JournalDraftProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const now = new Date();
       const draftAge = now.getTime() - new Date(draft.lastModified).getTime();
       const maxAge = DRAFT_EXPIRY_HOURS * 60 * 60 * 1000; // 24 hours in milliseconds
-      
+
       if (draftAge > maxAge) {
         console.log('📝 Journal Draft - Draft has expired, clearing');
         await clearDraft();
@@ -150,9 +153,9 @@ export const JournalDraftProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.error('❌ Journal Draft - Failed to load draft:', error);
       return null;
     }
-  };
+  }, []);
 
-  const clearDraft = async () => {
+  const clearDraft = useCallback(async () => {
     try {
       await AsyncStorage.removeItem(DRAFT_STORAGE_KEY);
       setCurrentDraft(null);
@@ -162,24 +165,24 @@ export const JournalDraftProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } catch (error) {
       console.error('❌ Journal Draft - Failed to clear draft:', error);
     }
-  };
+  }, []);
 
-  const restoreDraft = async (): Promise<JournalDraft | null> => {
+  const restoreDraft = useCallback(async (): Promise<JournalDraft | null> => {
     try {
       const draftData = await AsyncStorage.getItem(DRAFT_STORAGE_KEY);
-      
+
       if (!draftData) {
         console.log('📝 Journal Draft - No draft to restore');
         return null;
       }
 
       const draft: JournalDraft = JSON.parse(draftData);
-      
+
       // Check if draft has expired
       const now = new Date();
       const draftAge = now.getTime() - new Date(draft.lastModified).getTime();
       const maxAge = DRAFT_EXPIRY_HOURS * 60 * 60 * 1000;
-      
+
       if (draftAge > maxAge) {
         console.log('📝 Journal Draft - Draft has expired, clearing');
         await clearDraft();
@@ -189,16 +192,16 @@ export const JournalDraftProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setCurrentDraft(draft);
       setIsDraftActive(true);
       setHasUnsavedChanges(false);
-      
+
       console.log('✅ Journal Draft - Draft restored successfully');
       return draft;
     } catch (error) {
       console.error('❌ Journal Draft - Failed to restore draft:', error);
       return null;
     }
-  };
+  }, []);
 
-  const startNewDraft = (cigar: Cigar, recognitionImageUrl?: string) => {
+  const startNewDraft = useCallback((cigar: Cigar, recognitionImageUrl?: string) => {
     const newDraft: JournalDraft = {
       id: `draft_${Date.now()}`,
       cigar,
@@ -215,27 +218,30 @@ export const JournalDraftProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setCurrentDraft(newDraft);
     setIsDraftActive(true);
     setHasUnsavedChanges(false);
-    
+
     console.log('📝 Journal Draft - New draft started');
-  };
+  }, []);
 
-  const value = {
-    currentDraft,
-    isDraftActive,
-    saveDraft,
-    loadDraft,
-    clearDraft,
-    restoreDraft,
-    hasUnsavedChanges,
-  };
-
-  return (
-    <JournalDraftContext.Provider value={value}>
-      {children}
-    </JournalDraftContext.Provider>
+  const value = useMemo(
+    () => ({
+      currentDraft,
+      isDraftActive,
+      saveDraft,
+      loadDraft,
+      clearDraft,
+      restoreDraft,
+      hasUnsavedChanges,
+    }),
+    [
+      currentDraft,
+      isDraftActive,
+      saveDraft,
+      loadDraft,
+      clearDraft,
+      restoreDraft,
+      hasUnsavedChanges,
+    ],
   );
+
+  return <JournalDraftContext.Provider value={value}>{children}</JournalDraftContext.Provider>;
 };
-
-
-
-

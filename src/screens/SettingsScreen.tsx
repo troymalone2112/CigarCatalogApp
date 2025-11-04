@@ -36,7 +36,7 @@ export default function SettingsScreen() {
         {/* User Info */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
-          
+
           <View style={styles.infoCard}>
             <Text style={styles.infoLabel}>Email</Text>
             <Text style={styles.infoValue}>{user?.email}</Text>
@@ -45,10 +45,9 @@ export default function SettingsScreen() {
           <View style={styles.infoCard}>
             <Text style={styles.infoLabel}>User Role</Text>
             <View style={styles.roleContainer}>
-              <View style={[
-                styles.roleBadge,
-                { backgroundColor: isSuperUser ? '#DC851F' : '#999999' }
-              ]}>
+              <View
+                style={[styles.roleBadge, { backgroundColor: isSuperUser ? '#DC851F' : '#999999' }]}
+              >
                 <Text style={styles.roleBadgeText}>
                   {isSuperUser ? 'Super User' : 'Standard User'}
                 </Text>
@@ -61,7 +60,7 @@ export default function SettingsScreen() {
         {isSuperUser && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Administration</Text>
-            
+
             <TouchableOpacity style={styles.actionCard} onPress={handleAdminAccess}>
               <View style={styles.actionContent}>
                 <Ionicons name="shield-checkmark" size={24} color="#DC851F" />
@@ -78,7 +77,7 @@ export default function SettingsScreen() {
         {/* App Settings */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App Settings</Text>
-          
+
           <TouchableOpacity style={styles.actionCard}>
             <View style={styles.actionContent}>
               <Ionicons name="notifications" size={24} color="#999999" />
@@ -101,7 +100,7 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={20} color="#999999" />
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.actionCard}
             onPress={() => navigation.navigate('Profile' as never)}
           >

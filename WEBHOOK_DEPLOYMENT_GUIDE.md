@@ -9,6 +9,7 @@
 ## 🔑 Supabase Keys Included
 
 The webhook.js file includes:
+
 - **Supabase URL**: `https://lkkbstwmzdbmlfsowwgt.supabase.co`
 - **Service Role Key**: Included (but you should set it as environment variable)
 
@@ -17,11 +18,13 @@ The webhook.js file includes:
 ### Option 1: Vercel (Recommended - Easiest)
 
 1. **Install Vercel CLI:**
+
    ```bash
    npm i -g vercel
    ```
 
 2. **Create deployment directory:**
+
    ```bash
    mkdir revenuecat-webhook
    cd revenuecat-webhook
@@ -30,6 +33,7 @@ The webhook.js file includes:
    ```
 
 3. **Deploy:**
+
    ```bash
    vercel --prod
    ```
@@ -47,19 +51,21 @@ The webhook.js file includes:
 ### Option 2: Netlify Functions
 
 1. **Create netlify/functions directory:**
+
    ```bash
    mkdir -p netlify/functions
    ```
 
 2. **Create netlify/functions/revenuecat-webhook.js:**
+
    ```javascript
    const { createClient } = require('@supabase/supabase-js');
-   
+
    const supabase = createClient(
      'https://lkkbstwmzdbmlfsowwgt.supabase.co',
-     process.env.SUPABASE_SERVICE_ROLE_KEY
+     process.env.SUPABASE_SERVICE_ROLE_KEY,
    );
-   
+
    exports.handler = async (event, context) => {
      // Your webhook logic here
    };
@@ -89,16 +95,19 @@ https://supabase.com/dashboard/project/lkkbstwmzdbmlfsowwgt/settings/api
 ## 🧪 Testing Your Webhook
 
 ### 1. Health Check
+
 ```bash
 curl https://your-webhook-url.com/health
 ```
 
 ### 2. Test Endpoint
+
 ```bash
 curl https://your-webhook-url.com/test
 ```
 
 ### 3. Test Webhook
+
 ```bash
 curl -X POST https://your-webhook-url.com/webhook/revenuecat \
   -H "Content-Type: application/json" \
@@ -113,6 +122,7 @@ curl -X POST https://your-webhook-url.com/webhook/revenuecat \
 2. **Navigate to:** Project Settings → Webhooks
 
 3. **Add Webhook URL:**
+
    ```
    https://your-webhook-url.com/webhook/revenuecat
    ```
@@ -152,16 +162,19 @@ After deployment and configuration:
 ## 🚨 Troubleshooting
 
 ### Webhook Not Receiving Events
+
 1. Check webhook URL is publicly accessible
 2. Check RevenueCat dashboard webhook configuration
 3. Test webhook endpoint manually
 
 ### Database Not Updating
+
 1. Check Supabase service role key is correct
 2. Check database functions exist
 3. Check webhook logs for errors
 
 ### Premium Status Not Updating
+
 1. Check user_subscriptions table
 2. Check subscription status is 'active'
 3. Check expiration dates are in future
@@ -169,12 +182,14 @@ After deployment and configuration:
 ## 📊 Monitoring
 
 ### Key Endpoints
+
 - `/health` - Health check with configuration status
 - `/test` - Test Supabase connection
 - `/webhook/revenuecat` - Main webhook endpoint
 - `/webhook/revenuecat-direct` - Direct database update
 
 ### Logs to Watch
+
 - Webhook received events
 - Database update success/failure
 - Supabase connection status

@@ -11,57 +11,47 @@ interface CigarRecommendationCardProps {
   showImage?: boolean;
 }
 
-export default function CigarRecommendationCard({ 
-  cigar, 
-  matchScore, 
-  reason, 
+export default function CigarRecommendationCard({
+  cigar,
+  matchScore,
+  reason,
   onPress,
-  showImage = true 
+  showImage = true,
 }: CigarRecommendationCardProps) {
   const imageSource = CigarImageService.getCigarImageSource(cigar);
-  
+
   return (
-    <TouchableOpacity 
-      style={styles.container} 
-      onPress={onPress}
-      activeOpacity={0.7}
-    >
+    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
       <View style={styles.card}>
         {showImage && (
           <View style={styles.imageContainer}>
-            <Image 
-              source={imageSource} 
-              style={styles.cigarImage}
-              resizeMode="cover"
-            />
+            <Image source={imageSource} style={styles.cigarImage} resizeMode="cover" />
           </View>
         )}
-        
+
         <View style={styles.content}>
           <View style={styles.header}>
             <Text style={styles.brandName}>{cigar.brand}</Text>
             {matchScore && (
               <View style={styles.scoreContainer}>
-                <Text style={styles.scoreText}>
-                  {Math.round(matchScore * 100)}%
-                </Text>
+                <Text style={styles.scoreText}>{Math.round(matchScore * 100)}%</Text>
               </View>
             )}
           </View>
-          
+
           <Text style={styles.cigarName}>{cigar.line}</Text>
-          
+
           <View style={styles.details}>
             <View style={styles.detailRow}>
               <Text style={styles.label}>Rating:</Text>
               <Text style={styles.value}>{cigar.cigarAficionadoRating}/100</Text>
             </View>
-            
+
             <View style={styles.detailRow}>
               <Text style={styles.label}>Strength:</Text>
               <Text style={styles.value}>{cigar.strength}</Text>
             </View>
-            
+
             {cigar.msrp && (
               <View style={styles.detailRow}>
                 <Text style={styles.label}>Price:</Text>
@@ -69,11 +59,9 @@ export default function CigarRecommendationCard({
               </View>
             )}
           </View>
-          
-          {reason && (
-            <Text style={styles.reason}>{reason}</Text>
-          )}
-          
+
+          {reason && <Text style={styles.reason}>{reason}</Text>}
+
           {cigar.overview && (
             <Text style={styles.description} numberOfLines={3}>
               {cigar.overview}

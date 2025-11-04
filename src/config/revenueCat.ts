@@ -69,12 +69,7 @@ export const FEATURE_ACCESS = {
   ],
 
   // Features available to expired users (read-only)
-  EXPIRED_FEATURES: [
-    'journal_viewing',
-    'humidor_viewing',
-    'inventory_viewing',
-    'basic_navigation',
-  ],
+  EXPIRED_FEATURES: ['journal_viewing', 'humidor_viewing', 'inventory_viewing', 'basic_navigation'],
 
   // Features available to premium users
   PREMIUM_FEATURES: [

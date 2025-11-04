@@ -45,7 +45,7 @@ console.log('==============');
 console.log('');
 console.log('1. Build and install the updated app');
 console.log('2. Create a new journal entry today');
-console.log('3. Verify it shows the correct date (today\'s date, not yesterday)');
+console.log("3. Verify it shows the correct date (today's date, not yesterday)");
 console.log('4. Create multiple entries on the same day');
 console.log('5. Verify they appear in the correct order (most recent first)');
 console.log('6. Check that existing entries still display correctly');
@@ -61,16 +61,9 @@ console.log('The logs will show exactly how dates are being converted and stored
 console.log('');
 console.log('✅ Expected Results:');
 console.log('===================');
-console.log('- Journal entries created today should show today\'s date');
+console.log("- Journal entries created today should show today's date");
 console.log('- Entries should be sorted with most recent first');
 console.log('- Date display should be consistent across all screens');
 console.log('- No more off-by-one day issues');
 console.log('');
 console.log('🚀 Ready to test! Build and deploy your updated app.');
-
-
-
-
-
-
-

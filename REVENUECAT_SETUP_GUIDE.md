@@ -1,11 +1,13 @@
 # RevenueCat Setup Guide 📱💳
 
 ## Step 1: Create RevenueCat Account
+
 1. Go to [RevenueCat Dashboard](https://app.revenuecat.com/)
 2. Sign up for a free account
 3. Create a new project for your Cigar Catalog App
 
 ## Step 2: Configure App Store Connect (iOS)
+
 1. **In App Store Connect:**
    - Go to "My Apps" > Your App > "In-App Purchases"
    - Create two auto-renewable subscriptions:
@@ -13,9 +15,8 @@
      - **Reference Name:** Premium Monthly
      - **Price:** $9.99/month
      - **Subscription Group:** Create new group "Premium Subscriptions"
-     
      - **Product ID:** `premium_yearly`
-     - **Reference Name:** Premium Yearly  
+     - **Reference Name:** Premium Yearly
      - **Price:** $109.99/year
      - **Subscription Group:** Same "Premium Subscriptions" group
 
@@ -24,13 +25,13 @@
    - Set the yearly as the higher tier (better value)
 
 ## Step 3: Configure Google Play Console (Android)
+
 1. **In Google Play Console:**
    - Go to "Monetization" > "Subscriptions"
    - Create two subscriptions:
      - **Product ID:** `premium_monthly`
      - **Name:** Premium Monthly
      - **Price:** $9.99/month
-     
      - **Product ID:** `premium_yearly`
      - **Name:** Premium Yearly
      - **Price:** $109.99/year
@@ -40,6 +41,7 @@
    - Set the pricing for your target countries
 
 ## Step 4: Configure RevenueCat Dashboard
+
 1. **Add Apps:**
    - Go to "Apps" in RevenueCat dashboard
    - Add your iOS app (bundle ID from App Store Connect)
@@ -62,6 +64,7 @@
    - Add both products to this offering
 
 ## Step 5: Get API Key
+
 1. **In RevenueCat Dashboard:**
    - Go to "Project Settings" > "API Keys"
    - Copy your API key (platform-agnostic)
@@ -71,7 +74,9 @@
    - Replace `YOUR_REVENUECAT_API_KEY_HERE` with your actual API key
 
 ## Step 6: Test Configuration
+
 1. **Build and test on device:**
+
    ```bash
    npm run ios  # or npm run android
    ```
@@ -81,6 +86,7 @@
    - Test purchase flow in sandbox environment
 
 ## Step 7: Test Purchases
+
 1. **iOS Testing:**
    - Create sandbox test user in App Store Connect
    - Sign out of App Store on device
@@ -95,24 +101,29 @@
 ## Important Notes ⚠️
 
 ### Product ID Consistency
+
 - Product IDs in RevenueCat must exactly match those in App Store Connect/Google Play Console
 - Current product IDs: `premium_monthly`, `premium_yearly`
 
 ### Entitlement Setup
+
 - Users get access to `premium_features` entitlement when they subscribe
 - This controls what features they can access in your app
 
 ### Testing Environment
+
 - Always test in sandbox/test environment first
 - RevenueCat provides webhook testing for server-side validation
 
 ### Production Deployment
+
 - Ensure all products are approved in app stores before production
 - Test with real payment methods in staging environment
 
 ## Troubleshooting 🔧
 
 ### Common Issues:
+
 1. **"API key not configured" error:**
    - Make sure you've updated the API key in `src/services/revenueCatService.ts`
 
@@ -125,12 +136,15 @@
    - Verify app store credentials are correct
 
 ### Debug Mode:
+
 - RevenueCat logs are enabled in development
 - Check console for detailed error messages
 - Use RevenueCat dashboard to monitor purchase events
 
 ## Next Steps 🚀
+
 After completing this setup:
+
 1. Update subscription plans in database
 2. Implement feature gating
 3. Create upgrade prompts

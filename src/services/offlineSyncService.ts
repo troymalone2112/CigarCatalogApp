@@ -17,10 +17,10 @@ export class OfflineSyncService {
   static async checkOnlineStatus(): Promise<boolean> {
     try {
       // Simple network check - try to reach a reliable endpoint
-      const response = await fetch('https://www.google.com', { 
+      const response = await fetch('https://www.google.com', {
         method: 'HEAD',
         mode: 'no-cors',
-        cache: 'no-cache'
+        cache: 'no-cache',
       });
       this.isOnline = true;
       return true;
@@ -53,10 +53,10 @@ export class OfflineSyncService {
 
       // Get all cached entries
       const cachedEntries = await JournalCacheService.getCachedEntries();
-      
+
       // Find entries that need syncing
-      const pendingEntries = cachedEntries.filter(entry => 
-        entry._pendingSync === true || entry._syncError
+      const pendingEntries = cachedEntries.filter(
+        (entry) => entry._pendingSync === true || entry._syncError,
       );
 
       if (pendingEntries.length === 0) {
@@ -70,7 +70,7 @@ export class OfflineSyncService {
       for (const entry of pendingEntries) {
         try {
           console.log(`🔄 Syncing entry: ${entry.cigar?.brand} ${entry.cigar?.name}`);
-          
+
           // Prepare journal data for database
           const journalData = {
             id: entry.id,
@@ -94,15 +94,15 @@ export class OfflineSyncService {
 
           // Try to save to database
           await JournalService.saveJournalEntry(journalData);
-          
+
           // Remove pending sync markers
           const syncedEntry = { ...entry };
           delete syncedEntry._pendingSync;
           delete syncedEntry._syncError;
-          
+
           // Update cache with synced entry
           await JournalCacheService.addEntryToCache(syncedEntry);
-          
+
           console.log(`✅ Successfully synced entry: ${entry.cigar?.brand} ${entry.cigar?.name}`);
         } catch (error) {
           console.error(`❌ Failed to sync entry ${entry.id}:`, error);
@@ -123,10 +123,10 @@ export class OfflineSyncService {
    */
   static async startAutoSync(): Promise<void> {
     console.log('🔄 Starting auto-sync service...');
-    
+
     // Initial sync check
     await this.syncPendingEntries();
-    
+
     // Set up periodic sync (every 30 seconds when online)
     setInterval(async () => {
       if (this.isOnline) {
@@ -144,6 +144,4 @@ export class OfflineSyncService {
     await this.syncPendingEntries();
   }
 }
-
-
 

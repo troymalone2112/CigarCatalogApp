@@ -19,7 +19,7 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
   feature,
   children,
   fallback,
-  showUpgradePrompt = true
+  showUpgradePrompt = true,
 }) => {
   const { hasAccess, isTrialActive, daysRemaining } = useFeatureAccess();
   const navigation = useNavigation();
@@ -48,12 +48,11 @@ export const FeatureGate: React.FC<FeatureGateProps> = ({
           {isTrialActive ? 'Trial Expired' : 'Premium Feature'}
         </Text>
         <Text style={styles.upgradeText}>
-          {isTrialActive 
+          {isTrialActive
             ? `Your ${daysRemaining}-day trial has ended. Upgrade to continue using all features.`
-            : 'This feature requires a premium subscription.'
-          }
+            : 'This feature requires a premium subscription.'}
         </Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.upgradeButton}
           onPress={() => navigation.navigate('Paywall' as never)}
         >

@@ -24,7 +24,14 @@ type JournalNotesScreenRouteProp = RouteProp<RootStackParamList, 'JournalNotes'>
 export default function JournalNotesScreen() {
   const navigation = useNavigation<JournalNotesScreenNavigationProp>();
   const route = useRoute<JournalNotesScreenRouteProp>();
-  const { cigar, rating, selectedFlavors, initialNotes, location: passedLocation, photos: initialPhotos = [] } = route.params;
+  const {
+    cigar,
+    rating,
+    selectedFlavors,
+    initialNotes,
+    location: passedLocation,
+    photos: initialPhotos = [],
+  } = route.params;
 
   const [notes, setNotes] = useState('');
   const [location, setLocation] = useState<string>('');
@@ -48,7 +55,7 @@ export default function JournalNotesScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        setPhotos(prev => [...prev, result.assets[0].uri]);
+        setPhotos((prev) => [...prev, result.assets[0].uri]);
       }
     } catch (error) {
       console.error('Error taking picture:', error);
@@ -58,7 +65,9 @@ export default function JournalNotesScreen() {
 
   useEffect(() => {
     if (passedLocation) {
-      const locationString = [passedLocation.city, passedLocation.state, passedLocation.country].filter(Boolean).join(', ');
+      const locationString = [passedLocation.city, passedLocation.state, passedLocation.country]
+        .filter(Boolean)
+        .join(', ');
       setLocation(locationString);
     } else {
       getCurrentLocation();
@@ -69,12 +78,12 @@ export default function JournalNotesScreen() {
     try {
       setLocationLoading(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
-      
+
       if (status !== 'granted') {
         Alert.alert(
           'Location Permission',
           'Location permission is required to record where you enjoyed this cigar.',
-          [{ text: 'OK' }]
+          [{ text: 'OK' }],
         );
         return;
       }
@@ -104,9 +113,9 @@ export default function JournalNotesScreen() {
     try {
       // Generate a proper UUID for the journal entry
       const generateUUID = () => {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-          const r = Math.random() * 16 | 0;
-          const v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+          const r = (Math.random() * 16) | 0;
+          const v = c == 'x' ? r : (r & 0x3) | 0x8;
           return v.toString(16);
         });
       };
@@ -119,21 +128,25 @@ export default function JournalNotesScreen() {
           overall: rating,
         },
         selectedFlavors,
-        notes: notes.trim() ? 
-          (initialNotes ? `${initialNotes}\n\n${notes.trim()}` : notes.trim()) : 
-          (initialNotes || ''),
-        location: location ? {
-          city: location.split(',')[0] || location,
-          state: location.split(',')[1]?.trim(),
-          country: location.split(',')[2]?.trim(),
-        } : passedLocation,
+        notes: notes.trim()
+          ? initialNotes
+            ? `${initialNotes}\n\n${notes.trim()}`
+            : notes.trim()
+          : initialNotes || '',
+        location: location
+          ? {
+              city: location.split(',')[0] || location,
+              state: location.split(',')[1]?.trim(),
+              country: location.split(',')[2]?.trim(),
+            }
+          : passedLocation,
         photos: photos.length > 0 ? photos : undefined,
       };
 
       await StorageService.saveJournalEntry(journalEntry);
-      
+
       console.log('🔍 Navigating to Journal tab after successful save');
-      
+
       // Navigate to journal page - use reset to ensure we go to the correct tab
       navigation.reset({
         index: 0,
@@ -145,24 +158,24 @@ export default function JournalNotesScreen() {
                 { name: 'Home' },
                 { name: 'HumidorList' },
                 { name: 'Journal' },
-                { name: 'Recommendations' }
+                { name: 'Recommendations' },
               ],
-              index: 2 // Journal is at index 2
-            }
-          }
+              index: 2, // Journal is at index 2
+            },
+          },
         ],
       });
     } catch (error: any) {
       console.error('Error saving journal entry:', error);
-      
+
       // Check if it's a network error
       if (error.message?.includes('Network request failed')) {
         Alert.alert(
-          'Network Error', 
+          'Network Error',
           'Your journal entry has been saved locally and will sync when your connection is restored.',
-          [{ text: 'OK', style: 'default' }]
+          [{ text: 'OK', style: 'default' }],
         );
-        
+
         // Still navigate to journal since entry is saved locally
         navigation.reset({
           index: 0,
@@ -174,11 +187,11 @@ export default function JournalNotesScreen() {
                   { name: 'Home' },
                   { name: 'HumidorList' },
                   { name: 'Journal' },
-                  { name: 'Recommendations' }
+                  { name: 'Recommendations' },
                 ],
-                index: 2 // Journal is at index 2
-              }
-            }
+                index: 2, // Journal is at index 2
+              },
+            },
           ],
         });
       } else {
@@ -191,15 +204,19 @@ export default function JournalNotesScreen() {
 
   const getStrengthColor = (strength: string) => {
     switch (strength) {
-      case 'Mild': return '#4CAF50';
-      case 'Medium': return '#FF9800';
-      case 'Full': return '#F44336';
-      default: return '#666';
+      case 'Mild':
+        return '#4CAF50';
+      case 'Medium':
+        return '#FF9800';
+      case 'Full':
+        return '#F44336';
+      default:
+        return '#666';
     }
   };
 
   return (
-    <ImageBackground 
+    <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
       style={styles.fullScreenBackground}
       imageStyle={styles.tobaccoBackgroundImage}
@@ -209,7 +226,7 @@ export default function JournalNotesScreen() {
           <Text style={styles.cigarBrand}>{cigar.brand}</Text>
           <Text style={styles.cigarLine}>{cigar.line}</Text>
           <Text style={styles.cigarName}>{cigar.name}</Text>
-          
+
           <View style={styles.ratingInfo}>
             <Text style={styles.ratingLabel}>Your Rating:</Text>
             <Text style={styles.ratingValue}>{rating}/10</Text>
@@ -236,7 +253,6 @@ export default function JournalNotesScreen() {
           </View>
         )}
 
-
         <View style={styles.notesSection}>
           <Text style={styles.sectionTitle}>Final Notes</Text>
           <TextInput
@@ -257,19 +273,16 @@ export default function JournalNotesScreen() {
             {photos.map((photo, index) => (
               <View key={index} style={styles.photoWrapper}>
                 <Image source={{ uri: photo }} style={styles.photo} />
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.deletePhotoButton}
-                  onPress={() => setPhotos(prev => prev.filter((_, i) => i !== index))}
+                  onPress={() => setPhotos((prev) => prev.filter((_, i) => i !== index))}
                 >
                   <Ionicons name="close" size={16} color="#dc3545" />
                 </TouchableOpacity>
               </View>
             ))}
-            
-            <TouchableOpacity 
-              style={styles.addPhotoButton}
-              onPress={takePicture}
-            >
+
+            <TouchableOpacity style={styles.addPhotoButton} onPress={takePicture}>
               <Ionicons name="camera" size={48} color="#DC851F" />
             </TouchableOpacity>
           </View>
@@ -280,9 +293,9 @@ export default function JournalNotesScreen() {
           onPress={handleSubmit}
           disabled={isSaving}
         >
-          <Ionicons name={isSaving ? "hourglass" : "checkmark"} size={20} color="white" />
+          <Ionicons name={isSaving ? 'hourglass' : 'checkmark'} size={20} color="white" />
           <Text style={styles.submitButtonText}>
-            {isSaving ? "Saving..." : "Save Journal Entry"}
+            {isSaving ? 'Saving...' : 'Save Journal Entry'}
           </Text>
         </TouchableOpacity>
       </ScrollView>
