@@ -22,8 +22,6 @@ import { StorageService } from '../storage/storageService';
 import { HumidorStats, UserHumidorAggregate, Humidor } from '../types';
 import { useScreenLoading } from '../hooks/useScreenLoading';
 import { useAccessControl } from '../hooks/useAccessControl';
-import { clearHumidorCache } from '../services/humidorCacheService';
-import { OptimizedHumidorService } from '../services/optimizedHumidorService';
 
 type HumidorListScreenNavigationProp = StackNavigationProp<HumidorStackParamList, 'HumidorListMain'>;
 type HumidorListScreenRouteProp = RouteProp<HumidorStackParamList, 'HumidorListMain'>;
@@ -46,6 +44,8 @@ export default function HumidorListScreen() {
   const [aggregateStats, setAggregateStats] = useState<UserHumidorAggregate | null>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const { loading, refreshing, setLoading, setRefreshing } = useScreenLoading(true);
+  const hasNavigatedAwayRef = useRef(false);
+
   // Show success message when coming from successful cigar addition
   useEffect(() => {
     if (!fromRecognition && cigar) {
@@ -63,83 +63,60 @@ export default function HumidorListScreen() {
     
     try {
       setLoading(true);
-      console.log('🚀 Loading optimized humidor data for user:', user.id);
+      console.log('🔄 Loading humidor data for user:', user.id);
       
-      // Use OptimizedHumidorService for much faster loading with caching
-      const { OptimizedHumidorService } = await import('../services/optimizedHumidorService');
+      // Load humidors and stats directly from database
+      console.log('📊 Calling getHumidors...');
+      const humidorsList = await DatabaseService.getHumidors(user.id);
+      console.log('📊 getHumidors result:', humidorsList);
       
-      const optimizedData = await OptimizedHumidorService.getOptimizedHumidorData(
-        user.id,
-        {
-          useCache: true,
-          progressCallback: (stage, progress) => {
-            console.log(`📊 Loading progress: ${stage} (${progress}%)`);
-          }
-        }
-      );
+      console.log('📊 Calling getHumidorStats...');
+      const humidorsWithStats = await DatabaseService.getHumidorStats(user.id);
+      console.log('📊 getHumidorStats result:', humidorsWithStats);
       
-      console.log(`✅ Optimized humidor data loaded in ${optimizedData.loadTime}ms from ${optimizedData.source}`);
-      console.log(`📊 Loaded ${optimizedData.humidors.length} humidors, ${optimizedData.humidorStats.length} with stats`);
-      
-      setHumidors(optimizedData.humidorStats);
-      setAggregateStats(optimizedData.aggregate);
-      
-      // Show success message if data was loaded from cache (instant loading feedback)
-      if (optimizedData.source === 'cache' && optimizedData.loadTime < 100) {
-        console.log('⚡ Lightning-fast cache load!');
+      console.log('📊 Calling getUserHumidorAggregate...');
+      let aggregateData;
+      try {
+        aggregateData = await DatabaseService.getUserHumidorAggregate(user.id);
+        console.log('📊 getUserHumidorAggregate result:', aggregateData);
+      } catch (aggregateError) {
+        console.log('⚠️ getUserHumidorAggregate failed, calculating manually:', aggregateError);
+        // Calculate aggregate stats manually
+        const totalCigars = humidorsWithStats.reduce((sum, h) => sum + (h.cigarCount || 0), 0);
+        const totalValue = humidorsWithStats.reduce((sum, h) => sum + (h.totalValue || 0), 0);
+        const avgValue = totalCigars > 0 ? totalValue / totalCigars : 0;
+        
+        aggregateData = {
+          userId: user.id,
+          totalHumidors: humidorsWithStats.length,
+          totalCigars: totalCigars,
+          totalCollectionValue: totalValue,
+          avgCigarValue: avgValue,
+          uniqueBrands: 0,
+        };
+        console.log('📊 Manual aggregate calculation:', aggregateData);
       }
+      
+      console.log(`✅ Loaded ${humidorsList.length} humidors, ${humidorsWithStats.length} with stats`);
+      
+      setHumidors(humidorsWithStats);
+      setAggregateStats(aggregateData);
       
     } catch (error) {
-      console.error('❌ Error loading optimized humidor data:', error);
+      console.error('❌ Error loading humidor data:', error);
       
-      // Fallback: Try progressive loading - show basic humidors first
-      try {
-        console.log('🆘 Attempting progressive fallback loading...');
-        const { OptimizedHumidorService } = await import('../services/optimizedHumidorService');
-        
-        const basicHumidors = await OptimizedHumidorService.getBasicHumidors(user.id);
-        console.log(`⚠️ Fallback loaded ${basicHumidors.length} basic humidors`);
-        
-        // Show basic humidors without stats
-        setHumidors([]);
-        setAggregateStats({
-          userId: user.id,
-          totalHumidors: basicHumidors.length,
-          totalCigars: 0,
-          totalCollectionValue: 0,
-          avgCigarValue: 0,
-          uniqueBrands: 0,
-        });
-        
-        // Try to load stats in background
-        OptimizedHumidorService.getStatsForHumidors(
-          user.id, 
-          basicHumidors.map(h => h.id)
-        ).then(stats => {
-          console.log('📊 Background stats loaded:', stats.length);
-          if (stats.length > 0) {
-            setHumidors(stats);
-          }
-        }).catch(statsError => {
-          console.warn('⚠️ Background stats load failed:', statsError);
-        });
-        
-      } catch (fallbackError) {
-        console.error('❌ All fallback strategies failed:', fallbackError);
-        
-        // Final fallback - empty state
-        setHumidors([]);
-        setAggregateStats({
-          userId: user.id,
-          totalHumidors: 0,
-          totalCigars: 0,
-          totalCollectionValue: 0,
-          avgCigarValue: 0,
-          uniqueBrands: 0,
-        });
-        
-        Alert.alert('Error', 'Failed to load humidor data. Please try again.');
-      }
+      // Show empty state
+      setHumidors([]);
+      setAggregateStats({
+        userId: user.id,
+        totalHumidors: 0,
+        totalCigars: 0,
+        totalCollectionValue: 0,
+        avgCigarValue: 0,
+        uniqueBrands: 0,
+      });
+      
+      Alert.alert('Error', 'Failed to load humidor data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -147,33 +124,17 @@ export default function HumidorListScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      console.log('🔍 HumidorListScreen focused - loading data...');
-      loadHumidorData();
+      if (!hasNavigatedAwayRef.current) {
+        loadHumidorData();
+      }
     }, [loadHumidorData])
   );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    try {
-      console.log('🔄 Force refreshing humidor data...');
-      
-      // Force refresh with cache bypass for pull-to-refresh
-      const { OptimizedHumidorService } = await import('../services/optimizedHumidorService');
-      const refreshedData = await OptimizedHumidorService.refreshHumidorData(user?.id || '');
-      
-      console.log(`✅ Force refresh completed in ${refreshedData.loadTime}ms from fresh database`);
-      
-      setHumidors(refreshedData.humidorStats);
-      setAggregateStats(refreshedData.aggregate);
-      
-    } catch (error) {
-      console.error('❌ Force refresh failed:', error);
-      // Fallback to regular load if optimized refresh fails
-      await loadHumidorData();
-    } finally {
-      setRefreshing(false);
-    }
-  }, [loadHumidorData, user]);
+    await loadHumidorData();
+    setRefreshing(false);
+  }, [loadHumidorData]);
 
   const handleHumidorPress = (humidor: HumidorStats) => {
     console.log('🔍 Recognition flow check:', { fromRecognition, hasCigar: !!cigar, singleStickPrice });
@@ -202,93 +163,19 @@ export default function HumidorListScreen() {
     navigation.navigate('CreateHumidor');
   };
 
-  const handleHumidorMenu = (humidor: HumidorStats) => {
-    console.log('🔧 Opening menu for humidor:', humidor.humidorName);
+  const handleEditHumidor = (humidor: HumidorStats) => {
+    // Convert HumidorStats to Humidor format for EditHumidor screen
+    const humidorForEdit: Humidor = {
+      id: humidor.humidorId,
+      userId: humidor.userId,
+      name: humidor.humidorName,
+      description: humidor.description,
+      capacity: humidor.capacity,
+      createdAt: humidor.createdAt,
+      updatedAt: humidor.updatedAt,
+    };
     
-    Alert.alert(
-      humidor.humidorName,
-      'What would you like to do?',
-      [
-        {
-          text: 'Edit',
-          onPress: () => {
-            console.log('✏️ Navigating to edit humidor:', humidor.humidorId);
-            // Navigate to edit screen with humidor data
-            navigation.navigate('EditHumidor', {
-              humidor: {
-                id: humidor.humidorId,
-                name: humidor.humidorName,
-                description: humidor.description,
-                capacity: humidor.capacity,
-                userId: humidor.userId,
-                createdAt: new Date(), // Mock value, not used in edit screen
-                updatedAt: new Date(), // Mock value, not used in edit screen
-              }
-            });
-          }
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            console.log('🗑️ Delete requested for humidor:', humidor.humidorName);
-            handleDeleteHumidor(humidor);
-          }
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        }
-      ]
-    );
-  };
-
-  const handleDeleteHumidor = (humidor: HumidorStats) => {
-    Alert.alert(
-      'Delete Humidor',
-      `Are you sure you want to delete "${humidor.humidorName}"? This action cannot be undone and will remove all cigars from this humidor.`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel'
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              console.log('🗑️ Deleting humidor:', humidor.humidorId);
-              
-              // Show loading state
-              setLoading(true);
-              
-              // Delete the humidor
-              await DatabaseService.deleteHumidor(humidor.humidorId);
-              console.log('✅ Humidor deleted successfully');
-
-              // Clear cache to ensure deleted humidor is removed from the list
-              console.log('🗑️ Clearing humidor cache after deletion...');
-              if (user) {
-                await Promise.all([
-                  clearHumidorCache(user.id),
-                  OptimizedHumidorService.clearCache(user.id)
-                ]);
-                console.log('✅ Cache cleared, deleted humidor will be removed from list');
-              }
-
-              // Refresh the list
-              await loadHumidorData();
-              
-            } catch (error) {
-              console.error('❌ Error deleting humidor:', error);
-              Alert.alert('Error', 'Failed to delete humidor. Please try again.');
-            } finally {
-              setLoading(false);
-            }
-          }
-        }
-      ]
-    );
+    navigation.navigate('EditHumidor', { humidor: humidorForEdit });
   };
 
   const getProgressColor = (percentage: number) => {
@@ -403,10 +290,7 @@ export default function HumidorListScreen() {
                   </View>
                   <TouchableOpacity 
                     style={styles.menuButton}
-                    onPress={(e) => {
-                      e.stopPropagation(); // Prevent card press
-                      handleHumidorMenu(item);
-                    }}
+                    onPress={() => handleEditHumidor(item)}
                   >
                     <Ionicons name="ellipsis-horizontal" size={20} color="#FFFFFF" />
                   </TouchableOpacity>
