@@ -4,6 +4,7 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase, AuthService, checkSupabaseConnection, executeWithResilience } from '../services/supabaseService';
 import { Api } from '../services/api';
 import { connectionHealthManager } from '../services/connectionHealthManager';
+import { connectionManager } from '../services/connectionManager';
 import { ColdStartCache } from '../services/coldStartCache';
 import { StorageService } from '../storage/storageService';
 import { UserManagementService } from '../services/userManagementService';
@@ -98,12 +99,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshAuthState = async () => {
     try {
       console.log('🔄 Refreshing auth state...');
+      
+      // Track activity and ensure connection is fresh
+      connectionManager.trackActivity();
+      await connectionManager.ensureFreshConnection();
 
-      // Skip connection check on foreground refresh to reduce delays
-      // Only do a quick session check
+      // Quick session check with timeout
       const {
         data: { session },
-      } = await supabase.auth.getSession();
+      } = await Promise.race([
+        supabase.auth.getSession(),
+        new Promise<any>((_, reject) =>
+          setTimeout(() => reject(new Error('Session check timeout')), 5000),
+        ),
+      ]);
 
       if (session?.user) {
         console.log('✅ Session still valid, doing lightweight refresh');
@@ -124,7 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('❌ No valid session found');
       }
     } catch (error) {
-      console.error('❌ Error refreshing auth state:', error);
+      console.warn('⚠️ Error refreshing auth state (non-fatal):', error);
     }
   };
 
@@ -148,22 +157,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const hasCachedData = await ColdStartCache.hasCachedData();
         console.log('💾 Cached data available:', hasCachedData);
 
-        // Step 2: Perform health check first
-        const healthCheck = await connectionHealthManager.performHealthCheck();
-        console.log('🔍 Connection health:', healthCheck);
-
-        // Step 3: Try to load from network if healthy, otherwise use cache
-        if (healthCheck.isOnline && healthCheck.isDatabaseHealthy) {
-          console.log('✅ Network is healthy, attempting fresh data load...');
-          await loadFreshData();
-        } else if (hasCachedData) {
-          console.log('⚠️ Network issues detected, loading from cache...');
+        // Step 2: If we have cached data, load it instantly and refresh in background
+        if (hasCachedData) {
+          console.log('⚡ Loading from cache instantly for fast startup...');
           await loadFromCache();
-          // Try to sync in background
-          syncInBackground();
+          // Ensure connection is fresh (non-blocking)
+          connectionManager.ensureFreshConnection().catch(() => {});
+          // Refresh in background without blocking
+          refreshInBackground();
         } else {
-          console.log('❌ No network and no cache, attempting degraded load...');
-          await attemptDegradedLoad();
+          // Step 3: No cache - do quick health check and load fresh
+          console.log('🔄 No cache available, performing quick health check...');
+          const healthCheck = await connectionHealthManager.performHealthCheck();
+          console.log('🔍 Connection health:', healthCheck);
+
+          if (healthCheck.isOnline && healthCheck.isDatabaseHealthy) {
+            console.log('✅ Network is healthy, attempting fresh data load...');
+            await loadFreshData();
+          } else {
+            console.log('❌ Network issues, attempting degraded load...');
+            await attemptDegradedLoad();
+          }
         }
 
         console.log('✅ Resilient auth initialization complete');
@@ -268,53 +282,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
 
-    // Helper function for background sync
-    const syncInBackground = async () => {
+    // Helper function for background refresh (faster than sync)
+    const refreshInBackground = async () => {
       try {
-        console.log('🔄 Starting background sync...');
-
-        // Wait a bit for the UI to load
+        // Wait for UI to render first (500ms is enough)
         setTimeout(async () => {
           try {
-            const sessionData = await supabase.auth.getSession();
+            console.log('🔄 Starting background refresh...');
+            
+            // Ensure connection is fresh
+            await connectionManager.ensureFreshConnection();
+
+            // Quick session check
+            const sessionData = await Promise.race([
+              supabase.auth.getSession(),
+              new Promise<any>((_, reject) =>
+                setTimeout(() => reject(new Error('Session check timeout')), 5000),
+              ),
+            ]);
+
             const {
               data: { session },
             } = sessionData;
 
             if (session?.user) {
-              console.log('🔄 Background sync: updating subscription status...');
-              await loadSubscriptionStatus(session.user.id);
+              console.log('🔄 Background refresh: updating subscription status...');
+              // Load subscription status (non-blocking)
+              loadSubscriptionStatus(session.user.id).catch((err) =>
+                console.warn('⚠️ Background subscription refresh failed:', err),
+              );
 
-              console.log('🔄 Background sync: updating profile...');
-              await loadProfile(session.user.id);
+              console.log('🔄 Background refresh: updating profile...');
+              // Load profile (non-blocking)
+              loadProfile(session.user.id).catch((err) =>
+                console.warn('⚠️ Background profile refresh failed:', err),
+              );
 
-              console.log('✅ Background sync completed');
-              connectionHealthManager.resetHealthState();
-
-              // Update cached state after successful sync
+              console.log('✅ Background refresh initiated');
+              
+              // Update cache after a delay to let state settle
               setTimeout(async () => {
                 try {
-                  if (profile && subscriptionStatus) {
-                    console.log('💾 Updating cached state after successful background sync...');
+                  const currentProfile = profile;
+                  const currentSubscription = subscriptionStatus;
+                  if (currentProfile && currentSubscription) {
+                    console.log('💾 Updating cached state after background refresh...');
                     await ColdStartCache.cacheSuccessfulState(
                       session.user,
-                      profile,
-                      subscriptionStatus,
+                      currentProfile,
+                      currentSubscription,
                       session,
                     );
                     await ColdStartCache.updateCacheTimestamp();
                   }
                 } catch (error) {
-                  console.error('❌ Failed to update cache after background sync:', error);
+                  console.warn('⚠️ Failed to update cache after background refresh:', error);
                 }
-              }, 500);
+              }, 2000);
             }
           } catch (error) {
-            console.error('❌ Background sync failed:', error);
+            console.warn('⚠️ Background refresh failed (non-fatal):', error);
           }
-        }, 2000); // Wait 2 seconds before syncing
+        }, 500); // Wait only 500ms for UI to render
       } catch (error) {
-        console.error('❌ Background sync setup failed:', error);
+        console.warn('⚠️ Background refresh setup failed (non-fatal):', error);
       }
     };
 

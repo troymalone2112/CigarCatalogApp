@@ -64,6 +64,8 @@ export default function JournalEntryDetailsScreen({
   const [editedNotes, setEditedNotes] = useState(entry.notes || '');
   const [editedFlavors, setEditedFlavors] = useState(entry.selectedFlavors || []);
   const [editedRating, setEditedRating] = useState(entry.rating.overall || 0);
+  const [editedBrand, setEditedBrand] = useState(entry.cigar.brand || '');
+  const [editedName, setEditedName] = useState(entry.cigar.name || '');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const getStrengthColor = (strength: string) => {
@@ -93,12 +95,19 @@ export default function JournalEntryDetailsScreen({
     setEditedNotes(entry.notes || '');
     setEditedFlavors(entry.selectedFlavors || []);
     setEditedRating(entry.rating.overall || 0);
+    setEditedBrand(entry.cigar.brand || '');
+    setEditedName(entry.cigar.name || '');
   };
 
   const handleSave = async () => {
     try {
       const updatedEntry = {
         ...entry,
+        cigar: {
+          ...entry.cigar,
+          brand: editedBrand.trim() || entry.cigar.brand,
+          name: editedName.trim() || entry.cigar.name,
+        },
         notes: editedNotes,
         selectedFlavors: editedFlavors,
         rating: {
@@ -239,10 +248,45 @@ export default function JournalEntryDetailsScreen({
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Cigar Information */}
         <View style={styles.cigarInfo}>
-          <Text style={styles.cigarBrand}>{entry.cigar.brand}</Text>
-          <Text style={styles.cigarLine}>{entry.cigar.line}</Text>
-          {entry.cigar.name && entry.cigar.name !== 'Unknown Name' && (
-            <Text style={styles.cigarName}>{entry.cigar.name}</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Cigar Information</Text>
+            {!isEditing && (
+              <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
+                <Ionicons name="pencil-outline" size={16} color="#DC851F" />
+              </TouchableOpacity>
+            )}
+          </View>
+          {isEditing ? (
+            <View style={styles.editFieldsContainer}>
+              <View style={styles.editField}>
+                <Text style={styles.editFieldLabel}>Brand</Text>
+                <TextInput
+                  style={styles.editTextInput}
+                  value={editedBrand}
+                  onChangeText={setEditedBrand}
+                  placeholder="Enter brand name"
+                  placeholderTextColor="#999999"
+                />
+              </View>
+              <View style={styles.editField}>
+                <Text style={styles.editFieldLabel}>Name</Text>
+                <TextInput
+                  style={styles.editTextInput}
+                  value={editedName}
+                  onChangeText={setEditedName}
+                  placeholder="Enter cigar name"
+                  placeholderTextColor="#999999"
+                />
+              </View>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.cigarBrand}>{entry.cigar.brand}</Text>
+              <Text style={styles.cigarLine}>{entry.cigar.line}</Text>
+              {entry.cigar.name && entry.cigar.name !== 'Unknown Name' && (
+                <Text style={styles.cigarName}>{entry.cigar.name}</Text>
+              )}
+            </>
           )}
           <Text style={styles.dateText}>{formatDate(entry.date)}</Text>
           {entry.location && (
@@ -768,5 +812,26 @@ const styles = StyleSheet.create({
   starContainer: {
     marginHorizontal: 1,
     padding: 2,
+  },
+  editFieldsContainer: {
+    gap: 16,
+  },
+  editField: {
+    marginBottom: 12,
+  },
+  editFieldLabel: {
+    fontSize: 14,
+    color: '#CCCCCC',
+    marginBottom: 8,
+    fontWeight: '400',
+  },
+  editTextInput: {
+    backgroundColor: '#333333',
+    borderRadius: 8,
+    padding: 12,
+    color: '#CCCCCC',
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: '#555555',
   },
 });

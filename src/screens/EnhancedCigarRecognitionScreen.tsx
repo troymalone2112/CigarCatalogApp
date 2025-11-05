@@ -135,6 +135,11 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
   // Loading states
   const [showLoadingHumidors, setShowLoadingHumidors] = useState(false);
 
+  // Edit modal states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editBrand, setEditBrand] = useState('');
+  const [editName, setEditName] = useState('');
+
   // Hide loading screen when component unmounts or user navigates away
   useEffect(() => {
     return () => {
@@ -723,26 +728,6 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
     }
   };
 
-  const buyOnline = () => {
-    if (!recognitionResult) return;
-
-    const brand = recognitionResult.enrichedCigar.brand || '';
-    const line = recognitionResult.enrichedCigar.line || '';
-
-    // Create search query for Famous Smoke Shop (brand + line only)
-    const searchQuery = `${brand} ${line}`.trim();
-    const encodedQuery = encodeURIComponent(searchQuery);
-    const searchUrl = `https://www.famous-smoke.com/catalogsearch/result/?q=${encodedQuery}`;
-
-    console.log('🔍 Opening Famous Smoke Shop search:', searchUrl);
-
-    // Open in browser
-    Linking.openURL(searchUrl).catch((error) => {
-      console.error('Failed to open URL:', error);
-      Alert.alert('Error', 'Failed to open browser. Please try again.');
-    });
-  };
-
   const startJournaling = () => {
     if (!recognitionResult) return;
 
@@ -1000,18 +985,32 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
           ) : recognitionResult ? (
             <View style={styles.resultCard}>
               <View style={styles.resultHeader}>
-                <Text style={styles.sectionTitle}>{recognitionResult.enrichedCigar.brand}</Text>
+                <View style={styles.titleWithEdit}>
+                  <Text style={styles.sectionTitle}>{recognitionResult.enrichedCigar.brand}</Text>
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() => {
+                      setEditBrand(recognitionResult.enrichedCigar.brand || '');
+                      setEditName(recognitionResult.enrichedCigar.name || '');
+                      setShowEditModal(true);
+                    }}
+                  >
+                    <Ionicons name="pencil" size={16} color="#DC851F" />
+                  </TouchableOpacity>
+                </View>
                 <View style={styles.confidenceBadge}>
                   <Text style={styles.confidenceText}>{recognitionResult.confidence}%</Text>
                 </View>
               </View>
 
-              <Text style={styles.resultSubtitle}>
-                {recognitionResult.enrichedCigar.name &&
-                recognitionResult.enrichedCigar.name !== 'Unknown Name'
-                  ? recognitionResult.enrichedCigar.name
-                  : recognitionResult.enrichedCigar.line}
-              </Text>
+              <View style={styles.nameWithEdit}>
+                <Text style={styles.resultSubtitle}>
+                  {recognitionResult.enrichedCigar.name &&
+                  recognitionResult.enrichedCigar.name !== 'Unknown Name'
+                    ? recognitionResult.enrichedCigar.name
+                    : recognitionResult.enrichedCigar.line}
+                </Text>
+              </View>
 
               {/* Cigar Description */}
               {recognitionResult.enrichedCigar.overview && (
@@ -1172,12 +1171,6 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
                   <Text style={styles.smokeButtonText}>Let's Journal!</Text>
                 </TouchableOpacity>
               </View>
-
-              {/* Buy Online Button */}
-              <TouchableOpacity style={styles.buyOnlineButton} onPress={buyOnline}>
-                <Ionicons name="cart" size={20} color="#DC851F" />
-                <Text style={styles.buyOnlineButtonText}>Buy Online</Text>
-              </TouchableOpacity>
 
               <View style={styles.modeIndicator}>
                 <Text style={styles.modeText}></Text>
@@ -1403,6 +1396,78 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
       >
         <View style={styles.loadingModalContainer}>
           <LoadingHumidorsScreen message="Loading your humidors..." />
+        </View>
+      </Modal>
+
+      {/* Edit Brand/Name Modal */}
+      <Modal
+        visible={showEditModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowEditModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowEditModal(false)}>
+              <Ionicons name="close" size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Edit Cigar Details</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Brand</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editBrand}
+                onChangeText={setEditBrand}
+                placeholder="e.g., Padron, Arturo Fuente"
+                placeholderTextColor="#999999"
+                autoCapitalize="words"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Name</Text>
+              <TextInput
+                style={styles.textInput}
+                value={editName}
+                onChangeText={setEditName}
+                placeholder="e.g., 1964 Anniversary, Hemingway"
+                placeholderTextColor="#999999"
+                autoCapitalize="words"
+              />
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalButtonContainer}>
+            <TouchableOpacity
+              style={styles.cancelModalButton}
+              onPress={() => setShowEditModal(false)}
+            >
+              <Text style={styles.cancelModalButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.submitModalButton}
+              onPress={() => {
+                if (recognitionResult) {
+                  // Update the recognition result with edited values
+                  setRecognitionResult({
+                    ...recognitionResult,
+                    enrichedCigar: {
+                      ...recognitionResult.enrichedCigar,
+                      brand: editBrand.trim() || recognitionResult.enrichedCigar.brand,
+                      name: editName.trim() || recognitionResult.enrichedCigar.name,
+                    },
+                  });
+                }
+                setShowEditModal(false);
+              }}
+            >
+              <Text style={styles.submitModalButtonText}>Save</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </Modal>
     </View>
@@ -1702,6 +1767,20 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 8,
   },
+  titleWithEdit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 8,
+  },
+  editButton: {
+    padding: 4,
+  },
+  nameWithEdit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   resultTitle: {
     color: '#CCCCCC',
     fontSize: 14,
@@ -1838,23 +1917,6 @@ const styles = StyleSheet.create({
     borderColor: '#DC851F',
   },
   smokeButtonText: {
-    color: '#DC851F',
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 8,
-  },
-  buyOnlineButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 6,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#DC851F',
-    marginTop: 8,
-  },
-  buyOnlineButtonText: {
     color: '#DC851F',
     fontSize: 14,
     fontWeight: '500',

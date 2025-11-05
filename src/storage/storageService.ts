@@ -652,19 +652,32 @@ export class StorageService {
     console.log('🔍 StorageService.saveInventoryItem called with item:', item.id);
     try {
       const userId = this.currentUserId;
-      // Normalize cigar image: upload if local
-      try {
-        if (this.currentUserId && item.cigar?.imageUrl && !/^https?:\/\//i.test(item.cigar.imageUrl)) {
-          const { MediaUploadService } = await import('../services/mediaUploadService');
-          const url = await MediaUploadService.uploadImage(item.cigar.imageUrl, {
-            userId: this.currentUserId,
-            scope: 'inventory',
-            id: item.id,
+      
+      // Save image URL for background upload (non-blocking)
+      const originalImageUrl = item.cigar?.imageUrl;
+      const needsUpload = this.currentUserId && originalImageUrl && !/^https?:\/\//i.test(originalImageUrl);
+      
+      // Start image upload in background (non-blocking)
+      if (needsUpload) {
+        const { MediaUploadService } = await import('../services/mediaUploadService');
+        // Upload in background - don't wait for it
+        MediaUploadService.uploadImage(originalImageUrl, {
+          userId: this.currentUserId!,
+          scope: 'inventory',
+          id: item.id,
+        })
+          .then((url) => {
+            // Update the item in DB with the new URL after upload completes
+            console.log('[Upload] Image upload complete, updating DB with URL:', url);
+            Api.inventory.update(item.id, {
+              cigar_data: { ...item.cigar, imageUrl: url },
+            } as any).catch((e) => {
+              console.log('[Upload] Failed to update DB with new image URL:', e);
+            });
+          })
+          .catch((e) => {
+            console.log('[Upload] Background image upload failed (non-critical):', e);
           });
-          item.cigar.imageUrl = url;
-        }
-      } catch (e) {
-        console.log('[Upload] inventory upload failed', e);
       }
 
       // Convert to database format
@@ -691,9 +704,10 @@ export class StorageService {
 
       const saved = await Api.inventory.upsert(inventoryData);
 
-      // Log activity
-      try {
-        await UserManagementService.logUserActivity(
+      // Parallelize non-critical operations (don't block save)
+      Promise.all([
+        // Log activity (non-blocking)
+        UserManagementService.logUserActivity(
           'save_inventory_item',
           'inventory_item',
           item.id,
@@ -703,27 +717,32 @@ export class StorageService {
             quantity: item.quantity,
             humidorId: item.humidorId,
           },
-        );
-      } catch (logError) {
-        console.log('User activity logging failed (non-critical):', logError);
-      }
-
-      // In-app notification
-      try {
-        if (this.currentUserId) {
-          const { NotificationService } = await import('../services/notificationService');
-          await NotificationService.add(this.currentUserId, {
-            type: 'inventory_add',
-            title: 'Added to Humidor',
-            message: `${item.cigar.brand} ${item.cigar.line || ''} x${item.quantity}`.trim(),
-            data: {
-              inventoryItemId: saved?.id || item.id,
-              humidorId: item.humidorId,
-              cigar: item.cigar,
-            },
-          });
-        }
-      } catch {}
+        ).catch((logError) => {
+          console.log('User activity logging failed (non-critical):', logError);
+        }),
+        // In-app notification (non-blocking)
+        this.currentUserId
+          ? (async () => {
+              try {
+                const { NotificationService } = await import('../services/notificationService');
+                await NotificationService.add(this.currentUserId!, {
+                  type: 'inventory_add',
+                  title: 'Added to Humidor',
+                  message: `${item.cigar.brand} ${item.cigar.line || ''} x${item.quantity}`.trim(),
+                  data: {
+                    inventoryItemId: saved?.id || item.id,
+                    humidorId: item.humidorId,
+                    cigar: item.cigar,
+                  },
+                });
+              } catch (e) {
+                console.log('Notification creation failed (non-critical):', e);
+              }
+            })()
+          : Promise.resolve(),
+      ]).catch(() => {
+        // Ignore errors in background operations
+      });
     } catch (error) {
       console.error('Error saving inventory item:', error);
       throw error;

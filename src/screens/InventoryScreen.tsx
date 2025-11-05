@@ -21,6 +21,8 @@ import { DatabaseService } from '../services/supabaseService';
 import { useAuth } from '../contexts/AuthContext';
 import { normalizeStrength } from '../utils/helpers';
 import { getStrengthInfo } from '../utils/strengthUtils';
+import { InventoryCacheService } from '../services/inventoryCacheService';
+import { connectionManager } from '../services/connectionManager';
 
 type InventoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Inventory'>;
 type InventoryScreenRouteProp = RouteProp<RootStackParamList, 'Inventory'>;
@@ -33,6 +35,7 @@ export default function InventoryScreen() {
   const [filteredInventory, setFilteredInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [forceUpdate, setForceUpdate] = useState(0);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
@@ -43,22 +46,15 @@ export default function InventoryScreen() {
   const highlightAnimation = useRef(new Animated.Value(0)).current;
   const processedHighlightId = useRef<string | null>(null);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadInventory();
-    }, [route.params?.humidorId])
-  );
-
-
-  const handleAddCigar = () => {
-    navigation.navigate('CigarRecognition', { humidorId: currentHumidor?.id });
-  };
-
-
-  const loadInventory = async () => {
-    if (!user) return;
+  const loadInventory = useCallback(async () => {
+    if (!user || isLoadingData) return;
     
     try {
+      setIsLoadingData(true);
+      
+      // Ensure connection is fresh before loading
+      await connectionManager.ensureFreshConnection();
+
       // Load humidors first
       const humidors = await DatabaseService.getHumidors(user.id);
       setAvailableHumidors(humidors);
@@ -78,11 +74,16 @@ export default function InventoryScreen() {
       
       // Load inventory for the selected humidor
       const items = await StorageService.getInventory(selectedHumidor?.id);
-      console.log('📦 Loaded inventory items:', items.length);
-      console.log('📦 Inventory data:', items);
+      console.log('✅ Loaded inventory items:', items.length);
+      
+      // Update state
       setInventory(items);
       setFilteredInventory(items);
-      console.log('📦 State updated with new inventory');
+      
+      // Cache the fresh results
+      if (user.id) {
+        await InventoryCacheService.cacheInventory(user.id, items, selectedHumidor?.id);
+      }
       
       // Check if we need to highlight an item after loading inventory
       const highlightId = route?.params?.highlightItemId || route?.params?.params?.highlightItemId;
@@ -92,13 +93,86 @@ export default function InventoryScreen() {
         triggerHighlight(highlightId, items);
       }
     } catch (error) {
-      console.error('Error loading inventory:', error);
-      Alert.alert('Error', 'Failed to load inventory');
+      console.error('❌ Error loading inventory:', error);
+      
+      // Only show error if we don't have cached data
+      if (inventory.length === 0) {
+        Alert.alert('Error', 'Failed to load inventory');
+      }
     } finally {
+      setIsLoadingData(false);
       setLoading(false);
       setRefreshing(false);
     }
+  }, [user, isLoadingData, route.params?.humidorId, route.params?.humidorName, route.params?.highlightItemId, inventory.length]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.id) return;
+
+      // 1) Load from cache instantly if available
+      const loadFromCacheThenRefresh = async () => {
+        try {
+          // Track activity for connection manager
+          connectionManager.trackActivity();
+          
+          // Ensure connection is fresh (non-blocking)
+          connectionManager.ensureFreshConnection().catch(() => {});
+
+          const targetHumidorId = route.params?.humidorId;
+          
+          // Try to load from cache first
+          const cachedData = await InventoryCacheService.getCachedInventory(
+            user.id,
+            targetHumidorId,
+          );
+
+          if (cachedData) {
+            console.log('📦 Loading inventory from cache - instant display');
+            setInventory(cachedData.items);
+            setFilteredInventory(cachedData.items);
+            setLoading(false); // UI ready immediately
+            
+            // Try to load humidor info from cache or quick load
+            if (targetHumidorId) {
+              // Try to get humidor name from cache or quick load
+              DatabaseService.getHumidors(user.id)
+                .then((humidors) => {
+                  const selectedHumidor = humidors.find(h => h.id === targetHumidorId);
+                  if (selectedHumidor) {
+                    setCurrentHumidor(selectedHumidor);
+                    setHumidorName(route.params?.humidorName || selectedHumidor.name || '');
+                  }
+                })
+                .catch(() => {
+                  // Non-critical, will load in background refresh
+                });
+            }
+          } else {
+            console.log('⚠️ No cache available, will load from network');
+            setLoading(true);
+          }
+        } catch (cacheError) {
+          console.warn('⚠️ Cache check failed, will load from network:', cacheError);
+          setLoading(true);
+        }
+
+        // 2) Load fresh data in background (never blocks UI)
+        if (!isLoadingData) {
+          loadInventory();
+        }
+      };
+
+      loadFromCacheThenRefresh();
+    }, [user?.id, route.params?.humidorId, isLoadingData, loadInventory])
+  );
+
+
+  const handleAddCigar = () => {
+    navigation.navigate('CigarRecognition', { humidorId: currentHumidor?.id });
   };
+
+
 
   const triggerHighlight = (itemId: string, items: InventoryItem[]) => {
     console.log('🎯 Setting highlighted item:', itemId);
@@ -141,9 +215,14 @@ export default function InventoryScreen() {
     }, 100);
   };
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    loadInventory();
+    // Clear cache and force refresh
+    if (user?.id) {
+      const targetHumidorId = route.params?.humidorId;
+      await InventoryCacheService.clearInventoryCache(user.id, targetHumidorId);
+    }
+    await loadInventory();
   };
 
   const filterInventory = () => {
@@ -248,33 +327,36 @@ export default function InventoryScreen() {
       <Animated.View style={[styles.inventoryCard, isHighlighted && animatedStyle]}>
       <TouchableOpacity
         style={styles.cardContent}
-        onPress={() => navigation.navigate('CigarDetails', { cigar: item.cigar })}
+        onPress={() => navigation.navigate('CigarDetails', { cigar: item.cigar, inventoryItemId: item.id })}
+        activeOpacity={1}
       >
         {/* Main content area */}
         <View style={styles.mainContent}>
           <View style={styles.cigarInfo}>
             {/* Full width brand and cigar name */}
-            <Text style={styles.cigarBrand}>{item.cigar.brand}</Text>
+            <Text style={styles.cigarBrand}>{item.cigar.brand || 'Unknown Brand'}</Text>
             <Text style={styles.cigarName}>
               {item.cigar.name && item.cigar.name !== 'Unknown Name' 
                 ? item.cigar.name 
-                : item.cigar.line}
+                : (item.cigar.line || 'Unknown Cigar')}
             </Text>
             
             <View style={styles.detailsRow}>
-              <View style={[styles.strengthBadge, getStrengthBadgeStyle(item.cigar.strength)]}>
-                <Text style={[styles.strengthText, { color: getStrengthInfo(item.cigar.strength).color }]}>
-                  {normalizeStrength(item.cigar.strength)}
-                </Text>
-              </View>
-              {item.cigar.cigarAficionadoRating && (
-                <View style={styles.ratingBadge}>
-                  <Text style={styles.ratingText}>{item.cigar.cigarAficionadoRating}/100</Text>
+              {item.cigar.strength && String(item.cigar.strength).trim() ? (
+                <View style={[styles.strengthBadge, getStrengthBadgeStyle(item.cigar.strength)]}>
+                  <Text style={[styles.strengthText, { color: getStrengthInfo(item.cigar.strength || 'Medium')?.color || '#999' }]}>
+                    {String(normalizeStrength(item.cigar.strength) || 'Medium')}
+                  </Text>
                 </View>
-              )}
-              {item.location && (
-                <Text style={styles.locationText}>📍 {item.location}</Text>
-              )}
+              ) : null}
+              {item.cigar.cigarAficionadoRating ? (
+                <View style={styles.ratingBadge}>
+                  <Text style={styles.ratingText}>{String(item.cigar.cigarAficionadoRating || 0)}/100</Text>
+                </View>
+              ) : null}
+              {item.location && String(item.location).trim() ? (
+                <Text style={styles.locationText}>📍 {String(item.location)}</Text>
+              ) : null}
             </View>
 
             {item.purchaseDate && (
@@ -285,12 +367,15 @@ export default function InventoryScreen() {
           </View>
 
           <View style={styles.imageContainer}>
-            {item.cigar.imageUrl ? (
+            {item.cigar.imageUrl && 
+             item.cigar.imageUrl !== 'placeholder' && 
+             /^https?:\/\//i.test(item.cigar.imageUrl) ? (
               <Image source={{ uri: item.cigar.imageUrl }} style={styles.cigarImage} />
             ) : (
-              <View style={styles.placeholderImage}>
-                <Ionicons name="image-outline" size={40} color="#ccc" />
-              </View>
+              <Image
+                source={require('../../assets/cigar-placeholder.jpg')}
+                style={styles.cigarImage}
+              />
             )}
           </View>
         </View>

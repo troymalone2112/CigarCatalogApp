@@ -317,16 +317,6 @@ export default function RecommendationsScreen() {
             </View>
           </View>
         </View>
-
-        <View style={styles.cardActions}>
-          <TouchableOpacity
-            style={styles.actionButton}
-            onPress={() => handleLearnMore(recommendation.cigar)}
-          >
-            <Ionicons name="information-circle-outline" size={16} color="#DC851F" />
-            <Text style={styles.actionButtonText}>Learn More</Text>
-          </TouchableOpacity>
-        </View>
       </TouchableOpacity>
     );
   };
@@ -619,26 +609,6 @@ const styles = StyleSheet.create({
   flavorTagText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '500',
-  },
-  cardActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#333333',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    gap: 6,
-  },
-  actionButtonText: {
-    fontSize: 12,
-    color: '#DC851F',
     fontWeight: '500',
   },
   emptyState: {

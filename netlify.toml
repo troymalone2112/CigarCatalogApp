@@ -14,3 +14,8 @@
   from = "/webhook/revenuecat/health"
   to = "/.netlify/functions/webhook-simple"
   status = 200
+
+[[redirects]]
+  from = "/keep-alive"
+  to = "/.netlify/functions/keep-alive"
+  status = 200

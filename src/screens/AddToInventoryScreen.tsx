@@ -96,70 +96,11 @@ export default function AddToInventoryScreen({ route }: Props) {
   const handleSave = async () => {
     console.log('🔍 handleSave called - mode:', mode, 'existingItem:', !!existingItem);
     try {
-      // Check for duplicates if this is a new item (not editing existing or adding more)
-      if (!mode && !existingItem) {
-        console.log('🔍 Checking for duplicates...');
-        let existingItems = [] as any[];
-        try {
-          existingItems = await StorageService.getInventoryItems();
-        } catch (dupErr: any) {
-          const msg = String(dupErr?.message || '').toLowerCase();
-          if (dupErr?.name === 'AbortError' || msg.includes('abort')) {
-            console.warn('⚠️ Duplicate-check aborted; proceeding with save to avoid blocking');
-            existingItems = [];
-          } else {
-            // Non-abort errors should surface
-            throw dupErr;
-          }
-        }
-        const duplicateItem = existingItems.find(
-          (item) =>
-            item.humidorId === humidorId &&
-            item.cigar.brand === cigar.brand &&
-            item.cigar.line === cigar.line &&
-            item.cigar.name === cigar.name,
-        );
-
-        if (duplicateItem) {
-          console.log('🔍 Duplicate found:', duplicateItem);
-          // Show choice dialog
-          Alert.alert(
-            'Duplicate Cigar Found',
-            `You already have "${cigar.brand} ${cigar.line}" in this humidor. What would you like to do?`,
-            [
-              {
-                text: 'Create New Entry',
-                onPress: () => {
-                  console.log('🔍 User chose to create new entry');
-                  // Continue with normal save flow
-                  saveInventoryItem();
-                },
-              },
-              {
-                text: 'Add to Existing',
-                onPress: () => {
-                  console.log('🔍 User chose to add to existing entry');
-                  // Navigate to AddToInventory with existing item in "addMore" mode
-                  navigation.navigate('AddToInventory', {
-                    cigar,
-                    singleStickPrice: pricePaid,
-                    existingItem: duplicateItem,
-                    mode: 'addMore',
-                    humidorId: humidorId,
-                  });
-                },
-              },
-              {
-                text: 'Cancel',
-                style: 'cancel',
-              },
-            ],
-          );
-          return; // Exit early, don't save yet
-        }
-      }
-
-      // Save the inventory item
+      // Skip duplicate check for new entries - it's already done in recognition flow
+      // and fetching all inventory items adds significant delay (5-10 seconds)
+      // Only check if explicitly needed (e.g., manual entry mode)
+      
+      // Save the inventory item immediately
       await saveInventoryItem();
     } catch (error) {
       console.error('🔍 Error in handleSave:', error);
@@ -292,18 +233,23 @@ export default function AddToInventoryScreen({ route }: Props) {
       await StorageService.saveInventoryItem(inventoryItem);
       console.log('✅ Saved inventory item:', inventoryItem);
 
-      // Clear humidor cache to ensure updated counts appear immediately
-      console.log('🗑️ Clearing humidor cache after inventory save...');
-      if (user) {
-        await OptimizedHumidorService.clearCache(user.id);
-        console.log('✅ Cache cleared, humidor stats will reflect new inventory');
-      }
-
-      // Add to recent cigars only if it's a new item
-      if (!existingItem) {
-        await StorageService.addRecentCigar(cigar);
-        console.log('✅ Added to recent cigars:', cigar.brand, cigar.line);
-      }
+      // Parallelize post-save operations (don't block navigation)
+      Promise.all([
+        // Clear humidor cache in background
+        user
+          ? OptimizedHumidorService.clearCache(user.id).catch((e) => {
+              console.log('Cache clear failed (non-critical):', e);
+            })
+          : Promise.resolve(),
+        // Add to recent cigars in background (only for new items)
+        !existingItem
+          ? StorageService.addRecentCigar(cigar).catch((e) => {
+              console.log('Add to recent cigars failed (non-critical):', e);
+            })
+          : Promise.resolve(),
+      ]).catch(() => {
+        // Ignore errors in background operations
+      });
 
       let action: string;
       let displayQuantity: string;
@@ -333,85 +279,46 @@ export default function AddToInventoryScreen({ route }: Props) {
       console.log('🔍 About to navigate - existingItem?.humidorId:', existingItem?.humidorId);
       console.log('🔍 About to navigate - inventoryItem.humidorId:', inventoryItem.humidorId);
 
-      // Use the humidorId from the route params, existingItem, or inventoryItem
+      // Navigate immediately - don't wait for humidor name fetch
+      // Fetch humidor name in background if needed, but don't block navigation
       const targetHumidorId = humidorId || existingItem?.humidorId || inventoryItem.humidorId;
       console.log('🔍 Target humidorId for navigation:', targetHumidorId);
+      console.log('📋 Saved cigar ID:', inventoryItem.id);
 
-      if (targetHumidorId) {
-        try {
-          // Get humidor name using optimized service
-          // Get humidor name directly from database
-          const { data: humidor, error } = await supabase
-            .from('humidors')
-            .select('name')
-            .eq('id', targetHumidorId)
-            .eq('user_id', user?.id || '')
-            .single();
-
-          const humidorName = humidor?.name || 'Unknown Humidor';
-
-          console.log(
-            '🔍 Navigating to Inventory with targetHumidorId:',
-            targetHumidorId,
-            'humidorName:',
-            humidorName,
-          );
-          console.log('📋 Saved cigar ID:', inventoryItem.id);
-
-          // Navigate directly to the main humidor screen with cleared recognition flow
-          // Pass cigar info and humidor name for success message but clear recognition flow
-          (navigation as any)
-            .getParent()
-            ?.getParent()
-            ?.navigate('HumidorList', {
-              screen: 'HumidorListMain',
-              params: {
-                fromRecognition: false,
-                cigar: cigar, // Keep cigar info for success message
-                humidorName: humidorName, // Pass humidor name for success message
-                singleStickPrice: undefined,
-              },
-            });
-
-          console.log('✅ Navigated to main humidor screen with cleared parameters');
-        } catch (error) {
-          console.error('🔍 Error fetching humidor name:', error);
-          // Fallback to generic name
-          console.log('🔍 Fallback navigation to Inventory');
-
-          // Navigate directly to the main humidor screen with cleared recognition flow
-          // Pass cigar info and humidor name for success message but clear recognition flow
-          (navigation as any)
-            .getParent()
-            ?.getParent()
-            ?.navigate('HumidorList', {
-              screen: 'HumidorListMain',
-              params: {
-                fromRecognition: false,
-                cigar: cigar, // Keep cigar info for success message
-                humidorName: 'Humidor', // Fallback humidor name
-                singleStickPrice: undefined,
-              },
-            });
-
-          console.log('✅ Navigated to main humidor screen with cleared parameters');
-        }
-      } else {
-        // Fallback if no humidorId - go to humidor list with cleared parameters
-        console.log('🔍 No humidorId, navigating to HumidorList');
-        // Go to the main tab navigator and reset the HumidorList tab with cleared parameters
-        (navigation as any)
-          .getParent()
-          ?.getParent()
-          ?.navigate('HumidorList', {
-            screen: 'HumidorListMain',
-            params: {
-              fromRecognition: false,
-              cigar: undefined,
-              singleStickPrice: undefined,
-            },
+      // Fetch humidor name in background (non-blocking)
+      let humidorName = 'Humidor'; // Default name
+      if (targetHumidorId && user) {
+        supabase
+          .from('humidors')
+          .select('name')
+          .eq('id', targetHumidorId)
+          .eq('user_id', user.id)
+          .single()
+          .then(({ data: humidor, error }) => {
+            if (humidor?.name) {
+              humidorName = humidor.name;
+            }
+            if (error) {
+              console.log('Background humidor name fetch failed (non-critical):', error);
+            }
           });
       }
+
+      // Navigate immediately without waiting for humidor name
+      (navigation as any)
+        .getParent()
+        ?.getParent()
+        ?.navigate('HumidorList', {
+          screen: 'HumidorListMain',
+          params: {
+            fromRecognition: false,
+            cigar: cigar, // Keep cigar info for success message
+            humidorName: humidorName, // Will use default or be updated in background
+            singleStickPrice: undefined,
+          },
+        });
+
+      console.log('✅ Navigated to main humidor screen immediately');
     } catch (error) {
       console.error('🔍 Error saving to inventory:', error);
       console.error('🔍 Error details:', JSON.stringify(error));

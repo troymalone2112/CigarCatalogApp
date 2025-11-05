@@ -224,8 +224,9 @@ export default function JournalScreen() {
     return (
       <Animated.View style={animatedStyle}>
         <Pressable
-          style={styles.entryCard}
+          style={({ pressed }) => [styles.entryCard, pressed && { opacity: 1 }]}
           onPress={() => navigation.navigate('JournalEntryDetails', { entry: item })}
+          android_ripple={null}
         >
           <View style={styles.entryHeader}>
             <View style={styles.entryInfo}>

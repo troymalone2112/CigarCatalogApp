@@ -22,6 +22,8 @@ import { StorageService } from '../storage/storageService';
 import { HumidorStats, UserHumidorAggregate, Humidor } from '../types';
 import { useScreenLoading } from '../hooks/useScreenLoading';
 import { useAccessControl } from '../hooks/useAccessControl';
+import { OptimizedHumidorService } from '../services/optimizedHumidorService';
+import { connectionManager } from '../services/connectionManager';
 
 type HumidorListScreenNavigationProp = StackNavigationProp<HumidorStackParamList, 'HumidorListMain'>;
 type HumidorListScreenRouteProp = RouteProp<HumidorStackParamList, 'HumidorListMain'>;
@@ -45,6 +47,7 @@ export default function HumidorListScreen() {
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const { loading, refreshing, setLoading, setRefreshing } = useScreenLoading(true);
   const hasNavigatedAwayRef = useRef(false);
+  const [isLoadingData, setIsLoadingData] = useState(false);
 
   // Show success message when coming from successful cigar addition
   useEffect(() => {
@@ -59,82 +62,104 @@ export default function HumidorListScreen() {
   }, [fromRecognition, cigar]);
 
   const loadHumidorData = useCallback(async () => {
-    if (!user) return;
+    if (!user || isLoadingData) return;
     
     try {
-      setLoading(true);
+      setIsLoadingData(true);
       console.log('🔄 Loading humidor data for user:', user.id);
+
+      // Ensure connection is fresh before loading
+      await connectionManager.ensureFreshConnection();
+
+      // Use optimized service with cache-first approach
+      const optimizedData = await OptimizedHumidorService.getOptimizedHumidorData(user.id, {
+        useCache: true,
+        forceRefresh: false,
+      });
+
+      console.log(`✅ Loaded ${optimizedData.humidorStats.length} humidors from ${optimizedData.source} in ${optimizedData.loadTime}ms`);
       
-      // Load humidors and stats directly from database
-      console.log('📊 Calling getHumidors...');
-      const humidorsList = await DatabaseService.getHumidors(user.id);
-      console.log('📊 getHumidors result:', humidorsList);
-      
-      console.log('📊 Calling getHumidorStats...');
-      const humidorsWithStats = await DatabaseService.getHumidorStats(user.id);
-      console.log('📊 getHumidorStats result:', humidorsWithStats);
-      
-      console.log('📊 Calling getUserHumidorAggregate...');
-      let aggregateData;
-      try {
-        aggregateData = await DatabaseService.getUserHumidorAggregate(user.id);
-        console.log('📊 getUserHumidorAggregate result:', aggregateData);
-      } catch (aggregateError) {
-        console.log('⚠️ getUserHumidorAggregate failed, calculating manually:', aggregateError);
-        // Calculate aggregate stats manually
-        const totalCigars = humidorsWithStats.reduce((sum, h) => sum + (h.cigarCount || 0), 0);
-        const totalValue = humidorsWithStats.reduce((sum, h) => sum + (h.totalValue || 0), 0);
-        const avgValue = totalCigars > 0 ? totalValue / totalCigars : 0;
-        
-        aggregateData = {
-          userId: user.id,
-          totalHumidors: humidorsWithStats.length,
-          totalCigars: totalCigars,
-          totalCollectionValue: totalValue,
-          avgCigarValue: avgValue,
-          uniqueBrands: 0,
-        };
-        console.log('📊 Manual aggregate calculation:', aggregateData);
-      }
-      
-      console.log(`✅ Loaded ${humidorsList.length} humidors, ${humidorsWithStats.length} with stats`);
-      
-      setHumidors(humidorsWithStats);
-      setAggregateStats(aggregateData);
+      setHumidors(optimizedData.humidorStats);
+      setAggregateStats(optimizedData.aggregate);
       
     } catch (error) {
       console.error('❌ Error loading humidor data:', error);
       
-      // Show empty state
-      setHumidors([]);
-      setAggregateStats({
-        userId: user.id,
-        totalHumidors: 0,
-        totalCigars: 0,
-        totalCollectionValue: 0,
-        avgCigarValue: 0,
-        uniqueBrands: 0,
-      });
-      
-      Alert.alert('Error', 'Failed to load humidor data. Please try again.');
+      // Only show empty state if we don't have cached data
+      if (humidors.length === 0) {
+        setHumidors([]);
+        setAggregateStats({
+          userId: user.id,
+          totalHumidors: 0,
+          totalCigars: 0,
+          totalCollectionValue: 0,
+          avgCigarValue: 0,
+          uniqueBrands: 0,
+        });
+        
+        Alert.alert('Error', 'Failed to load humidor data. Please try again.');
+      }
     } finally {
+      setIsLoadingData(false);
       setLoading(false);
     }
-  }, [user]);
+  }, [user, isLoadingData, humidors.length]);
 
   useFocusEffect(
     useCallback(() => {
-      if (!hasNavigatedAwayRef.current) {
-        loadHumidorData();
-      }
-    }, [loadHumidorData])
+      if (!user?.id || hasNavigatedAwayRef.current) return;
+      
+      // 1) Load from cache instantly if available
+      const loadFromCacheThenRefresh = async () => {
+        try {
+          // Track activity for connection manager
+          connectionManager.trackActivity();
+          
+          // Ensure connection is fresh (non-blocking)
+          connectionManager.ensureFreshConnection().catch(() => {});
+
+          // Check cache directly first (faster than full load)
+          const { getCachedHumidorData } = await import('../services/humidorCacheService');
+          const cachedData = await getCachedHumidorData(user.id);
+
+          if (cachedData) {
+            console.log('📦 Loading from cache - instant display');
+            setHumidors(cachedData.humidorStats);
+            setAggregateStats(cachedData.aggregate);
+            setLoading(false); // UI ready immediately
+          } else {
+            console.log('⚠️ No cache available, will load from network');
+            setLoading(true);
+          }
+        } catch (cacheError) {
+          console.warn('⚠️ Cache check failed, will load from network:', cacheError);
+          setLoading(true);
+        }
+
+        // 2) Load fresh data in background (never blocks UI)
+        if (!isLoadingData) {
+          loadHumidorData();
+        }
+      };
+      
+      loadFromCacheThenRefresh();
+    }, [user?.id, loadHumidorData, isLoadingData])
   );
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadHumidorData();
+    // Force refresh by clearing cache and reloading
+    if (user?.id) {
+      await OptimizedHumidorService.clearCache(user.id);
+      await OptimizedHumidorService.refreshHumidorData(user.id).then((data) => {
+        setHumidors(data.humidorStats);
+        setAggregateStats(data.aggregate);
+      }).catch((error) => {
+        console.error('❌ Refresh failed:', error);
+      });
+    }
     setRefreshing(false);
-  }, [loadHumidorData]);
+  }, [user?.id]);
 
   const handleHumidorPress = (humidor: HumidorStats) => {
     console.log('🔍 Recognition flow check:', { fromRecognition, hasCigar: !!cigar, singleStickPrice });
@@ -282,17 +307,20 @@ export default function HumidorListScreen() {
               <TouchableOpacity
                 style={styles.humidorCard}
                 onPress={() => handleHumidorPress(item)}
+                activeOpacity={1}
               >
                 <View style={styles.humidorHeader}>
                   <View style={styles.humidorInfo}>
-                    <Text style={styles.humidorName}>{item.humidorName}</Text>
-                    <Text style={styles.humidorDescription}>{item.description}</Text>
+                    <Text style={styles.humidorName}>{item.humidorName || 'Unnamed Humidor'}</Text>
+                    {item.description && (
+                      <Text style={styles.humidorDescription}>{item.description}</Text>
+                    )}
                   </View>
                   <TouchableOpacity 
                     style={styles.menuButton}
                     onPress={() => handleEditHumidor(item)}
                   >
-                    <Ionicons name="ellipsis-horizontal" size={20} color="#FFFFFF" />
+                    <Ionicons name="pencil-outline" size={16} color="#DC851F" />
                   </TouchableOpacity>
                 </View>
 
@@ -325,7 +353,7 @@ export default function HumidorListScreen() {
                     />
                   </View>
                   <Text style={styles.progressText}>
-                    {item.cigarCount || 0}/{item.capacity || 1000} ({Math.round((item.cigarCount || 0) / (item.capacity || 1000) * 100)}%)
+                    {Math.round((item.cigarCount || 0) / (item.capacity || 1000) * 100)}% Capacity
                   </Text>
                 </View>
 

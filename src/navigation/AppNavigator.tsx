@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Share, ScrollView } from 'react-native';
+import { shareCigar } from '../utils/shareUtils';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -425,46 +426,10 @@ function HumidorStackNavigator() {
               onRightPress={async () => {
                 try {
                   const cigar = route.params?.cigar || route.params?.item || {};
-                  const name = cigar.name || cigar.line || 'Cigar';
-                  const brand = cigar.brand || cigar.brand_name || '';
-                  const strength = cigar.strength ? `\nStrength: ${cigar.strength}` : '';
-                  const notes = cigar.overview ? `\nNotes: ${cigar.overview}` : '';
-                  const message = `${brand} ${name}${strength}${notes}`.trim();
-                  // Try image share when available
-                  const imageUrl = cigar.imageUrl || cigar.image_url;
-                  if (imageUrl) {
-                    try {
-                      const Sharing = await import('expo-sharing');
-                      const FileSystem = await import('expo-file-system');
-                      const extMatch = (imageUrl.match(/\.(jpg|jpeg|png)$/i) || [,'jpg'])[1];
-                      let fileUri = `${FileSystem.cacheDirectory}cigar-share.${extMatch}`;
-                      if (imageUrl.startsWith('http')) {
-                        const dl = await FileSystem.downloadAsync(imageUrl, fileUri);
-                        fileUri = dl?.uri || fileUri;
-                      } else {
-                        // Local asset/uri copy
-                        await FileSystem.copyAsync({ from: imageUrl, to: fileUri });
-                      }
-                      const info = await FileSystem.getInfoAsync(fileUri);
-                      if (!info.exists) throw new Error('Downloaded image not found');
-                      // First try RN Share with url+message (often more reliable on iOS)
-                      try {
-                        await Share.share({ url: fileUri });
-                        return;
-                      } catch {}
-                      try {
-                        await Share.share({ url: fileUri, message });
-                        return;
-                      } catch {}
-                      // Fallback to expo-sharing if available
-                      if ((Sharing as any).isAvailableAsync && (await (Sharing as any).isAvailableAsync())) {
-                        await (Sharing as any).shareAsync(fileUri, { dialogTitle: `${brand} ${name}` });
-                        return;
-                      }
-                    } catch {}
-                  }
-                  await Share.share({ message });
-                } catch (e) {}
+                  await shareCigar({ cigar });
+                } catch (error) {
+                  console.error('Error sharing cigar:', error);
+                }
               }}
               rightIconName="share-social-outline"
             />
@@ -633,42 +598,10 @@ function RecommendationsStackNavigator() {
               onRightPress={async () => {
                 try {
                   const cigar = route.params?.cigar || route.params?.item || {};
-                  const name = cigar.name || cigar.line || 'Cigar';
-                  const brand = cigar.brand || cigar.brand_name || '';
-                  const strength = cigar.strength ? `\nStrength: ${cigar.strength}` : '';
-                  const notes = cigar.overview ? `\nNotes: ${cigar.overview}` : '';
-                  const message = `${brand} ${name}${strength}${notes}`.trim();
-                  const imageUrl = cigar.imageUrl || cigar.image_url;
-                  if (imageUrl) {
-                    try {
-                      const Sharing = await import('expo-sharing');
-                      const FileSystem = await import('expo-file-system');
-                      const extMatch = (imageUrl.match(/\.(jpg|jpeg|png)$/i) || [,'jpg'])[1];
-                      let fileUri = `${FileSystem.cacheDirectory}cigar-share.${extMatch}`;
-                      if (imageUrl.startsWith('http')) {
-                        const dl = await FileSystem.downloadAsync(imageUrl, fileUri);
-                        fileUri = dl?.uri || fileUri;
-                      } else {
-                        await FileSystem.copyAsync({ from: imageUrl, to: fileUri });
-                      }
-                      const info = await FileSystem.getInfoAsync(fileUri);
-                      if (!info.exists) throw new Error('Downloaded image not found');
-                      try {
-                        await Share.share({ url: fileUri });
-                        return;
-                      } catch {}
-                      try {
-                        await Share.share({ url: fileUri, message });
-                        return;
-                      } catch {}
-                      if ((Sharing as any).isAvailableAsync && (await (Sharing as any).isAvailableAsync())) {
-                        await (Sharing as any).shareAsync(fileUri, { dialogTitle: `${brand} ${name}` });
-                        return;
-                      }
-                    } catch {}
-                  }
-                  await Share.share({ message });
-                } catch (e) {}
+                  await shareCigar({ cigar });
+                } catch (error) {
+                  console.error('Error sharing cigar:', error);
+                }
               }}
               rightIconName="share-social-outline"
             />

@@ -127,7 +127,7 @@ export default function StatsScreen() {
           <StatCard label="Journal Entries" value={String(last30.smoked)} />
         </View>
         <View style={[styles.cardsRow, updating && { opacity: 0.5 }]}> 
-          <StatCard label="Spend" value={`$${last30.spend}`} />
+          <StatCard label="Value" value={`$${Math.round(last30.spend)}`} />
           <StatCard label="Avg Rating" value={last30.avgRating ? `${last30.avgRating}/10` : '—'} />
         </View>
 

@@ -271,7 +271,7 @@ export type HumidorStackParamList = {
     mode?: 'addMore' | 'edit';
     humidorId?: string;
   };
-  CigarDetails: { cigar: Cigar };
+  CigarDetails: { cigar: Cigar; inventoryItemId?: string };
   EditOptions: { item: InventoryItem };
   CreateHumidor: undefined;
   EditHumidor: { humidor: Humidor };

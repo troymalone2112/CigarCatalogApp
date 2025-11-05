@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,12 +7,17 @@ import {
   Image,
   TouchableOpacity,
   ImageBackground,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { RouteProp, useNavigation } from '@react-navigation/native';
-import { RootStackParamList, HumidorStackParamList } from '../types';
+import { RootStackParamList, HumidorStackParamList, InventoryItem } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import StrengthButton from '../components/StrengthButton';
+import { StorageService } from '../storage/storageService';
+import { OptimizedHumidorService } from '../services/optimizedHumidorService';
+import { useAuth } from '../contexts/AuthContext';
 
 type CigarDetailsScreenRouteProp = RouteProp<HumidorStackParamList, 'CigarDetails'>;
 
@@ -22,7 +27,84 @@ interface Props {
 
 export default function CigarDetailsScreen({ route }: Props) {
   const navigation = useNavigation();
-  const { cigar } = route.params;
+  const { cigar: initialCigar, inventoryItemId } = route.params;
+  const { user } = useAuth();
+  const [cigar, setCigar] = useState(initialCigar);
+  const [inventoryItem, setInventoryItem] = useState<InventoryItem | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedBrand, setEditedBrand] = useState(cigar.brand || '');
+  const [editedName, setEditedName] = useState(cigar.name || '');
+  const [loading, setLoading] = useState(false);
+
+  // Load inventory item if itemId is provided
+  useEffect(() => {
+    if (inventoryItemId) {
+      loadInventoryItem();
+    }
+  }, [inventoryItemId]);
+
+  const loadInventoryItem = async () => {
+    try {
+      const items = await StorageService.getInventoryItems();
+      const item = items.find((i) => i.id === inventoryItemId);
+      if (item) {
+        setInventoryItem(item);
+        setCigar(item.cigar);
+        setEditedBrand(item.cigar.brand || '');
+        setEditedName(item.cigar.name || '');
+      }
+    } catch (error) {
+      console.error('Error loading inventory item:', error);
+    }
+  };
+
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditedBrand(cigar.brand || '');
+    setEditedName(cigar.name || '');
+  };
+
+  const handleSave = async () => {
+    if (!inventoryItem) {
+      Alert.alert('Error', 'Cannot save: Inventory item not found');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const updatedItem: InventoryItem = {
+        ...inventoryItem,
+        cigar: {
+          ...inventoryItem.cigar,
+          brand: editedBrand.trim() || inventoryItem.cigar.brand,
+          name: editedName.trim() || inventoryItem.cigar.name,
+        },
+      };
+
+      await StorageService.saveInventoryItem(updatedItem);
+      
+      // Update local state
+      setInventoryItem(updatedItem);
+      setCigar(updatedItem.cigar);
+      setIsEditing(false);
+      
+      // Clear cache to refresh inventory list
+      if (user) {
+        OptimizedHumidorService.clearCache(user.id).catch(() => {});
+      }
+      
+      Alert.alert('Success', 'Cigar information updated successfully');
+    } catch (error: any) {
+      console.error('Error saving inventory item:', error);
+      Alert.alert('Error', 'Failed to save changes. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStrengthBadgeStyle = (strength: string) => {
     const strengthInfo = getStrengthInfo(strength);
@@ -44,11 +126,49 @@ export default function CigarDetailsScreen({ route }: Props) {
             {/* Main content area with image on right */}
             <View style={styles.mainContent}>
               <View style={styles.cigarInfo}>
-                {/* Cigar Title */}
-                <Text style={styles.resultTitle}>{cigar.brand}</Text>
-                <Text style={styles.resultSubtitle}>
-                  {cigar.name && cigar.name !== 'Unknown Name' ? cigar.name : cigar.line}
-                </Text>
+                {/* Cigar Title Section */}
+                <View style={styles.titleSection}>
+                  <View style={styles.titleContainer}>
+                    {isEditing ? (
+                      <View style={styles.editFieldsContainer}>
+                        <View style={styles.editField}>
+                          <Text style={styles.editFieldLabel}>Brand</Text>
+                          <TextInput
+                            style={styles.editTextInput}
+                            value={editedBrand}
+                            onChangeText={setEditedBrand}
+                            placeholder="Enter brand name"
+                            placeholderTextColor="#999999"
+                          />
+                        </View>
+                        <View style={styles.editField}>
+                          <Text style={styles.editFieldLabel}>Name</Text>
+                          <TextInput
+                            style={styles.editTextInput}
+                            value={editedName}
+                            onChangeText={setEditedName}
+                            placeholder="Enter cigar name"
+                            placeholderTextColor="#999999"
+                          />
+                        </View>
+                      </View>
+                    ) : (
+                      <>
+                        <Text style={styles.resultTitle}>{cigar.brand || 'Unknown Brand'}</Text>
+                        <Text style={styles.resultSubtitle}>
+                          {cigar.name && cigar.name !== 'Unknown Name' 
+                            ? cigar.name 
+                            : (cigar.line || 'Unknown Cigar') || 'Unknown Cigar'}
+                        </Text>
+                      </>
+                    )}
+                  </View>
+                  {inventoryItemId && !isEditing && (
+                    <TouchableOpacity onPress={handleEdit} style={styles.editButton}>
+                      <Ionicons name="pencil-outline" size={16} color="#DC851F" />
+                    </TouchableOpacity>
+                  )}
+                </View>
 
                 {/* Strength Badge */}
                 {cigar.strength && (
@@ -56,10 +176,12 @@ export default function CigarDetailsScreen({ route }: Props) {
                     <View
                       style={[
                         styles.flavorTag,
-                        { backgroundColor: getStrengthInfo(cigar.strength).color },
+                        { backgroundColor: getStrengthInfo(cigar.strength || 'Medium').color },
                       ]}
                     >
-                      <Text style={styles.flavorText}>{getStrengthInfo(cigar.strength).label}</Text>
+                      <Text style={styles.flavorText}>
+                        {getStrengthInfo(cigar.strength || 'Medium')?.label || 'Medium'}
+                      </Text>
                     </View>
                   </View>
                 )}
@@ -67,7 +189,9 @@ export default function CigarDetailsScreen({ route }: Props) {
 
               <View style={styles.imageContainer}>
                 {/* Cigar Image */}
-                {cigar.imageUrl && cigar.imageUrl !== 'placeholder' ? (
+                {cigar.imageUrl && 
+                 cigar.imageUrl !== 'placeholder' && 
+                 /^https?:\/\//i.test(cigar.imageUrl) ? (
                   <Image source={{ uri: cigar.imageUrl }} style={styles.cigarImage} />
                 ) : (
                   <Image
@@ -79,7 +203,7 @@ export default function CigarDetailsScreen({ route }: Props) {
             </View>
 
             {/* Cigar Description */}
-            {cigar.overview && <Text style={styles.cigarDescription}>{cigar.overview}</Text>}
+            {cigar.overview && <Text style={styles.cigarDescription}>{String(cigar.overview)}</Text>}
 
             {/* Flavor Profile Section */}
             {((cigar.flavorTags && cigar.flavorTags.length > 0) ||
@@ -89,7 +213,7 @@ export default function CigarDetailsScreen({ route }: Props) {
                 <View style={styles.flavorTags}>
                   {(cigar.flavorTags || cigar.flavorProfile || []).map((flavor, index) => (
                     <View key={index} style={styles.flavorTag}>
-                      <Text style={styles.flavorText}>{flavor}</Text>
+                      <Text style={styles.flavorText}>{String(flavor || '')}</Text>
                     </View>
                   ))}
                 </View>
@@ -100,7 +224,7 @@ export default function CigarDetailsScreen({ route }: Props) {
             <View style={styles.detailsGrid}>
               <View style={styles.detailItem}>
                 <Text style={styles.detailLabel}>Strength</Text>
-                <Text style={styles.detailValue}>{cigar.strength}</Text>
+                <Text style={styles.detailValue}>{String(cigar.strength || 'Not specified')}</Text>
               </View>
             </View>
 
@@ -109,7 +233,7 @@ export default function CigarDetailsScreen({ route }: Props) {
               <View style={styles.detailsGrid}>
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Tobacco</Text>
-                  <Text style={styles.detailValue}>{cigar.tobacco || cigar.wrapper}</Text>
+                  <Text style={styles.detailValue}>{String(cigar.tobacco || cigar.wrapper || 'Not specified')}</Text>
                 </View>
               </View>
             )}
@@ -153,7 +277,7 @@ export default function CigarDetailsScreen({ route }: Props) {
               <View style={styles.detailsGrid}>
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Release Year</Text>
-                  <Text style={styles.detailValue}>{cigar.releaseYear}</Text>
+                  <Text style={styles.detailValue}>{String(cigar.releaseYear || 'Not specified')}</Text>
                 </View>
               </View>
             )}
@@ -162,7 +286,7 @@ export default function CigarDetailsScreen({ route }: Props) {
               <View style={styles.detailsGrid}>
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Cigar Aficionado Rating</Text>
-                  <Text style={styles.detailValue}>{cigar.cigarAficionadoRating}/100</Text>
+                  <Text style={styles.detailValue}>{String(cigar.cigarAficionadoRating || 0)}/100</Text>
                 </View>
               </View>
             )}
@@ -171,11 +295,31 @@ export default function CigarDetailsScreen({ route }: Props) {
               <View style={styles.detailsGrid}>
                 <View style={styles.detailItem}>
                   <Text style={styles.detailLabel}>Aging Potential</Text>
-                  <Text style={styles.detailValue}>{cigar.agingPotential}</Text>
+                  <Text style={styles.detailValue}>{String(cigar.agingPotential || 'Not specified')}</Text>
                 </View>
               </View>
             )}
           </View>
+
+          {/* Edit Controls */}
+          {isEditing && inventoryItemId && (
+            <View style={styles.editControls}>
+              <TouchableOpacity 
+                style={styles.cancelButton} 
+                onPress={handleCancel}
+                disabled={loading}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+                onPress={handleSave}
+                disabled={loading}
+              >
+                <Text style={styles.saveButtonText}>{loading ? 'Saving...' : 'Save'}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </ScrollView>
       </View>
     </ImageBackground>
@@ -310,5 +454,77 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#999',
     fontWeight: '400',
+  },
+  titleSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  titleContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
+  editButton: {
+    padding: 8,
+    borderRadius: 6,
+    backgroundColor: '#333333',
+    marginTop: 4,
+  },
+  editFieldsContainer: {
+    gap: 12,
+  },
+  editField: {
+    marginBottom: 12,
+  },
+  editFieldLabel: {
+    fontSize: 14,
+    color: '#CCCCCC',
+    marginBottom: 8,
+    fontWeight: '400',
+  },
+  editTextInput: {
+    backgroundColor: '#333333',
+    borderRadius: 8,
+    padding: 12,
+    color: '#CCCCCC',
+    fontSize: 14,
+    borderWidth: 1,
+    borderColor: '#555555',
+  },
+  editControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#333333',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#CCCCCC',
+    fontSize: 14,
+    fontWeight: '400',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#DC851F',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  saveButtonDisabled: {
+    opacity: 0.6,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

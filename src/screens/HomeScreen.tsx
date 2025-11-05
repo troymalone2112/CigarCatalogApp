@@ -27,6 +27,7 @@ import { DashboardCacheService } from '../services/dashboardCacheService';
 import { OptimizedHumidorService } from '../services/optimizedHumidorService';
 import { AgingAlertService } from '../services/agingAlertService';
 import { BackfillService } from '../services/backfillService';
+import { connectionManager } from '../services/connectionManager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type HomeScreenNavigationProp = BottomTabNavigationProp<TabParamList, 'Home'> & {
@@ -52,7 +53,13 @@ export default function HomeScreen() {
       const showCacheThenLoad = async () => {
         try {
           if (user?.id) {
-            // One-time backfill for specified account
+            // Track activity for connection manager
+            connectionManager.trackActivity();
+
+            // Ensure connection is fresh (non-blocking)
+            connectionManager.ensureFreshConnection().catch(() => {});
+
+            // One-time backfill for specified account (non-blocking)
             try {
               const targetEmail = 'troymalone105@gmail.com';
               const key = `backfill_done_${targetEmail}`;
@@ -67,26 +74,37 @@ export default function HomeScreen() {
               console.log('[Backfill] Error', e);
             }
 
+            // Load from cache instantly
             const cached = await DashboardCacheService.getCachedDashboardData(user.id);
             if (cached) {
+              console.log('📦 Loading from cache - instant display');
               setInventoryCount(cached.inventoryCount);
               setJournalCount(cached.journalCount);
               setLatestJournalEntries(cached.latestJournalEntries);
-              setLoading(false); // UI ready while fresh data loads in background
+              setLoading(false); // UI ready immediately
+            } else {
+              console.log('⚠️ No cache available, will load from network');
+              // No cache, show loading state briefly
+              setLoading(true);
             }
-            // Warm humidor cache in background
+
+            // Warm humidor cache in background (non-blocking)
             OptimizedHumidorService.preloadHumidorData(user.id).catch(() => {});
             // Run aging alerts daily (non-blocking)
             AgingAlertService.runDailyCheck(user.id).catch(() => {});
           }
-        } catch {}
-        // 2) Load fresh in background
-        if (!isLoadingData) {
+        } catch (error) {
+          console.warn('⚠️ Error in showCacheThenLoad:', error);
+          setLoading(false);
+        }
+        
+        // 2) Load fresh data in background (never blocks UI)
+        if (!isLoadingData && user?.id) {
           loadDashboardData();
         }
       };
       showCacheThenLoad();
-    }, []),
+    }, [user?.id]),
   );
 
   const loadDashboardData = async () => {
@@ -97,11 +115,14 @@ export default function HomeScreen() {
 
     try {
       setIsLoadingData(true);
-      console.log('🚨 HomeScreen - Starting loadDashboardData');
+      console.log('🔄 HomeScreen - Starting background data refresh');
 
-      // Add timeout to prevent hanging
+      // Ensure connection is fresh before loading
+      await connectionManager.ensureFreshConnection();
+
+      // Add shorter timeout to prevent hanging (10 seconds instead of 15)
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Dashboard data load timeout')), 15000),
+        setTimeout(() => reject(new Error('Dashboard data load timeout')), 10000),
       );
 
       const dataPromise = Promise.all([
@@ -117,9 +138,11 @@ export default function HomeScreen() {
 
       const [inventory, journal] = (await Promise.race([dataPromise, timeoutPromise])) as any[];
 
-      console.log('🚨 HomeScreen - Got inventory:', inventory.length, 'journal:', journal.length);
+      console.log('✅ HomeScreen - Got inventory:', inventory.length, 'journal:', journal.length);
 
-      setInventoryCount(inventory.reduce((sum: number, item: any) => sum + item.quantity, 0));
+      // Update UI with fresh data
+      const totalInventory = inventory.reduce((sum: number, item: any) => sum + item.quantity, 0);
+      setInventoryCount(totalInventory);
       setJournalCount(journal.length);
 
       // Get latest 3 journal entries (already sorted by getJournalEntries, but ensure proper order)
@@ -132,30 +155,37 @@ export default function HomeScreen() {
         return b.id.localeCompare(a.id);
       });
       setLatestJournalEntries(sortedJournal.slice(0, 3));
+      
       // Cache the fresh results for instant next-launch display
       if (user?.id) {
         try {
           await DashboardCacheService.cacheDashboardData(
             user.id,
-            inventory.reduce((sum: number, item: any) => sum + item.quantity, 0),
+            totalInventory,
             journal.length,
             sortedJournal.slice(0, 3),
           );
-        } catch {}
+          console.log('✅ HomeScreen - Fresh data cached');
+        } catch (cacheError) {
+          console.warn('⚠️ HomeScreen - Cache update failed:', cacheError);
+        }
       }
     } catch (error) {
       const msg = String((error as any)?.message || '').toLowerCase();
       if (msg.includes('timeout')) {
-        console.warn('⚠️ HomeScreen - Dashboard load timed out; showing cached/defaults');
+        console.warn('⚠️ HomeScreen - Dashboard load timed out; keeping cached/defaults');
+        // Don't overwrite cached values on timeout
       } else {
         console.warn('⚠️ HomeScreen - Error loading dashboard data:', error);
+        // Only update if we don't have cached values
+        if (inventoryCount === 0 && journalCount === 0) {
+          setInventoryCount(0);
+          setJournalCount(0);
+          setLatestJournalEntries([]);
+        }
       }
-      // Set default values on error
-      setInventoryCount(0);
-      setJournalCount(0);
-      setLatestJournalEntries([]);
     } finally {
-      console.log('🚨 HomeScreen - Setting loading to false');
+      console.log('✅ HomeScreen - Background refresh complete');
       setIsLoadingData(false);
       setLoading(false);
       setRefreshing(false);
