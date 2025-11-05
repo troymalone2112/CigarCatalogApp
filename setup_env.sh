@@ -30,7 +30,7 @@ EXPO_PUBLIC_PERPLEXITY_API_KEY=pplx-your-perplexity-key-here
 
 # Stripe API Key (for RevenueCat web billing)
 # Get from: https://dashboard.stripe.com/apikeys
-EXPO_PUBLIC_STRIPE_API_KEY=***REMOVED***-stripe-key-here
+EXPO_PUBLIC_STRIPE_API_KEY=sk_live_your-stripe-key-here
 
 # Supabase Configuration (these are safe to expose - they're public keys)
 # Get from: https://supabase.com/dashboard/project/YOUR_PROJECT/settings/api

@@ -70,7 +70,7 @@ git push -f origin main
 # Set secrets for EAS builds
 eas secret:create --scope project --name EXPO_PUBLIC_OPENAI_API_KEY --value "sk-your-actual-key"
 eas secret:create --scope project --name EXPO_PUBLIC_PERPLEXITY_API_KEY --value "pplx-your-actual-key"
-eas secret:create --scope project --name EXPO_PUBLIC_STRIPE_API_KEY --value "***REMOVED***-actual-key"
+eas secret:create --scope project --name EXPO_PUBLIC_STRIPE_API_KEY --value "sk_live_your-actual-key"
 ```
 
 ## Files Modified
