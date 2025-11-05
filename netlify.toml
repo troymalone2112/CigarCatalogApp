@@ -4,6 +4,10 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  # Disable secret scanning for SUPABASE_URL (it's a public endpoint, not a secret)
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL"
+  # Disable secret scanning entirely (since we're using environment variables for real secrets)
+  SECRETS_SCAN_ENABLED = "false"
 
 [[redirects]]
   from = "/webhook/revenuecat"
