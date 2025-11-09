@@ -206,3 +206,7 @@ console.log('🔍 Raw database entries:', entries.length, 'entries');
 
 The journal should now work without crashes! 🚀
 
+
+
+
+

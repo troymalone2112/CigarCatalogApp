@@ -26,9 +26,7 @@ import { useAccessControl } from '../hooks/useAccessControl';
 import { DashboardCacheService } from '../services/dashboardCacheService';
 import { OptimizedHumidorService } from '../services/optimizedHumidorService';
 import { AgingAlertService } from '../services/agingAlertService';
-import { BackfillService } from '../services/backfillService';
 import { connectionManager } from '../services/connectionManager';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type HomeScreenNavigationProp = BottomTabNavigationProp<TabParamList, 'Home'> & {
   navigate: (screen: string, params?: any) => void;
@@ -58,21 +56,6 @@ export default function HomeScreen() {
 
             // Ensure connection is fresh (non-blocking)
             connectionManager.ensureFreshConnection().catch(() => {});
-
-            // One-time backfill for specified account (non-blocking)
-            try {
-              const targetEmail = 'troymalone105@gmail.com';
-              const key = `backfill_done_${targetEmail}`;
-              if (user.email === targetEmail) {
-                // Force a re-run for verification and log results
-                await AsyncStorage.removeItem(key);
-                const result = await BackfillService.runForEmail(targetEmail);
-                console.log('[Backfill] Completed for', targetEmail, result);
-                await AsyncStorage.setItem(key, '1');
-              }
-            } catch (e) {
-              console.log('[Backfill] Error', e);
-            }
 
             // Load from cache instantly
             const cached = await DashboardCacheService.getCachedDashboardData(user.id);

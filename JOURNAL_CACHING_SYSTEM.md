@@ -232,3 +232,7 @@ The journal caching system provides significant performance improvements while m
 
 The caching system reduces database load, improves app performance, and provides a better user experience with faster loading times and offline support.
 
+
+
+
+

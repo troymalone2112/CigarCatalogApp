@@ -78,3 +78,7 @@ GRANT EXECUTE ON FUNCTION public.validate_password_strength(TEXT) TO authenticat
 
 
 
+
+
+
+

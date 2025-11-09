@@ -13,8 +13,9 @@ import {
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { RouteProp } from '@react-navigation/native';
-import { RootStackParamList, JournalEntry } from '../types';
+import { RouteProp, useNavigation } from '@react-navigation/native';
+import { RootStackParamList, JournalEntry, JournalStackParamList } from '../types';
+import { StackNavigationProp } from '@react-navigation/stack';
 import { StorageService } from '../storage/storageService';
 import { getStrengthInfo } from '../utils/strengthUtils';
 
@@ -58,6 +59,7 @@ export default function JournalEntryDetailsScreen({
 }: {
   route: JournalEntryDetailsScreenRouteProp;
 }) {
+  const navigation = useNavigation<StackNavigationProp<JournalStackParamList, 'JournalEntryDetails'>>();
   const { entry: initialEntry } = route.params;
   const [entry, setEntry] = useState(initialEntry);
   const [isEditing, setIsEditing] = useState(false);
@@ -118,6 +120,7 @@ export default function JournalEntryDetailsScreen({
 
       await StorageService.saveJournalEntry(updatedEntry);
       setEntry(updatedEntry);
+      navigation.setParams({ entry: updatedEntry });
       setIsEditing(false);
     } catch (error: any) {
       console.error('Error saving journal entry:', error);
@@ -132,6 +135,7 @@ export default function JournalEntryDetailsScreen({
 
         // Still update local state since changes are saved locally
         setEntry(updatedEntry);
+        navigation.setParams({ entry: updatedEntry });
         setIsEditing(false);
       } else {
         Alert.alert('Error', 'Failed to save changes. Please try again.');
@@ -155,6 +159,7 @@ export default function JournalEntryDetailsScreen({
 
             await StorageService.saveJournalEntry(updatedEntry);
             setEntry(updatedEntry);
+            navigation.setParams({ entry: updatedEntry });
           } catch (error) {
             console.error('Error deleting photo:', error);
             Alert.alert('Error', 'Failed to delete photo');

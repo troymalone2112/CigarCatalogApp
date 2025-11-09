@@ -195,7 +195,7 @@ export default function ProfileScreen() {
                   <Ionicons name="arrow-up-circle" size={20} color="#FFFFFF" />
                   <Text style={styles.upgradeButtonText}>
                     {subscriptionStatus?.isTrialActive
-                      ? 'Upgrade to Premium'
+                      ? 'Upgrade'
                       : 'Subscribe to Premium'}
                   </Text>
                 </TouchableOpacity>

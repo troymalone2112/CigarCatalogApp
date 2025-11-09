@@ -11,6 +11,7 @@ import {
   Image,
   Platform,
   KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as Location from 'expo-location';
@@ -377,7 +378,11 @@ export default function NewJournalEntryScreen() {
             onPress={handleSave}
             style={[styles.saveButton, isSaving && styles.disabledButton]}
             disabled={isSaving}
+            activeOpacity={isSaving ? 1 : 0.7}
           >
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" style={styles.saveButtonSpinner} />
+            ) : null}
             <Text style={styles.saveButtonText}>{isSaving ? 'Saving...' : 'Save'}</Text>
           </TouchableOpacity>
         </View>
@@ -521,11 +526,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
+  },
+  saveButtonSpinner: {
+    marginRight: 8,
   },
   disabledButton: {
     opacity: 0.6,

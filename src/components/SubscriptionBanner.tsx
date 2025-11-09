@@ -219,7 +219,7 @@ export default function SubscriptionBanner() {
                   <Text style={styles.bannerText}>0 days left</Text>
                 </View>
                 <View style={styles.upgradeButton}>
-                  <Text style={styles.upgradeText}>Upgrade to Premium</Text>
+                  <Text style={styles.upgradeText}>Upgrade</Text>
                   <Ionicons name="chevron-forward" size={16} color="#FFFFFF" />
                 </View>
               </View>

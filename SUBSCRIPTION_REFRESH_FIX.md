@@ -69,3 +69,7 @@ If issues persist:
 
 The key improvement is the delayed refresh that catches the webhook processing, ensuring the app always shows the correct premium status.
 
+
+
+
+

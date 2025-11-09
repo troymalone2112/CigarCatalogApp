@@ -9,6 +9,7 @@ import {
   ImageBackground,
   Alert,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -292,8 +293,13 @@ export default function JournalNotesScreen() {
           style={[styles.submitButton, isSaving && styles.submitButtonDisabled]}
           onPress={handleSubmit}
           disabled={isSaving}
+          activeOpacity={isSaving ? 1 : 0.8}
         >
-          <Ionicons name={isSaving ? 'hourglass' : 'checkmark'} size={20} color="white" />
+          {isSaving ? (
+            <ActivityIndicator size="small" color="#FFFFFF" style={styles.buttonSpinner} />
+          ) : (
+            <Ionicons name="checkmark" size={20} color="white" style={styles.buttonIcon} />
+          )}
           <Text style={styles.submitButtonText}>
             {isSaving ? 'Saving...' : 'Save Journal Entry'}
           </Text>
@@ -469,6 +475,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
+  },
+  buttonSpinner: {
+    marginRight: 8,
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
   photoSection: {
     marginBottom: 24,

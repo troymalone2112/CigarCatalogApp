@@ -64,3 +64,7 @@ Deploy the corrected webhook manually to Netlify without pushing to GitHub.
 
 The repository is now secure. The GitHub override will allow you to push the fixes and deploy the corrected webhook.
 
+
+
+
+

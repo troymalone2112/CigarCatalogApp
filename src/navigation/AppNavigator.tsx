@@ -550,9 +550,63 @@ function JournalStackNavigator() {
       <JournalStack.Screen
         name="JournalEntryDetails"
         component={JournalEntryDetailsScreen}
-        options={({ navigation }) => ({
+        options={({ navigation, route }: any) => ({
           header: () => (
-            <TabHeader title="Journal Entry" onBackPress={() => navigation.goBack()} />
+            <TabHeader
+              title="Journal Entry"
+              onBackPress={() => navigation.goBack()}
+              onRightPress={async () => {
+                try {
+                  const entry = route.params?.entry;
+                  if (!entry) {
+                    console.warn('⚠️ No journal entry available to share');
+                    return;
+                  }
+
+                  const brand = entry.cigar?.brand || 'Unknown Brand';
+                  const name = entry.cigar?.name || entry.cigar?.line || '';
+                  const rating =
+                    entry.rating?.overall && entry.rating.overall > 0
+                      ? `Rating: ${entry.rating.overall}/10`
+                      : '';
+                  const flavors =
+                    Array.isArray(entry.selectedFlavors) && entry.selectedFlavors.length > 0
+                      ? `Flavors: ${entry.selectedFlavors.join(', ')}`
+                      : '';
+                  const notes = entry.notes ? `Notes: ${entry.notes}` : '';
+                  const dateValue = entry.date ? new Date(entry.date) : null;
+                  const dateText =
+                    dateValue && !isNaN(dateValue.getTime())
+                      ? `Date: ${dateValue.toLocaleDateString()}`
+                      : '';
+                  const locationParts = [
+                    entry.location?.city,
+                    entry.location?.state,
+                    entry.location?.country,
+                  ].filter(Boolean);
+                  const location =
+                    locationParts.length > 0 ? `Location: ${locationParts.join(', ')}` : '';
+
+                  const message = [brand && name ? `${brand} ${name}` : brand || name, dateText, rating, flavors, notes, location]
+                    .filter(Boolean)
+                    .join('\n');
+
+                  await shareCigar({
+                    cigar: {
+                      brand,
+                      name,
+                      line: entry.cigar?.line,
+                      imageUrl: entry.imageUrl || entry.cigar?.imageUrl,
+                      strength: entry.cigar?.strength,
+                    },
+                    message,
+                  });
+                } catch (error) {
+                  console.error('Error sharing journal entry:', error);
+                }
+              }}
+              rightIconName="share-social-outline"
+            />
           ),
         })}
       />
@@ -625,8 +679,6 @@ function TabNavigator() {
             iconName = focused ? 'archive' : 'archive-outline';
           } else if (route.name === 'Journal') {
             iconName = focused ? 'book' : 'book-outline';
-          } else if (route.name === 'Recommendations') {
-            iconName = focused ? 'star' : 'star-outline';
           } else {
             iconName = 'ellipse';
           }
@@ -673,14 +725,6 @@ function TabNavigator() {
         component={JournalStackNavigator}
         options={{
           title: 'Journal',
-          headerShown: false,
-        }}
-      />
-      <Tab.Screen
-        name="Recommendations"
-        component={RecommendationsStackNavigator}
-        options={{
-          title: 'Recommendations',
           headerShown: false,
         }}
       />

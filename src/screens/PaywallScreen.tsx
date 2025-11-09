@@ -33,6 +33,8 @@ export default function PaywallScreen() {
   const monthlyPlan = subscriptionPlans.find((plan) => plan.name === 'Premium Monthly');
   const yearlyPlan = subscriptionPlans.find((plan) => plan.name === 'Premium Yearly');
   const currentPlan = selectedTab === 'monthly' ? monthlyPlan : yearlyPlan;
+  const filteredPlanFeatures =
+    currentPlan?.features?.filter((feature) => !/recommend/i.test(feature)) ?? [];
 
   // Load RevenueCat packages on component mount
   useEffect(() => {
@@ -317,7 +319,7 @@ export default function PaywallScreen() {
                   </View>
 
                   <View style={styles.featuresContainer}>
-                    {currentPlan.features.slice(0, 4).map((feature, index) => (
+                    {filteredPlanFeatures.slice(0, 4).map((feature, index) => (
                       <View key={index} style={styles.featureRow}>
                         <Ionicons name="checkmark-circle" size={16} color="#DC851F" />
                         <Text style={styles.featureText}>{feature}</Text>
@@ -335,7 +337,7 @@ export default function PaywallScreen() {
           <Text style={styles.benefitsTitle}>Premium Access</Text>
 
           <View style={styles.benefitsList}>
-            {[
+              {[
               {
                 icon: 'camera',
                 title: 'Unlimited AI Recognition',
@@ -347,7 +349,6 @@ export default function PaywallScreen() {
                 desc: 'Track your entire collection',
               },
               { icon: 'book', title: 'Detailed Journal', desc: 'Record every smoking experience' },
-              { icon: 'star', title: 'Smart Recommendations', desc: "Discover cigars you'll love" },
               {
                 icon: 'analytics',
                 title: 'Advanced Analytics',

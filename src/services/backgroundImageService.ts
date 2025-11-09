@@ -65,3 +65,7 @@ export const isBackgroundImageCached = (): boolean => {
   return cachedBackgroundImage !== null;
 };
 
+
+
+
+
