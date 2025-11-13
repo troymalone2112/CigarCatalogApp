@@ -1,5 +1,6 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { Platform } from 'react-native';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { useAuth } from './src/contexts/AuthContext';
 import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
@@ -10,6 +11,8 @@ import { OptimizedHumidorService } from './src/services/optimizedHumidorService'
 import { StorageService } from './src/storage/storageService';
 import { DashboardCacheService } from './src/services/dashboardCacheService';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import { initializePWA } from './src/utils/pwaUtils';
+import AddToHomeScreenBanner from './src/components/AddToHomeScreenBanner';
 
 // Preloader component that runs inside AuthProvider
 function AppPreloader() {
@@ -45,6 +48,13 @@ function AppPreloader() {
 }
 
 export default function App() {
+  // Initialize PWA features on web
+  React.useEffect(() => {
+    if (Platform.OS === 'web') {
+      initializePWA();
+    }
+  }, []);
+
   // RevenueCat initialization removed from startup - now handled on-demand by PaymentService
   // This eliminates the 10-second timeout and network dependency on app startup
   console.log('🚀 Starting Cigar Catalog App with database-first architecture...');
@@ -73,6 +83,7 @@ export default function App() {
         <SubscriptionProvider>
           <RecognitionFlowProvider>
             <JournalDraftProvider>
+              {Platform.OS === 'web' && <AddToHomeScreenBanner />}
               <AppPreloader />
               <AppNavigator />
               <StatusBar style="light" />
