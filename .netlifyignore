@@ -1,0 +1,21 @@
+# Ignore files that shouldn't be deployed
+node_modules/
+.expo/
+.expo-shared/
+ios/
+android/
+*.log
+.env.local
+.env.*.local
+.DS_Store
+*.pem
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+.netlify/
+
+# Keep these
+!netlify/
+

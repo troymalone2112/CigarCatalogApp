@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,8 @@ import {
   ImageBackground,
   ActivityIndicator,
   Modal,
+  Platform,
 } from 'react-native';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
-import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -20,6 +19,20 @@ import { RootStackParamList, Cigar, RecognitionMode } from '../types';
 import { APIService } from '../services/apiService';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import StrengthButton from '../components/StrengthButton';
+import { launchImageLibraryAsync, getCameraPermissionsAsync, requestCameraPermissionsAsync } from '../utils/webImagePicker';
+import { WebCameraView, useWebCameraCapture, WebCameraViewRef } from '../components/WebCameraView';
+
+// Conditionally import native camera modules
+let CameraView: any;
+let useCameraPermissions: any;
+let ImagePicker: any;
+
+if (Platform.OS !== 'web') {
+  const expoCamera = require('expo-camera');
+  CameraView = expoCamera.CameraView;
+  useCameraPermissions = expoCamera.useCameraPermissions;
+  ImagePicker = require('expo-image-picker');
+}
 
 type JournalCigarRecognitionScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -38,11 +51,29 @@ interface RecognitionResult {
 export default function JournalCigarRecognitionScreen() {
   const navigation = useNavigation<JournalCigarRecognitionScreenNavigationProp>();
 
-  // Camera states
-  const [permission, requestPermission] = useCameraPermissions();
-  const [type, setType] = useState<CameraType>('back');
-  const [camera, setCamera] = useState<CameraView | null>(null);
+  // Camera states - web vs native
+  const [permission, setPermission] = useState<{ granted: boolean; canAskAgain: boolean } | null>(null);
+  const [type, setType] = useState<'front' | 'back'>('back');
+  const [camera, setCamera] = useState<any>(null);
+  const webCameraRef = useRef<WebCameraViewRef>(null);
+  const webVideoRef = useRef<HTMLVideoElement>(null);
+  const { capturePhoto: captureWebPhoto } = useWebCameraCapture(webVideoRef);
   const [imageUri, setImageUri] = useState<string | null>(null);
+
+  // Initialize camera permissions
+  useEffect(() => {
+    const initPermissions = async () => {
+      if (Platform.OS === 'web') {
+        const perm = await getCameraPermissionsAsync();
+        setPermission(perm);
+      } else {
+        // Native permissions handled by hook
+        const [perm, requestPerm] = useCameraPermissions();
+        setPermission(perm);
+      }
+    };
+    initPermissions();
+  }, []);
 
   // Recognition states
   const [isProcessing, setIsProcessing] = useState(false);
@@ -78,14 +109,28 @@ export default function JournalCigarRecognitionScreen() {
   const [showCamera, setShowCamera] = useState(false);
 
   const handleCameraCapture = async () => {
-    if (!permission?.granted) {
-      const result = await requestPermission();
-      if (!result.granted) {
+    if (Platform.OS === 'web') {
+      // Web: request permission and show camera
+      const perm = await requestCameraPermissionsAsync();
+      setPermission(perm);
+      if (!perm.granted) {
         Alert.alert('Camera Permission', 'Camera permission is required to identify cigars');
         return;
       }
+      setShowCamera(true);
+    } else {
+      // Native: use expo-camera permissions
+      if (!permission?.granted) {
+        const [perm, requestPerm] = useCameraPermissions();
+        const result = await requestPerm();
+        setPermission(result);
+        if (!result.granted) {
+          Alert.alert('Camera Permission', 'Camera permission is required to identify cigars');
+          return;
+        }
+      }
+      setShowCamera(true);
     }
-    setShowCamera(true);
   };
 
   const handleManualEntry = () => {
@@ -93,45 +138,65 @@ export default function JournalCigarRecognitionScreen() {
   };
 
   const takePicture = async () => {
-    if (camera) {
-      try {
-        const photo = await camera.takePictureAsync({
+    try {
+      let photo: { uri: string; base64?: string };
+      
+      if (Platform.OS === 'web') {
+        // Web: capture from video stream
+        const videoElement = webCameraRef.current?.getVideoElement();
+        if (!videoElement) {
+          Alert.alert('Error', 'Camera not ready');
+          return;
+        }
+        // Update ref for capture
+        webVideoRef.current = videoElement;
+        photo = await captureWebPhoto({ quality: 0.8, base64: true });
+      } else {
+        // Native: use expo-camera
+        if (!camera) {
+          Alert.alert('Error', 'Camera not ready');
+          return;
+        }
+        photo = await camera.takePictureAsync({
           quality: 0.8,
           base64: true,
         });
-        setImageUri(photo.uri);
-        setShowCamera(false);
-
-        // Process the image separately to avoid misleading error messages
-        try {
-          // Use base64 data for API calls instead of file URI
-          const base64Image = `data:image/jpeg;base64,${photo.base64}`;
-          await processImage(base64Image);
-        } catch (processError) {
-          console.error('Error processing image:', processError);
-          Alert.alert('Error', 'Failed to process image for recognition. Please try again.');
-        }
-      } catch (error) {
-        console.error('Error taking picture:', error);
-        Alert.alert('Error', 'Failed to take picture');
       }
+      
+      setImageUri(photo.uri);
+      setShowCamera(false);
+
+      // Process the image separately to avoid misleading error messages
+      try {
+        // Use base64 data for API calls
+        const base64Image = photo.base64 ? `data:image/jpeg;base64,${photo.base64}` : photo.uri;
+        await processImage(base64Image);
+      } catch (processError) {
+        console.error('Error processing image:', processError);
+        Alert.alert('Error', 'Failed to process image for recognition. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error taking picture:', error);
+      Alert.alert('Error', 'Failed to take picture');
     }
   };
 
   const pickImageFromGallery = async () => {
     try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      const result = await launchImageLibraryAsync({
+        mediaTypes: 'images',
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
         base64: true,
       });
 
-      if (!result.canceled && result.assets[0]) {
+      if (!result.canceled && result.assets && result.assets[0]) {
         setImageUri(result.assets[0].uri);
-        // Use base64 data for API calls instead of file URI
-        const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
+        // Use base64 data for API calls
+        const base64Image = result.assets[0].base64 
+          ? `data:image/jpeg;base64,${result.assets[0].base64}` 
+          : result.assets[0].uri;
         await processImage(base64Image);
       }
     } catch (error) {
@@ -297,9 +362,19 @@ export default function JournalCigarRecognitionScreen() {
               onPress={handleCameraCapture}
               disabled={isProcessing}
             >
+              <Ionicons name="camera" size={24} color="white" />
               <Text style={styles.primaryButtonText}>
                 {isProcessing ? 'Identifying...' : 'Take Photo'}
               </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={pickImageFromGallery}
+              disabled={isProcessing}
+            >
+              <Ionicons name="images" size={24} color="#7C2D12" />
+              <Text style={styles.secondaryButtonText}>Choose from Photos</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.secondaryButton} onPress={handleManualEntry}>
@@ -312,30 +387,75 @@ export default function JournalCigarRecognitionScreen() {
         {/* Camera Modal */}
         <Modal visible={showCamera} animationType="slide">
           <View style={styles.cameraContainer}>
-            <CameraView style={styles.camera} facing={type} ref={setCamera}>
-              <View style={styles.cameraControls}>
-                <TouchableOpacity style={styles.cameraButton} onPress={() => setShowCamera(false)}>
-                  <Ionicons name="close" size={24} color="white" />
-                </TouchableOpacity>
-
-                <View style={styles.cameraButtonRow}>
-                  <TouchableOpacity style={styles.galleryButton} onPress={pickImageFromGallery}>
-                    <Ionicons name="images" size={24} color="white" />
+            {Platform.OS === 'web' ? (
+              <WebCameraView
+                style={styles.camera}
+                facing={type}
+                ref={webCameraRef}
+                onCameraReady={() => {
+                  console.log('Camera ready');
+                  // Get video element and set ref
+                  const videoElement = webCameraRef.current?.getVideoElement();
+                  if (videoElement) {
+                    webVideoRef.current = videoElement;
+                  }
+                }}
+                onCameraError={(error) => {
+                  console.error('Camera error:', error);
+                  Alert.alert('Camera Error', error.message);
+                }}
+              >
+                <View style={styles.cameraControls}>
+                  <TouchableOpacity style={styles.cameraButton} onPress={() => setShowCamera(false)}>
+                    <Ionicons name="close" size={24} color="white" />
                   </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
-                    <Ionicons name="camera" size={32} color="white" />
-                  </TouchableOpacity>
+                  <View style={styles.cameraButtonRow}>
+                    <TouchableOpacity style={styles.galleryButton} onPress={pickImageFromGallery}>
+                      <Ionicons name="images" size={24} color="white" />
+                    </TouchableOpacity>
 
-                  <TouchableOpacity
-                    style={styles.flipButton}
-                    onPress={() => setType(type === 'back' ? 'front' : 'back')}
-                  >
-                    <Ionicons name="camera-reverse" size={24} color="white" />
-                  </TouchableOpacity>
+                    <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
+                      <Ionicons name="camera" size={32} color="white" />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.flipButton}
+                      onPress={() => setType(type === 'back' ? 'front' : 'back')}
+                    >
+                      <Ionicons name="camera-reverse" size={24} color="white" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            </CameraView>
+              </WebCameraView>
+            ) : (
+              CameraView && (
+                <CameraView style={styles.camera} facing={type} ref={setCamera}>
+                  <View style={styles.cameraControls}>
+                    <TouchableOpacity style={styles.cameraButton} onPress={() => setShowCamera(false)}>
+                      <Ionicons name="close" size={24} color="white" />
+                    </TouchableOpacity>
+
+                    <View style={styles.cameraButtonRow}>
+                      <TouchableOpacity style={styles.galleryButton} onPress={pickImageFromGallery}>
+                        <Ionicons name="images" size={24} color="white" />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
+                        <Ionicons name="camera" size={32} color="white" />
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.flipButton}
+                        onPress={() => setType(type === 'back' ? 'front' : 'back')}
+                      >
+                        <Ionicons name="camera-reverse" size={24} color="white" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </CameraView>
+              )
+            )}
           </View>
         </Modal>
       </View>

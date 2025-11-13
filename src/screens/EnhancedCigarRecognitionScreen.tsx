@@ -134,6 +134,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
 
   // Loading states
   const [showLoadingHumidors, setShowLoadingHumidors] = useState(false);
+const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
 
   // Edit modal states
   const [showEditModal, setShowEditModal] = useState(false);
@@ -586,10 +587,17 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
     } catch (error) {
       console.error('Error adding to inventory:', error);
       Alert.alert('Error', 'Failed to add cigar to inventory. Please try again.');
+    } finally {
+      setIsAddingToHumidor(false);
+      setShowLoadingHumidors(false);
     }
   };
 
   const addToInventory = async () => {
+    if (isAddingToHumidor) {
+      console.log('⚠️ Add to Humidor already in progress, ignoring press');
+      return;
+    }
     console.log('🔍 Add to Humidor button pressed!');
     console.log('🔍 Current humidorId:', humidorId);
     console.log('🔍 Recognition result:', recognitionResult);
@@ -606,6 +614,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
 
     console.log('Starting addToInventory with result:', recognitionResult);
     try {
+      setIsAddingToHumidor(true);
       // Create cigar object first (fast)
       const cigar: Cigar = {
         id: Date.now().toString(),
@@ -1161,9 +1170,20 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
                 )}
 
               <View style={styles.actionButtons}>
-                <TouchableOpacity style={styles.addButton} onPress={addToInventory}>
-                  <Ionicons name="add" size={20} color="#FFFFFF" />
-                  <Text style={styles.addButtonText}>Add to Humidor</Text>
+                <TouchableOpacity
+                  style={[styles.addButton, isAddingToHumidor && styles.addButtonDisabled]}
+                  onPress={addToInventory}
+                  disabled={isAddingToHumidor}
+                  activeOpacity={isAddingToHumidor ? 1 : 0.7}
+                >
+                  {isAddingToHumidor ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" style={styles.addButtonSpinner} />
+                  ) : (
+                    <Ionicons name="add" size={20} color="#FFFFFF" style={styles.addButtonIcon} />
+                  )}
+                  <Text style={styles.addButtonText}>
+                    {isAddingToHumidor ? 'Saving...' : 'Add to Humidor'}
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.smokeButton} onPress={startJournaling}>
@@ -1900,11 +1920,19 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: '#DC851F',
   },
+  addButtonDisabled: {
+    opacity: 0.7,
+  },
+  addButtonSpinner: {
+    marginRight: 8,
+  },
+  addButtonIcon: {
+    marginRight: 8,
+  },
   addButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
-    marginLeft: 8,
   },
   smokeButton: {
     flexDirection: 'row',

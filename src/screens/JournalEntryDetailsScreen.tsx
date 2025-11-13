@@ -14,10 +14,19 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RouteProp, useNavigation } from '@react-navigation/native';
-import { RootStackParamList, JournalEntry, JournalStackParamList } from '../types';
+import {
+  RootStackParamList,
+  JournalEntry,
+  JournalStackParamList,
+  SerializedJournalEntry,
+} from '../types';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { StorageService } from '../storage/storageService';
 import { getStrengthInfo } from '../utils/strengthUtils';
+import {
+  serializeJournalEntry,
+  deserializeJournalEntry,
+} from '../utils/journalSerialization';
 
 type JournalEntryDetailsScreenRouteProp = RouteProp<RootStackParamList, 'JournalEntryDetails'>;
 
@@ -59,9 +68,10 @@ export default function JournalEntryDetailsScreen({
 }: {
   route: JournalEntryDetailsScreenRouteProp;
 }) {
-  const navigation = useNavigation<StackNavigationProp<JournalStackParamList, 'JournalEntryDetails'>>();
-  const { entry: initialEntry } = route.params;
-  const [entry, setEntry] = useState(initialEntry);
+  const navigation =
+    useNavigation<StackNavigationProp<JournalStackParamList, 'JournalEntryDetails'>>();
+  const initialEntry = deserializeJournalEntry(route.params.entry as SerializedJournalEntry);
+  const [entry, setEntry] = useState<JournalEntry>(initialEntry);
   const [isEditing, setIsEditing] = useState(false);
   const [editedNotes, setEditedNotes] = useState(entry.notes || '');
   const [editedFlavors, setEditedFlavors] = useState(entry.selectedFlavors || []);
@@ -120,7 +130,7 @@ export default function JournalEntryDetailsScreen({
 
       await StorageService.saveJournalEntry(updatedEntry);
       setEntry(updatedEntry);
-      navigation.setParams({ entry: updatedEntry });
+      navigation.setParams({ entry: serializeJournalEntry(updatedEntry) });
       setIsEditing(false);
     } catch (error: any) {
       console.error('Error saving journal entry:', error);
@@ -135,7 +145,7 @@ export default function JournalEntryDetailsScreen({
 
         // Still update local state since changes are saved locally
         setEntry(updatedEntry);
-        navigation.setParams({ entry: updatedEntry });
+        navigation.setParams({ entry: serializeJournalEntry(updatedEntry) });
         setIsEditing(false);
       } else {
         Alert.alert('Error', 'Failed to save changes. Please try again.');
@@ -159,7 +169,7 @@ export default function JournalEntryDetailsScreen({
 
             await StorageService.saveJournalEntry(updatedEntry);
             setEntry(updatedEntry);
-            navigation.setParams({ entry: updatedEntry });
+            navigation.setParams({ entry: serializeJournalEntry(updatedEntry) });
           } catch (error) {
             console.error('Error deleting photo:', error);
             Alert.alert('Error', 'Failed to delete photo');

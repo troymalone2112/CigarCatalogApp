@@ -1,5 +1,6 @@
-
 [build]
+  command = "npm run build:web"
+  publish = "web-build"
   functions = "netlify/functions"
 
 [build.environment]
@@ -9,6 +10,7 @@
   # Disable secret scanning entirely (since we're using environment variables for real secrets)
   SECRETS_SCAN_ENABLED = "false"
 
+# Serverless functions for webhooks (must come before SPA redirect)
 [[redirects]]
   from = "/webhook/revenuecat"
   to = "/.netlify/functions/webhook-simple"
@@ -22,4 +24,10 @@
 [[redirects]]
   from = "/keep-alive"
   to = "/.netlify/functions/keep-alive"
+  status = 200
+
+# SPA routing - redirect all other routes to index.html (must be last)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
   status = 200

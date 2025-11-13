@@ -30,8 +30,11 @@ if (!PERPLEXITY_API_KEY) {
 }
 
 // Initialize OpenAI client
+// Note: dangerouslyAllowBrowser is required for web/PWA support
+// The API key is already exposed via EXPO_PUBLIC_OPENAI_API_KEY environment variable
 const openai = new OpenAI({
   apiKey: OPENAI_API_KEY,
+  dangerouslyAllowBrowser: true, // Required for web/PWA support
 });
 
 export enum RecognitionMode {

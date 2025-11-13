@@ -19,6 +19,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { RootStackParamList, InventoryItem, TabParamList } from '../types';
 import { StorageService } from '../storage/storageService';
+import { serializeJournalEntry } from '../utils/journalSerialization';
 import SubscriptionBanner from '../components/SubscriptionBanner';
 import { useScreenLoading } from '../hooks/useScreenLoading';
 import { useAuth } from '../contexts/AuthContext';
@@ -254,19 +255,23 @@ export default function HomeScreen() {
             onPress={() => navigation.navigate('MainTabs', { screen: 'Journal' })}
           >
             <Text style={styles.statNumber}>{journalCount}</Text>
-            <Text style={styles.statLabel}>Journal</Text>
+            <Text style={styles.statLabel}>Notes</Text>
           </Pressable>
         </View>
 
-        {/* Latest Journal Entries */}
+        {/* Latest Notes */}
         {latestJournalEntries.length > 0 && (
           <View style={styles.latestJournalSection}>
-            <Text style={styles.sectionTitle}>Journal Entries</Text>
+            <Text style={styles.sectionTitle}>Notes</Text>
             {latestJournalEntries.map((entry, index) => (
               <Pressable
                 key={entry.id || index}
                 style={styles.journalEntryItem}
-                onPress={() => navigation.navigate('JournalEntryDetails', { entry })}
+                onPress={() =>
+                  navigation.navigate('JournalEntryDetails', {
+                    entry: serializeJournalEntry(entry),
+                  })
+                }
               >
                 <View style={styles.journalEntryContent}>
                   <Text style={styles.journalEntryBrand}>{entry.cigar.brand}</Text>

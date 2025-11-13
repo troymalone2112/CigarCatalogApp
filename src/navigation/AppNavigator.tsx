@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, Share, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { shareCigar } from '../utils/shareUtils';
+import { serializeJournalEntry } from '../utils/journalSerialization';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -175,14 +176,20 @@ const CustomHeader = ({ title }: { title?: string }) => {
                       } else if (n.type === 'journal_saved') {
                         const entry = n.data?.entry;
                         if (entry) {
-                          navigation.navigate('JournalEntryDetails' as never, { entry } as never);
+                          navigation.navigate(
+                            'JournalEntryDetails' as never,
+                            { entry: serializeJournalEntry(entry) } as never,
+                          );
                         } else if (n.data?.journalEntryId) {
                           try {
                             const { StorageService } = await import('../storage/storageService');
                             const all = await StorageService.getJournalEntries();
                             const found = all.find((e: any) => e.id === n.data.journalEntryId);
                             if (found) {
-                              navigation.navigate('JournalEntryDetails' as never, { entry: found } as never);
+                              navigation.navigate(
+                                'JournalEntryDetails' as never,
+                                { entry: serializeJournalEntry(found) } as never,
+                              );
                             } else {
                               navigation.navigate('MainTabs' as never, { screen: 'Journal' } as never);
                             }
@@ -193,8 +200,18 @@ const CustomHeader = ({ title }: { title?: string }) => {
                       }
                     }}
                   >
-                    <Text style={headerStyles.inboxItemTitle}>{n.title}</Text>
-                    <Text style={headerStyles.inboxItemMsg}>{n.message}</Text>
+                <Text style={headerStyles.inboxItemTitle}>
+                  {n.type === 'journal_saved'
+                    ? n.title
+                        ?.replace(/Journal Entry/gi, 'Note')
+                        ?.replace(/Journal/gi, 'Notes')
+                    : n.title}
+                </Text>
+                <Text style={headerStyles.inboxItemMsg}>
+                  {n.type === 'journal_saved'
+                    ? n.message?.replace(/Journal/gi, 'Notes')
+                    : n.message}
+                </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -235,7 +252,9 @@ const TabHeader = ({
       <TouchableOpacity onPress={onBackPress} style={headerStyles.backButton}>
         <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
       </TouchableOpacity>
-      <Text style={headerStyles.tabHeaderTitle}>{title}</Text>
+      <Text style={headerStyles.tabHeaderTitle}>
+        {title === 'Smoking Journal' ? 'Notes' : title}
+      </Text>
       {onRightPress ? (
         <TouchableOpacity onPress={onRightPress} style={headerStyles.backButton}>
           <Ionicons name={rightIconName || 'share-social-outline'} size={22} color="#FFFFFF" />
@@ -418,17 +437,24 @@ function HumidorStackNavigator() {
       <HumidorStack.Screen
         name="CigarDetails"
         component={CigarDetailsScreen}
-        options={({ navigation, route }: any) => ({
+        options={({ navigation, route }) => ({
           header: () => (
             <TabHeader
               title="Cigar Details"
               onBackPress={() => navigation.goBack()}
               onRightPress={async () => {
                 try {
-                  const cigar = route.params?.cigar || route.params?.item || {};
-                  await shareCigar({ cigar });
+                  // Support both direct cigar param and inventory item wrapping cigar data
+                  const cigarParam: any = route.params?.cigar ?? route.params?.item;
+                  const cigarToShare = cigarParam?.cigar ?? cigarParam;
+                  if (!cigarToShare) {
+                    Alert.alert('Unable to share', 'Cigar details are missing.');
+                    return;
+                  }
+                  await shareCigar({ cigar: cigarToShare });
                 } catch (error) {
                   console.error('Error sharing cigar:', error);
+                  Alert.alert('Unable to share', 'Please try again.');
                 }
               }}
               rightIconName="share-social-outline"
@@ -498,11 +524,11 @@ function JournalStackNavigator() {
       }}
     >
       <JournalStack.Screen
-        name="Journal"
+        name="JournalHome"
         component={JournalScreen}
         options={({ navigation }) => ({
           header: () => (
-            <TabHeader title="Smoking Journal" onBackPress={() => navigation.goBack()} />
+            <TabHeader title="Notes" onBackPress={() => navigation.goBack()} />
           ),
         })}
       />
@@ -550,16 +576,16 @@ function JournalStackNavigator() {
       <JournalStack.Screen
         name="JournalEntryDetails"
         component={JournalEntryDetailsScreen}
-        options={({ navigation, route }: any) => ({
+        options={({ navigation, route }) => ({
           header: () => (
             <TabHeader
               title="Journal Entry"
               onBackPress={() => navigation.goBack()}
               onRightPress={async () => {
                 try {
-                  const entry = route.params?.entry;
+                  const entry: any = route.params?.entry;
                   if (!entry) {
-                    console.warn('⚠️ No journal entry available to share');
+                    Alert.alert('Unable to share', 'Journal entry details are missing.');
                     return;
                   }
 
@@ -576,7 +602,7 @@ function JournalStackNavigator() {
                   const notes = entry.notes ? `Notes: ${entry.notes}` : '';
                   const dateValue = entry.date ? new Date(entry.date) : null;
                   const dateText =
-                    dateValue && !isNaN(dateValue.getTime())
+                    dateValue && !Number.isNaN(dateValue.getTime())
                       ? `Date: ${dateValue.toLocaleDateString()}`
                       : '';
                   const locationParts = [
@@ -587,7 +613,14 @@ function JournalStackNavigator() {
                   const location =
                     locationParts.length > 0 ? `Location: ${locationParts.join(', ')}` : '';
 
-                  const message = [brand && name ? `${brand} ${name}` : brand || name, dateText, rating, flavors, notes, location]
+                  const message = [
+                    brand && name ? `${brand} ${name}` : brand || name,
+                    dateText,
+                    rating,
+                    flavors,
+                    notes,
+                    location,
+                  ]
                     .filter(Boolean)
                     .join('\n');
 
@@ -598,11 +631,13 @@ function JournalStackNavigator() {
                       line: entry.cigar?.line,
                       imageUrl: entry.imageUrl || entry.cigar?.imageUrl,
                       strength: entry.cigar?.strength,
+                      overview: entry.notes,
                     },
                     message,
                   });
                 } catch (error) {
                   console.error('Error sharing journal entry:', error);
+                  Alert.alert('Unable to share', 'Please try again.');
                 }
               }}
               rightIconName="share-social-outline"
@@ -644,17 +679,23 @@ function RecommendationsStackNavigator() {
       <RecommendationsStack.Screen
         name="CigarDetails"
         component={CigarDetailsScreen}
-        options={({ navigation, route }: any) => ({
+        options={({ navigation, route }) => ({
           header: () => (
             <TabHeader
               title="Cigar Details"
               onBackPress={() => navigation.goBack()}
               onRightPress={async () => {
                 try {
-                  const cigar = route.params?.cigar || route.params?.item || {};
-                  await shareCigar({ cigar });
+                  const cigarParam: any = route.params?.cigar ?? route.params?.item;
+                  const cigarToShare = cigarParam?.cigar ?? cigarParam;
+                  if (!cigarToShare) {
+                    Alert.alert('Unable to share', 'Cigar details are missing.');
+                    return;
+                  }
+                  await shareCigar({ cigar: cigarToShare });
                 } catch (error) {
                   console.error('Error sharing cigar:', error);
+                  Alert.alert('Unable to share', 'Please try again.');
                 }
               }}
               rightIconName="share-social-outline"
@@ -679,6 +720,8 @@ function TabNavigator() {
             iconName = focused ? 'archive' : 'archive-outline';
           } else if (route.name === 'Journal') {
             iconName = focused ? 'book' : 'book-outline';
+          } else if (route.name === 'Recommendations') {
+            iconName = focused ? 'bulb' : 'bulb-outline';
           } else {
             iconName = 'ellipse';
           }
@@ -719,14 +762,44 @@ function TabNavigator() {
           title: 'Humidor',
           headerShown: false, // Hide tab header, let stack handle headers
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            navigation.navigate('HumidorList', {
+              screen: 'HumidorListMain',
+              params: undefined,
+            } as never);
+          },
+        })}
       />
       <Tab.Screen
         name="Journal"
         component={JournalStackNavigator}
         options={{
-          title: 'Journal',
+          title: 'Notes',
           headerShown: false,
         }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            navigation.navigate('Journal', {
+              screen: 'JournalHome',
+            } as never);
+          },
+        })}
+      />
+      <Tab.Screen
+        name="Recommendations"
+        component={RecommendationsStackNavigator}
+        options={{
+          title: 'Recommendations',
+          headerShown: false,
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: () => {
+            navigation.navigate('Recommendations', {
+              screen: 'Recommendations',
+            } as never);
+          },
+        })}
       />
     </Tab.Navigator>
   );

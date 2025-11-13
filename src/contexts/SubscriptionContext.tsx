@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
-import { SubscriptionService, SubscriptionPlan } from '../services/subscriptionService';
+import { SubscriptionService, SubscriptionPlan, SubscriptionStatus } from '../services/subscriptionService';
 import { DatabaseSubscriptionManager } from '../services/databaseSubscriptionManager';
 import { RevenueCatService } from '../services/revenueCatService';
 import { useAuth } from './AuthContext';
@@ -35,30 +35,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [showPaywall, setShowPaywall] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      // Load subscription data in background - don't block app startup
-      console.log('🔄 Loading subscription data in background for user:', user.id);
-      loadSubscriptionData().catch((error) => {
-        console.error('❌ Background subscription load failed:', error);
-        // Don't block the app if subscription loading fails
-      });
-    } else {
-      setSubscriptionStatus(null);
-      setLoading(false);
-    }
-  }, [user, loadSubscriptionData]);
-
-  useEffect(() => {
-    // Check if we should show paywall
-    if (subscriptionStatus) {
-      // Show paywall only if user has no access (trial expired or never had subscription)
-      // Don't force paywall during active trial, even on last day - let them use the app
-      const shouldShowPaywall = !subscriptionStatus.hasAccess;
-      setShowPaywall(shouldShowPaywall);
-    }
-  }, [subscriptionStatus]);
 
   const loadSubscriptionData = useCallback(async (forceRefresh = false) => {
     if (!user) {
@@ -111,6 +87,30 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setLoading(false);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      // Load subscription data in background - don't block app startup
+      console.log('🔄 Loading subscription data in background for user:', user.id);
+      loadSubscriptionData().catch((error) => {
+        console.error('❌ Background subscription load failed:', error);
+        // Don't block the app if subscription loading fails
+      });
+    } else {
+      setSubscriptionStatus(null);
+      setLoading(false);
+    }
+  }, [user, loadSubscriptionData]);
+
+  useEffect(() => {
+    // Check if we should show paywall
+    if (subscriptionStatus) {
+      // Show paywall only if user has no access (trial expired or never had subscription)
+      // Don't force paywall during active trial, even on last day - let them use the app
+      const shouldShowPaywall = !subscriptionStatus.hasAccess;
+      setShowPaywall(shouldShowPaywall);
+    }
+  }, [subscriptionStatus]);
 
   const refreshSubscription = useCallback(async () => {
     await loadSubscriptionData(true);

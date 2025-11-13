@@ -78,6 +78,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [appState, setAppState] = useState(AppState.currentState);
 
+  const SESSION_TIMEOUT_MS = 8000;
+  const MAX_SESSION_RETRIES = 4;
+  const BASE_RETRY_DELAY_MS = 2000;
+  const MAX_RETRY_DELAY_MS = 20000;
+
   // Handle app state changes (background/foreground)
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
@@ -141,11 +146,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('🚀 AuthContext: Starting resilient initialization with cache fallback...');
 
     // Shorter timeout for faster failure detection
-    const authTimeout = getTimeoutValue(3000, 'auth'); // Reduced to 3s for faster failure
+    const authTimeout = getTimeoutValue(SESSION_TIMEOUT_MS, 'auth');
     const loadingTimeout = setTimeout(() => {
       console.log('⏰ Auth loading timeout - forcing loading to false');
       setLoading(false);
     }, authTimeout);
+
+    let sessionRetryTimeout: NodeJS.Timeout | null = null;
+
+    const calculateBackoffDelay = (attempt: number) =>
+      Math.min(BASE_RETRY_DELAY_MS * Math.pow(2, attempt - 1), MAX_RETRY_DELAY_MS);
+
+    const clearScheduledSessionRetry = () => {
+      if (sessionRetryTimeout) {
+        clearTimeout(sessionRetryTimeout);
+        sessionRetryTimeout = null;
+      }
+    };
 
     // Resilient initialization with cache fallback
     const initializeAuth = async () => {
@@ -173,10 +190,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           if (healthCheck.isOnline && healthCheck.isDatabaseHealthy) {
             console.log('✅ Network is healthy, attempting fresh data load...');
-            await loadFreshData();
+            const success = await loadFreshData();
+            if (!success) {
+              console.log(
+                '❌ Fresh load failed, falling back to degraded mode and scheduling retry',
+              );
+              await attemptDegradedLoad();
+              scheduleSessionRetry();
+            }
           } else {
             console.log('❌ Network issues, attempting degraded load...');
             await attemptDegradedLoad();
+            scheduleSessionRetry();
           }
         }
 
@@ -201,17 +226,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         setLoading(false);
         clearTimeout(loadingTimeout);
+        scheduleSessionRetry();
       }
     };
 
     // Helper function to load fresh data from network
-    const loadFreshData = async () => {
+    const loadFreshData = async (
+      options: { background?: boolean } = {},
+    ): Promise<boolean> => {
+      const { background = false } = options;
       try {
-        // Get session with retry logic
         const sessionData = await executeWithResilience(
           () => supabase.auth.getSession(),
           'session-check',
-          { timeoutMs: 3000, maxRetries: 2 },
+          { timeoutMs: SESSION_TIMEOUT_MS, maxRetries: 2, initialDelay: 1000, maxDelay: 4000 },
         );
 
         const {
@@ -222,41 +250,69 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setSession(session);
         setUser(session?.user ?? null);
 
-        if (session?.user) {
-          StorageService.setCurrentUser(session.user.id);
-
-          // Load subscription status with priority
-          console.log('💎 Loading fresh subscription status...');
-          await loadSubscriptionStatus(session.user.id);
-
-          // Load profile in background
-          console.log('👤 Loading fresh profile in background...');
-          loadProfile(session.user.id).catch((error) => {
-            console.error('❌ Profile load failed, but continuing:', error);
-          });
-
-          // Cache successful state after a delay to ensure all state is updated
-          setTimeout(async () => {
-            try {
-              if (profile && subscriptionStatus) {
-                console.log('💾 Caching complete successful app state...');
-                await ColdStartCache.cacheSuccessfulState(
-                  session.user,
-                  profile,
-                  subscriptionStatus,
-                  session,
-                );
-                console.log('✅ Complete app state cached successfully');
-              }
-            } catch (error) {
-              console.error('❌ Failed to cache complete app state:', error);
-            }
-          }, 1000); // Wait 1 second for state to settle
+        if (!session?.user) {
+          return false;
         }
+
+        StorageService.setCurrentUser(session.user.id);
+
+        const subscription = await loadSubscriptionStatus(session.user.id);
+
+        if (background) {
+          loadProfile(session.user.id).catch((error) =>
+            console.warn('⚠️ Background profile refresh failed:', error),
+          );
+        } else {
+          await loadProfile(session.user.id);
+        }
+
+        setTimeout(async () => {
+          try {
+            const cachedProfile = await ProfileCacheService.getCachedProfile();
+            const profileForCache = cachedProfile || profile;
+            const subscriptionForCache = subscription || subscriptionStatus;
+            if (profileForCache && subscriptionForCache && session?.user) {
+              await ColdStartCache.cacheSuccessfulState(
+                session.user,
+                profileForCache,
+                subscriptionForCache,
+                session,
+              );
+              console.log('✅ Complete app state cached successfully (fresh load)');
+            }
+          } catch (error) {
+            console.error('❌ Failed to cache complete app state:', error);
+          }
+        }, 1000);
+
+        clearScheduledSessionRetry();
+        return true;
       } catch (error) {
         console.error('❌ Fresh data load failed:', error);
-        throw error;
+        return false;
       }
+    };
+
+    const scheduleSessionRetry = (attempt: number = 1) => {
+      if (sessionRetryTimeout) {
+        clearScheduledSessionRetry();
+      }
+      if (attempt > MAX_SESSION_RETRIES) {
+        console.warn('⚠️ Max session retries reached. Giving up until next trigger.');
+        return;
+      }
+
+      const delay = calculateBackoffDelay(attempt) + Math.floor(Math.random() * 400);
+      console.log(
+        `⏳ Scheduling session retry in ${delay}ms (attempt ${attempt}/${MAX_SESSION_RETRIES})`,
+      );
+
+      sessionRetryTimeout = setTimeout(async () => {
+        const success = await loadFreshData({ background: true });
+        if (!success) {
+          scheduleSessionRetry(attempt + 1);
+        }
+      }, delay);
     };
 
     // Helper function to load from cache
@@ -285,65 +341,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Helper function for background refresh (faster than sync)
     const refreshInBackground = async () => {
       try {
-        // Wait for UI to render first (500ms is enough)
         setTimeout(async () => {
           try {
             console.log('🔄 Starting background refresh...');
-            
-            // Ensure connection is fresh
-            await connectionManager.ensureFreshConnection();
-
-            // Quick session check
-            const sessionData = await Promise.race([
-              supabase.auth.getSession(),
-              new Promise<any>((_, reject) =>
-                setTimeout(() => reject(new Error('Session check timeout')), 5000),
-              ),
-            ]);
-
-            const {
-              data: { session },
-            } = sessionData;
-
-            if (session?.user) {
-              console.log('🔄 Background refresh: updating subscription status...');
-              // Load subscription status (non-blocking)
-              loadSubscriptionStatus(session.user.id).catch((err) =>
-                console.warn('⚠️ Background subscription refresh failed:', err),
-              );
-
-              console.log('🔄 Background refresh: updating profile...');
-              // Load profile (non-blocking)
-              loadProfile(session.user.id).catch((err) =>
-                console.warn('⚠️ Background profile refresh failed:', err),
-              );
-
-              console.log('✅ Background refresh initiated');
-              
-              // Update cache after a delay to let state settle
-              setTimeout(async () => {
-                try {
-                  const currentProfile = profile;
-                  const currentSubscription = subscriptionStatus;
-                  if (currentProfile && currentSubscription) {
-                    console.log('💾 Updating cached state after background refresh...');
-                    await ColdStartCache.cacheSuccessfulState(
-                      session.user,
-                      currentProfile,
-                      currentSubscription,
-                      session,
-                    );
-                    await ColdStartCache.updateCacheTimestamp();
-                  }
-                } catch (error) {
-                  console.warn('⚠️ Failed to update cache after background refresh:', error);
-                }
-              }, 2000);
+            await connectionManager.ensureFreshConnection().catch(() => {});
+            const success = await loadFreshData({ background: true });
+            if (!success) {
+              scheduleSessionRetry();
             }
           } catch (error) {
             console.warn('⚠️ Background refresh failed (non-fatal):', error);
+            scheduleSessionRetry();
           }
-        }, 500); // Wait only 500ms for UI to render
+        }, 500);
       } catch (error) {
         console.warn('⚠️ Background refresh setup failed (non-fatal):', error);
       }
@@ -391,6 +401,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
 
       if (session?.user) {
+        clearScheduledSessionRetry();
         // Set current user in StorageService for user-specific data
         StorageService.setCurrentUser(session.user.id);
 
@@ -420,6 +431,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       subscription.unsubscribe();
       clearTimeout(loadingTimeout);
+      clearScheduledSessionRetry();
     };
   }, []);
 

@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { RouteProp, useNavigation } from '@react-navigation/native';
-import { RootStackParamList, HumidorStackParamList, InventoryItem } from '../types';
+import { RootStackParamList, HumidorStackParamList, InventoryItem, Cigar } from '../types';
 import { Ionicons } from '@expo/vector-icons';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import StrengthButton from '../components/StrengthButton';
@@ -29,7 +29,29 @@ export default function CigarDetailsScreen({ route }: Props) {
   const navigation = useNavigation();
   const { cigar: initialCigar, inventoryItemId } = route.params;
   const { user } = useAuth();
-  const [cigar, setCigar] = useState(initialCigar);
+
+  const normalizeCigar = (c: Cigar): Cigar => ({
+    ...c,
+    brand: c.brand || 'Unknown Brand',
+    line: c.line || '',
+    name: c.name || '',
+    size: c.size || '',
+    strength: c.strength || 'Medium',
+    wrapper: c.wrapper || '',
+    filler: c.filler || '',
+    binder: c.binder || '',
+    flavorProfile: c.flavorProfile || [],
+    tobaccoOrigins: c.tobaccoOrigins || [],
+    smokingExperience:
+      c.smokingExperience || {
+        first: '',
+        second: '',
+        final: '',
+      },
+    drinkPairings: c.drinkPairings,
+  });
+
+  const [cigar, setCigar] = useState(() => normalizeCigar(initialCigar));
   const [inventoryItem, setInventoryItem] = useState<InventoryItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editedBrand, setEditedBrand] = useState(cigar.brand || '');
@@ -49,9 +71,11 @@ export default function CigarDetailsScreen({ route }: Props) {
       const item = items.find((i) => i.id === inventoryItemId);
       if (item) {
         setInventoryItem(item);
-        setCigar(item.cigar);
-        setEditedBrand(item.cigar.brand || '');
-        setEditedName(item.cigar.name || '');
+        const mappedCigar = normalizeCigar(item.cigar as Cigar);
+        setInventoryItem(item);
+        setCigar(mappedCigar);
+        setEditedBrand(mappedCigar.brand || '');
+        setEditedName(mappedCigar.name || '');
       }
     } catch (error) {
       console.error('Error loading inventory item:', error);

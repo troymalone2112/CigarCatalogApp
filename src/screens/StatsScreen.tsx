@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../contexts/AuthContext';
 import { StatsService } from '../services/statsService';
 import { StorageService } from '../storage/storageService';
+import { serializeJournalEntry } from '../utils/journalSerialization';
 import { Api } from '../services/api';
 
 interface MonthlyStat {
@@ -122,25 +123,32 @@ export default function StatsScreen() {
           <FilterChip label="All time" selected={timeframe==='all'} onPress={() => onSelectTimeframe('all')} />
         </View>
         <Text style={styles.sectionTitle}>Your Activity</Text>
-        <View style={[styles.cardsRow, updating && { opacity: 0.5 }]}> 
+        <View style={[styles.cardsRow, updating && { opacity: 0.5 }]}>
           <StatCard label="Added" value={String(last30.added)} />
-          <StatCard label="Journal Entries" value={String(last30.smoked)} />
+          <StatCard label="Notes Logged" value={String(last30.smoked)} />
         </View>
         <View style={[styles.cardsRow, updating && { opacity: 0.5 }]}> 
           <StatCard label="Value" value={`$${Math.round(last30.spend)}`} />
           <StatCard label="Avg Rating" value={last30.avgRating ? `${last30.avgRating}/10` : '—'} />
         </View>
 
-        <Text style={styles.sectionTitle}>Journals</Text>
+        <Text style={styles.sectionTitle}>Notes</Text>
         {recentEntries.length === 0 ? (
-          <Text style={styles.emptyText}>No journal entries for this period</Text>
+          <Text style={styles.emptyText}>No notes for this period</Text>
         ) : (
           <View style={styles.listContainer}>
             {recentEntries.map((entry: any) => (
               <Pressable
                 key={entry.id}
                 style={styles.entryRow}
-                onPress={() => navigation.navigate('JournalEntryDetails' as never, { entry } as never)}
+                onPress={() =>
+                  navigation.navigate(
+                    'JournalEntryDetails' as never,
+                    {
+                      entry: serializeJournalEntry(entry),
+                    } as never,
+                  )
+                }
               >
                 <View style={{ flex: 1 }}>
                   <Text style={styles.entryTitle}>{entry.cigar?.brand}</Text>

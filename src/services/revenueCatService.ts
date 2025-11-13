@@ -1,13 +1,24 @@
-import Purchases from 'react-native-purchases';
 import { Platform } from 'react-native';
-import {
-  PurchasesOffering,
-  PurchasesPackage,
-  CustomerInfo,
-  PurchasesError,
-  LOG_LEVEL,
-} from 'react-native-purchases';
 import { supabase } from './supabaseService';
+
+// Type definitions for RevenueCat (to avoid importing on web)
+type PurchasesOffering = any;
+type PurchasesPackage = any;
+type CustomerInfo = any;
+type PurchasesError = any;
+type LOG_LEVEL = any;
+
+// Helper to check if we're on web
+const isWeb = Platform.OS === 'web';
+
+// Dynamic import helper for RevenueCat
+const getPurchases = async () => {
+  if (isWeb) {
+    throw new Error('RevenueCat is not available on web');
+  }
+  const Purchases = (await import('react-native-purchases')).default;
+  return Purchases;
+};
 
 // RevenueCat API Keys - use environment variables for production security
 const REVENUECAT_API_KEYS = {
@@ -53,8 +64,13 @@ export const initializeRevenueCat = async (): Promise<boolean> => {
 // Get available offerings
 export const getOfferings = async (): Promise<PurchasesOffering[] | null> => {
   try {
+    if (isWeb) {
+      console.log('⚠️ RevenueCat offerings not available on web');
+      return null;
+    }
     console.log('🔄 Fetching RevenueCat offerings...');
 
+    const Purchases = await getPurchases();
     const offerings = await Purchases.getOfferings();
 
     if (offerings.current) {
@@ -77,8 +93,13 @@ export const getOfferings = async (): Promise<PurchasesOffering[] | null> => {
 // Get customer info
 export const getCustomerInfo = async (): Promise<CustomerInfo | null> => {
   try {
+    if (isWeb) {
+      console.log('⚠️ RevenueCat customer info not available on web');
+      return null;
+    }
     console.log('🔄 Fetching customer info...');
 
+    const Purchases = await getPurchases();
     const customerInfo = await Purchases.getCustomerInfo();
 
     console.log('✅ Customer info retrieved');
@@ -109,8 +130,13 @@ export const purchasePackage = async (
 // Restore purchases
 export const restorePurchases = async (): Promise<boolean> => {
   try {
+    if (isWeb) {
+      console.log('⚠️ RevenueCat restore purchases not available on web');
+      return false;
+    }
     console.log('🔄 Restoring purchases...');
 
+    const Purchases = await getPurchases();
     const customerInfo = await Purchases.restorePurchases();
 
     console.log('✅ Purchases restored');
@@ -216,8 +242,13 @@ export const RevenueCatService = {
   getSubscriptionStatus,
   setUserId: async (userId: string) => {
     try {
+      if (isWeb) {
+        console.log('⚠️ RevenueCat setUserId not available on web');
+        return false;
+      }
       console.log('🔄 Setting RevenueCat user ID to:', userId);
 
+      const Purchases = await getPurchases();
       // First, get current customer info to see if we need to migrate
       const currentCustomerInfo = await Purchases.getCustomerInfo();
       const currentUserId = currentCustomerInfo.originalAppUserId;
@@ -245,6 +276,11 @@ export const RevenueCatService = {
   },
   logOut: async () => {
     try {
+      if (isWeb) {
+        console.log('⚠️ RevenueCat logOut not available on web');
+        return false;
+      }
+      const Purchases = await getPurchases();
       await Purchases.logOut();
       console.log('✅ RevenueCat user logged out');
       return true;
@@ -255,6 +291,11 @@ export const RevenueCatService = {
   },
   syncSubscriptionStatus: async (userId: string) => {
     try {
+      if (isWeb) {
+        console.log('⚠️ RevenueCat syncSubscriptionStatus not available on web');
+        return false;
+      }
+      const Purchases = await getPurchases();
       const customerInfo = await Purchases.getCustomerInfo();
       return await syncSubscriptionWithSupabase(customerInfo);
     } catch (error) {
@@ -264,6 +305,10 @@ export const RevenueCatService = {
   },
   debugSubscriptionStatus: async () => {
     try {
+      if (isWeb) {
+        return 'RevenueCat debug not available on web';
+      }
+      const Purchases = await getPurchases();
       const customerInfo = await Purchases.getCustomerInfo();
       const status = getSubscriptionStatus(customerInfo);
       return (
@@ -278,6 +323,10 @@ export const RevenueCatService = {
   },
   forceUserMigration: async (supabaseUserId: string) => {
     try {
+      if (isWeb) {
+        console.log('⚠️ RevenueCat forceUserMigration not available on web');
+        return false;
+      }
       console.log('🔄 Force migrating RevenueCat user ID to Supabase UUID...');
 
       // Force the user ID change
@@ -285,6 +334,7 @@ export const RevenueCatService = {
 
       if (success) {
         // Get updated customer info
+        const Purchases = await getPurchases();
         const customerInfo = await Purchases.getCustomerInfo();
 
         // Sync with Supabase using the new user ID

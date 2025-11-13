@@ -36,6 +36,7 @@ export default function InventoryScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const isLoadingRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [forceUpdate, setForceUpdate] = useState(0);
   const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
@@ -46,11 +47,22 @@ export default function InventoryScreen() {
   const highlightAnimation = useRef(new Animated.Value(0)).current;
   const processedHighlightId = useRef<string | null>(null);
 
+  const hasInventoryRef = useRef(false);
+
+  useEffect(() => {
+    hasInventoryRef.current = inventory.length > 0;
+  }, [inventory.length]);
+
+  useEffect(() => {
+    isLoadingRef.current = isLoadingData;
+  }, [isLoadingData]);
+
   const loadInventory = useCallback(async () => {
-    if (!user || isLoadingData) return;
+    if (!user || isLoadingRef.current) return;
     
     try {
       setIsLoadingData(true);
+      isLoadingRef.current = true;
       
       // Ensure connection is fresh before loading
       await connectionManager.ensureFreshConnection();
@@ -96,15 +108,16 @@ export default function InventoryScreen() {
       console.error('❌ Error loading inventory:', error);
       
       // Only show error if we don't have cached data
-      if (inventory.length === 0) {
+      if (!hasInventoryRef.current) {
         Alert.alert('Error', 'Failed to load inventory');
       }
     } finally {
       setIsLoadingData(false);
+      isLoadingRef.current = false;
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, isLoadingData, route.params?.humidorId, route.params?.humidorName, route.params?.highlightItemId, inventory.length]);
+  }, [user]);
 
   useFocusEffect(
     useCallback(() => {
@@ -164,7 +177,7 @@ export default function InventoryScreen() {
       };
 
       loadFromCacheThenRefresh();
-    }, [user?.id, route.params?.humidorId, isLoadingData, loadInventory])
+    }, [user?.id, route.params?.humidorId, loadInventory])
   );
 
 

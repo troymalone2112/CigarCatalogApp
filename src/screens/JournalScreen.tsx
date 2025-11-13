@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList, JournalEntry, TabParamList } from '../types';
+import { serializeJournalEntry } from '../utils/journalSerialization';
 import { StorageService } from '../storage/storageService';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import { useScreenLoading } from '../hooks/useScreenLoading';
@@ -225,7 +226,11 @@ export default function JournalScreen() {
       <Animated.View style={animatedStyle}>
         <Pressable
           style={({ pressed }) => [styles.entryCard, pressed && { opacity: 1 }]}
-          onPress={() => navigation.navigate('JournalEntryDetails', { entry: item })}
+          onPress={() =>
+            navigation.navigate('JournalEntryDetails', {
+              entry: serializeJournalEntry(item),
+            })
+          }
           android_ripple={null}
         >
           <View style={styles.entryHeader}>
@@ -304,7 +309,9 @@ export default function JournalScreen() {
                 style={styles.editButton}
                 onPress={(e) => {
                   e.stopPropagation();
-                  navigation.navigate('JournalEntryDetails', { entry: item });
+                  navigation.navigate('JournalEntryDetails', {
+                    entry: serializeJournalEntry(item),
+                  });
                 }}
               >
                 <Ionicons name="pencil-outline" size={16} color="#DC851F" />
@@ -319,7 +326,7 @@ export default function JournalScreen() {
   const EmptyState = () => (
     <View style={styles.emptyState}>
       <Ionicons name="book-outline" size={64} color="#ccc" />
-      <Text style={styles.emptyTitle}>Journal</Text>
+      <Text style={styles.emptyTitle}>Notes</Text>
       <Text style={styles.emptySubtitle}>Start recording your cigar experiences</Text>
     </View>
   );

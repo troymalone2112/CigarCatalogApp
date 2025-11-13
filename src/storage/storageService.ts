@@ -392,7 +392,7 @@ export class StorageService {
           const { NotificationService } = await import('../services/notificationService');
           await NotificationService.add(this.currentUserId, {
             type: 'journal_saved',
-            title: 'Journal Entry Saved',
+            title: 'Note Saved',
             message: `${entry.cigar.brand} ${entry.cigar.name || ''} • Rating: ${entry.rating?.overall ?? 'N/A'}`.trim(),
             data: { journalEntryId: entry.id, entry },
           });

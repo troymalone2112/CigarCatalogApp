@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   ImageBackground,
   ScrollView,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -25,55 +27,53 @@ type OnboardingAgeVerificationRouteProp = RouteProp<
 export default function OnboardingAgeVerificationScreen() {
   const navigation = useNavigation<OnboardingAgeVerificationNavigationProp>();
   const route = useRoute<OnboardingAgeVerificationRouteProp>();
-  const [ageVerified, setAgeVerified] = useState(false);
+  const [birthMonth, setBirthMonth] = useState('');
+  const [birthYear, setBirthYear] = useState('');
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const onComplete = route.params?.onComplete;
 
+  const parsedMonth = useMemo(() => parseInt(birthMonth, 10), [birthMonth]);
+  const parsedYear = useMemo(() => parseInt(birthYear, 10), [birthYear]);
+
+  const ageCheck = useMemo(() => {
+    if (!birthMonth || !birthYear) {
+      return { valid: false, age: null as number | null };
+    }
+
+    if (!parsedMonth || parsedMonth < 1 || parsedMonth > 12) {
+      return { valid: false, age: null as number | null };
+    }
+
+    if (!parsedYear || birthYear.length !== 4 || parsedYear > new Date().getFullYear()) {
+      return { valid: false, age: null as number | null };
+    }
+
+    const today = new Date();
+    const birthDate = new Date(parsedYear, parsedMonth - 1, 1);
+    const age = today.getFullYear() - parsedYear - (today.getMonth() < parsedMonth - 1 ? 1 : 0);
+
+    return { valid: true, age };
+  }, [birthMonth, birthYear, parsedMonth, parsedYear]);
+
   const handleContinue = () => {
-    if (ageVerified) {
-      navigation.navigate('OnboardingExperience');
+    setErrorMessage(null);
+
+    if (!ageCheck.valid || ageCheck.age === null) {
+      setErrorMessage('Please enter a valid month and year.');
+      return;
     }
-  };
 
-  const handleSkip = async () => {
-    console.log('🔄 Skip button pressed - starting onboarding completion...');
-
-    try {
-      // Mark onboarding as completed in database
-      console.log('💾 Updating user profile with onboarding completed...');
-      await StorageService.updateUserProfile({ onboardingCompleted: true });
-      console.log('✅ User profile updated successfully');
-
-      // Call the onComplete callback to trigger the parent component to show the main app
-      if (onComplete) {
-        console.log('📞 Calling onComplete callback...');
-        onComplete();
-      } else {
-        console.error('❌ No onComplete callback found - using fallback navigation');
-        // Fallback: Navigate directly to main app
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error marking onboarding as completed:', error);
-
-      // Production fix: Still complete onboarding even if database update fails
-      console.log('🆘 Database update failed, using fallback completion...');
-
-      if (onComplete) {
-        console.log('📞 Calling onComplete callback (fallback)...');
-        onComplete();
-      } else {
-        console.log('🔀 Using direct navigation fallback...');
-        // Ultimate fallback: Navigate directly to main app
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'MainTabs', params: { screen: 'Home' } }],
-        });
-      }
+    if (ageCheck.age < 21) {
+      Alert.alert(
+        'Not Eligible',
+        'You must be at least 21 years old to use this app. Please come back when you are of legal age.',
+        [{ text: 'OK', style: 'default', onPress: () => navigation.goBack() }],
+      );
+      return;
     }
+
+    navigation.navigate('OnboardingExperience');
   };
 
   return (
@@ -99,22 +99,37 @@ export default function OnboardingAgeVerificationScreen() {
 
           <Text style={styles.title}>Age Verification</Text>
 
-          <Text style={styles.subtitle}>You must be 18 years or older to use this app</Text>
+          <Text style={styles.subtitle}>You must be 21 years or older to use this app</Text>
 
           <View style={styles.ageVerificationContainer}>
-            <TouchableOpacity
-              style={[styles.checkboxContainer, ageVerified && styles.checkboxContainerActive]}
-              onPress={() => setAgeVerified(!ageVerified)}
-            >
-              <Ionicons
-                name={ageVerified ? 'checkmark-circle' : 'ellipse-outline'}
-                size={24}
-                color={ageVerified ? '#7C2D12' : '#999'}
-              />
-              <Text style={[styles.checkboxText, ageVerified && styles.checkboxTextActive]}>
-                I am 18 years or older
-              </Text>
-            </TouchableOpacity>
+            <Text style={styles.inputLabel}>Birth Month</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="MM"
+              placeholderTextColor="#666"
+              keyboardType="number-pad"
+              maxLength={2}
+              value={birthMonth}
+              onChangeText={(text) => {
+                setBirthMonth(text.replace(/[^0-9]/g, ''));
+                setErrorMessage(null);
+              }}
+            />
+
+            <Text style={[styles.inputLabel, { marginTop: 16 }]}>Birth Year</Text>
+            <TextInput
+              style={styles.textInput}
+              placeholder="YYYY"
+              placeholderTextColor="#666"
+              keyboardType="number-pad"
+              maxLength={4}
+              value={birthYear}
+              onChangeText={(text) => {
+                setBirthYear(text.replace(/[^0-9]/g, ''));
+                setErrorMessage(null);
+              }}
+            />
+            {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
           </View>
 
           <View style={styles.disclaimerContainer}>
@@ -128,20 +143,10 @@ export default function OnboardingAgeVerificationScreen() {
         </View>
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.continueButton, !ageVerified && styles.continueButtonDisabled]}
-            onPress={handleContinue}
-            disabled={!ageVerified}
-          >
-            <Text
-              style={[styles.continueButtonText, !ageVerified && styles.continueButtonTextDisabled]}
-            >
+          <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
+            <Text style={styles.continueButtonText}>
               Continue
             </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-            <Text style={styles.skipButtonText}>Skip for now</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -217,27 +222,25 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 32,
   },
-  checkboxContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
+  inputLabel: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 6,
+  },
+  textInput: {
     backgroundColor: '#1a1a1a',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#555555',
-  },
-  checkboxContainerActive: {
-    borderColor: '#DC851F',
-    backgroundColor: '#2a1a0a',
-  },
-  checkboxText: {
+    borderColor: '#555',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    color: '#CCCCCC',
     fontSize: 14,
-    color: '#CCCCCC',
-    marginLeft: 12,
-    fontWeight: '400',
   },
-  checkboxTextActive: {
-    color: '#CCCCCC',
+  errorText: {
+    color: '#dc3545',
+    marginTop: 12,
+    fontSize: 12,
   },
   disclaimerContainer: {
     backgroundColor: '#1a1a1a',
@@ -267,27 +270,10 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 8,
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  continueButtonDisabled: {
-    backgroundColor: '#999999',
-    opacity: 0.7,
   },
   continueButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
-  },
-  continueButtonTextDisabled: {
-    color: '#666',
-  },
-  skipButton: {
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  skipButtonText: {
-    color: '#DC851F',
-    fontSize: 14,
-    fontWeight: '400',
   },
 });

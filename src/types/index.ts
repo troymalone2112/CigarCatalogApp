@@ -145,6 +145,10 @@ export interface JournalEntry {
   photos?: string[]; // Additional photos from smoking experience
 }
 
+export interface SerializedJournalEntry extends Omit<JournalEntry, 'date'> {
+  date: string;
+}
+
 export interface UserPreferences {
   favoriteStrengths: string[];
   favoriteFlavors: string[];
@@ -278,7 +282,7 @@ export type HumidorStackParamList = {
 };
 
 export type JournalStackParamList = {
-  Journal: undefined;
+  JournalHome: undefined;
   JournalCigarRecognition: undefined;
   JournalManualEntry: undefined;
   JournalInitialNotes: { cigar: Cigar };
@@ -296,7 +300,7 @@ export type JournalStackParamList = {
     location?: { city: string; state?: string; country?: string };
     photos?: string[];
   };
-  JournalEntryDetails: { entry: JournalEntry };
+  JournalEntryDetails: { entry: SerializedJournalEntry };
 };
 
 export type RecommendationsStackParamList = {

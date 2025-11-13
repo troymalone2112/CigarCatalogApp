@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { RouteProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -92,10 +93,16 @@ export default function AddToInventoryScreen({ route }: Props) {
   const [sticksInBox, setSticksInBox] = useState(''); // Start empty - let user enter their own value
   const [location, setLocation] = useState(existingItem?.location || '');
   const [notes, setNotes] = useState(existingItem?.notes || '');
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
+    if (isSaving) {
+      console.log('⚠️ Save already in progress, ignoring press');
+      return;
+    }
     console.log('🔍 handleSave called - mode:', mode, 'existingItem:', !!existingItem);
     try {
+      setIsSaving(true);
       // Skip duplicate check for new entries - it's already done in recognition flow
       // and fetching all inventory items adds significant delay (5-10 seconds)
       // Only check if explicitly needed (e.g., manual entry mode)
@@ -108,6 +115,8 @@ export default function AddToInventoryScreen({ route }: Props) {
         'Error',
         error instanceof Error ? error.message : 'An error occurred while saving',
       );
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -524,17 +533,28 @@ export default function AddToInventoryScreen({ route }: Props) {
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.saveButton}
+            style={[styles.saveButton, isSaving && styles.saveButtonDisabled]}
             onPress={() => {
               console.log('🔍 Update button pressed!');
               console.log('🔍 Button press - mode:', mode, 'existingItem:', !!existingItem);
               console.log('🔍 About to call handleSave');
               handleSave();
             }}
-            activeOpacity={0.7}
+            activeOpacity={isSaving ? 1 : 0.7}
+            disabled={isSaving}
           >
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" style={styles.buttonSpinner} />
+            ) : (
+              <Ionicons
+                name={mode === 'edit' || existingItem ? 'checkmark' : 'add'}
+                size={18}
+                color="#FFFFFF"
+                style={styles.buttonIcon}
+              />
+            )}
             <Text style={styles.saveButtonText}>
-              {mode === 'edit' || existingItem ? 'Update' : 'Add'}
+              {isSaving ? 'Saving...' : mode === 'edit' || existingItem ? 'Update' : 'Add'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -659,11 +679,22 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginLeft: 8,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
   },
   saveButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
+  },
+  buttonSpinner: {
+    marginRight: 8,
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
   priceTypeSelector: {
     flexDirection: 'row',

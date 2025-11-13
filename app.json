@@ -16,7 +16,7 @@
     },
     "ios": {
       "supportsTablet": false,
-      "buildNumber": "39",
+      "buildNumber": "40",
       "infoPlist": {
         "NSCameraUsageDescription": "This app uses the camera to identify cigars from photos.",
         "NSPhotoLibraryUsageDescription": "This app accesses your photo library to select cigar images for identification.",
