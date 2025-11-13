@@ -39,7 +39,26 @@
       ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/favicon.png",
+      "name": "Cigar Catalog",
+      "shortName": "CigarCatalog",
+      "lang": "en",
+      "scope": "/",
+      "themeColor": "#DC851F",
+      "backgroundColor": "#0a0a0a",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/",
+      "bundler": "metro",
+      "meta": {
+        "viewport": "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, minimal-ui",
+        "apple-mobile-web-app-capable": "yes",
+        "apple-mobile-web-app-status-bar-style": "black-translucent",
+        "apple-mobile-web-app-title": "Cigar Catalog",
+        "mobile-web-app-capable": "yes",
+        "format-detection": "telephone=no",
+        "apple-touch-fullscreen": "yes"
+      }
     },
     "extra": {
       "eas": {
