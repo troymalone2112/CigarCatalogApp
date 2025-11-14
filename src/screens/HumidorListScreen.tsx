@@ -48,8 +48,8 @@ export default function HumidorListScreen() {
   const [aggregateStats, setAggregateStats] = useState<UserHumidorAggregate | null>(null);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const { loading, refreshing, setLoading, setRefreshing } = useScreenLoading(true);
-  const hasNavigatedAwayRef = useRef(false);
-  const [isLoadingData, setIsLoadingData] = useState(false);
+  const hasLoadedRef = useRef(false);
+  const isFetchingRef = useRef(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Show success message when coming from successful cigar addition
@@ -65,10 +65,10 @@ export default function HumidorListScreen() {
   }, [fromRecognition, cigar]);
 
   const loadHumidorData = useCallback(async () => {
-    if (!user || isLoadingData) return;
-    
+    if (!user || isFetchingRef.current) return;
+
+    isFetchingRef.current = true;
     try {
-      setIsLoadingData(true);
       console.log('🔄 Loading humidor data for user:', user.id);
 
       // Use optimized service with cache-first approach
@@ -99,44 +99,47 @@ export default function HumidorListScreen() {
         });
       }
     } finally {
-      setIsLoadingData(false);
+      isFetchingRef.current = false;
       setLoading(false);
     }
-  }, [user, isLoadingData, humidors.length]);
+  }, [user, humidors.length]);
 
   useFocusEffect(
     useCallback(() => {
-      if (!user?.id || hasNavigatedAwayRef.current) return;
-      
-      // 1) Load from cache instantly if available
-      const loadFromCacheThenRefresh = async () => {
+      if (!user?.id) return;
+
+      let cancelled = false;
+
+      const hydrateFromCache = async () => {
         try {
-          // Check cache directly first (faster than full load)
+          if (!hasLoadedRef.current) {
+            setLoading(true);
+          }
           const { getCachedHumidorData } = await import('../services/humidorCacheService');
           const cachedData = await getCachedHumidorData(user.id);
 
-          if (cachedData) {
+          if (cachedData && !cancelled) {
             console.log('📦 Loading from cache - instant display');
             setHumidors(cachedData.humidorStats);
             setAggregateStats(cachedData.aggregate);
-            setLoading(false); // UI ready immediately
-          } else {
-            console.log('⚠️ No cache available, will load from network');
-            setLoading(true);
+            setLoading(false);
+            hasLoadedRef.current = true;
           }
         } catch (cacheError) {
           console.warn('⚠️ Cache check failed, will load from network:', cacheError);
-          setLoading(true);
-        }
-
-        // 2) Load fresh data in background (never blocks UI)
-        if (!isLoadingData) {
-          loadHumidorData();
+        } finally {
+          if (!cancelled) {
+            requestAnimationFrame(() => loadHumidorData());
+          }
         }
       };
-      
-      loadFromCacheThenRefresh();
-    }, [user?.id, loadHumidorData, isLoadingData])
+
+      hydrateFromCache();
+
+      return () => {
+        cancelled = true;
+      };
+    }, [user?.id, loadHumidorData]),
   );
 
   const handleRefresh = useCallback(async () => {
