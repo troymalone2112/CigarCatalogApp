@@ -53,12 +53,12 @@ export default function AddToHomeScreenBanner() {
   return (
     <View style={styles.banner}>
       <View style={styles.content}>
-        <Ionicons name="home" size={20} color="#DC851F" style={styles.icon} />
+        <Ionicons name="home" size={24} color="#DC851F" style={styles.icon} />
         <View style={styles.textContainer}>
-          <Text style={styles.title}>Add to Home Screen</Text>
+          <Text style={styles.title}>⚠️ Add to Home Screen Required</Text>
           <Text style={styles.subtitle}>
             {isIOS()
-              ? 'Tap Share → Add to Home Screen for full-screen experience'
+              ? 'Safari will always show browser bars. For full-screen: Tap Share (⬆️) → "Add to Home Screen" → Open from home screen icon'
               : 'Install this app for the best experience'}
           </Text>
         </View>

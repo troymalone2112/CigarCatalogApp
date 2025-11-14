@@ -7,7 +7,7 @@
     "android": "npx expo run:android",
     "ios": "npx expo run:ios",
     "web": "npx expo start --web",
-    "build:web": "npx expo export --platform web --output-dir web-build",
+    "build:web": "npx expo export --platform web --output-dir web-build && node web-build-hook.js",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "format": "prettier --write .",

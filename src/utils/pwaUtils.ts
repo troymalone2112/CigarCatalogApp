@@ -97,34 +97,54 @@ export const injectPWAStyles = (): void => {
   const style = document.createElement('style');
   style.id = styleId;
   style.textContent = `
-    /* Full viewport height - prevent browser UI from showing */
-    html, body {
+    /* Force full viewport - hide Safari UI */
+    html {
+      height: 100%;
+      height: -webkit-fill-available;
+      overflow: hidden;
+      position: fixed;
+      width: 100%;
+    }
+    
+    body {
       margin: 0;
       padding: 0;
       width: 100%;
       height: 100%;
+      height: -webkit-fill-available;
       overflow: hidden;
       position: fixed;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: none;
+      -webkit-user-select: none;
+      user-select: none;
     }
     
     #root {
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100vh;
+      height: -webkit-fill-available;
       overflow: auto;
       -webkit-overflow-scrolling: touch;
+      position: relative;
     }
     
-    /* iOS Safari specific - minimize UI */
+    /* iOS Safari specific - aggressive UI hiding */
     @supports (-webkit-touch-callout: none) {
-      body {
+      html, body {
         -webkit-touch-callout: none;
-        overscroll-behavior: none;
-        -webkit-overflow-scrolling: touch;
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      /* Force viewport to fill screen */
+      body {
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
       }
     }
     
     /* Prevent text selection on UI elements */
-    button, a, [role="button"] {
+    button, a, [role="button"], [onClick] {
       -webkit-tap-highlight-color: transparent;
       -webkit-touch-callout: none;
     }
@@ -139,19 +159,39 @@ export const injectPWAStyles = (): void => {
       }
     }
     
-    /* Hide address bar on scroll (iOS Safari) */
-    @media screen and (max-width: 768px) {
-      html {
-        height: -webkit-fill-available;
-      }
-      body {
-        min-height: 100vh;
-        min-height: -webkit-fill-available;
-      }
+    /* Hide scrollbars but allow scrolling */
+    ::-webkit-scrollbar {
+      display: none;
+    }
+    * {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
   `;
 
   document.head.appendChild(style);
+
+  // Additional JavaScript to force viewport height
+  if (typeof window !== 'undefined') {
+    // Set viewport height on load and resize
+    const setViewportHeight = () => {
+      const vh = window.innerHeight * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
+    window.addEventListener('orientationchange', setViewportHeight);
+
+    // Force scroll to top to hide address bar (iOS Safari)
+    if (isIOS()) {
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          window.scrollTo(0, 1);
+        }, 100);
+      });
+    }
+  }
 };
 
 /**
