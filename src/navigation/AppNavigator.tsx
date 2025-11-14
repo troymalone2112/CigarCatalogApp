@@ -742,7 +742,7 @@ function TabNavigator() {
           backgroundColor: '#0a0a0a',
           borderTopColor: '#333333',
           paddingBottom: 0, // No bottom padding - extend to bottom
-          paddingTop: 20, // Increased top padding to move content up from bottom
+          paddingTop: 0, // No top padding - content starts at top
           height: 75, // Increased height significantly to move icons and labels up
           marginBottom: 0,
           position: 'absolute',
@@ -751,8 +751,8 @@ function TabNavigator() {
         tabBarItemStyle: {
           paddingVertical: 0, // No vertical padding
           marginBottom: 0,
-          marginTop: 0, // Reset - use paddingTop on tabBarStyle instead
-          justifyContent: 'center', // Center content vertically
+          marginTop: -15, // Negative margin to move icons and labels UP
+          justifyContent: 'flex-start', // Align to top
           alignItems: 'center',
         },
         tabBarIconStyle: {
