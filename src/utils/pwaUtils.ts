@@ -149,13 +149,24 @@ export const injectPWAStyles = (): void => {
       -webkit-touch-callout: none;
     }
     
-    /* Safe area insets for notched devices */
+    /* Safe area insets - but don't add padding, just account for it */
     @supports (padding: max(0px)) {
+      /* Remove safe area padding - we want full screen */
       body {
+        padding-top: 0;
+        padding-bottom: 0;
+        padding-left: 0;
+        padding-right: 0;
+      }
+      
+      /* Make header extend into safe area */
+      header, [data-header] {
         padding-top: env(safe-area-inset-top);
+      }
+      
+      /* Make footer extend into safe area */
+      footer, [data-footer] {
         padding-bottom: env(safe-area-inset-bottom);
-        padding-left: env(safe-area-inset-left);
-        padding-right: env(safe-area-inset-right);
       }
     }
     

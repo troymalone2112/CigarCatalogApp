@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
 import { shareCigar } from '../utils/shareUtils';
 import { serializeJournalEntry } from '../utils/journalSerialization';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
@@ -270,13 +270,15 @@ const headerStyles = StyleSheet.create({
   container: {
     backgroundColor: '#0a0a0a',
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    paddingTop: 8, // Minimal padding - just below system status bar
+    paddingVertical: 8,
+    paddingTop: 0, // No top padding - extend to top edge
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: '#333333',
+    // Extend into safe area on web/iOS
+    marginTop: 0,
   },
   userSection: {
     flexDirection: 'row',
@@ -358,13 +360,14 @@ const headerStyles = StyleSheet.create({
   tabHeaderContainer: {
     backgroundColor: '#0a0a0a',
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    paddingTop: 8, // Minimal padding - just below system status bar
+    paddingVertical: 8,
+    paddingTop: 0, // No top padding - extend to top edge
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: '#333333',
+    marginTop: 0,
   },
   tabHeaderTitle: {
     fontSize: 14,
@@ -733,12 +736,13 @@ function TabNavigator() {
         tabBarStyle: {
           backgroundColor: '#0a0a0a',
           borderTopColor: '#333333',
-          paddingBottom: 8, // Reduced - just enough to clear system UI
-          paddingTop: 8,
-          height: 60, // Reduced height since less padding needed
+          paddingBottom: 0, // No bottom padding - extend to bottom
+          paddingTop: 4, // Minimal top padding
+          height: 55, // Reduced height to move icons up
+          marginBottom: 0,
         },
         tabBarItemStyle: {
-          paddingVertical: 2, // Reduced vertical padding to move icons up
+          paddingVertical: 0, // No vertical padding - icons at top of tab bar
         },
         headerStyle: {
           backgroundColor: '#0a0a0a',
