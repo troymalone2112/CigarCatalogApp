@@ -292,20 +292,28 @@ export default function HomeScreen() {
   );
 }
 
+const screenWidth = Dimensions.get('window').width;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0a0a0a',
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   backgroundImage: {
     opacity: 0.4,
     resizeMode: 'cover',
+    width: '100%',
+    height: '100%',
   },
   loadingContainer: {
     flex: 1,
     backgroundColor: '#0a0a0a',
     justifyContent: 'center',
     alignItems: 'center',
+    width: '100%',
   },
   loadingText: {
     color: '#FFFFFF',
@@ -314,22 +322,29 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     flex: 1,
+    width: '100%',
+    maxWidth: '100%',
   },
   logoContainer: {
     alignItems: 'center',
-    paddingTop: 40, // Reduced space from header
-    paddingBottom: 40, // More space to buttons below
+    paddingTop: 30, // Reduced space from header
+    paddingBottom: 30, // More space to buttons below
+    width: '100%',
+    maxWidth: '100%',
   },
   logo: {
-    width: 400, // 400 width as requested
-    height: 200, // Proportional height
+    width: Math.min(screenWidth * 0.85, 350), // Responsive: 85% of screen or max 350px
+    height: Math.min(screenWidth * 0.425, 175), // Proportional height
+    maxWidth: '100%',
   },
   mainActions: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginTop: 30, // Add spacing from banner above
-    marginBottom: 15, // Reduced spacing to containers below
+    marginTop: 20, // Reduced spacing
+    marginBottom: 15,
     gap: 12,
+    width: '100%',
+    maxWidth: '100%',
   },
   actionButton: {
     flex: 1,
@@ -352,6 +367,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 30,
     gap: 12,
+    width: '100%',
+    maxWidth: '100%',
   },
   statItem: {
     flex: 1,
@@ -375,7 +392,9 @@ const styles = StyleSheet.create({
   },
   latestJournalSection: {
     paddingHorizontal: 20,
-    marginBottom: 30,
+    marginBottom: 40, // Increased bottom margin for footer spacing
+    width: '100%',
+    maxWidth: '100%',
   },
   sectionTitle: {
     fontSize: 20,

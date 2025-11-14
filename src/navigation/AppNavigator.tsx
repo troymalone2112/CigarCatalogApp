@@ -270,8 +270,8 @@ const headerStyles = StyleSheet.create({
   container: {
     backgroundColor: '#0a0a0a',
     paddingHorizontal: 20,
-    paddingVertical: 15,
-    paddingTop: 50, // Account for status bar
+    paddingVertical: 10,
+    paddingTop: 35, // Reduced from 50 - account for status bar
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -358,8 +358,8 @@ const headerStyles = StyleSheet.create({
   tabHeaderContainer: {
     backgroundColor: '#0a0a0a',
     paddingHorizontal: 20,
-    paddingVertical: 15,
-    paddingTop: 50,
+    paddingVertical: 10,
+    paddingTop: 35, // Reduced from 50
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -733,6 +733,12 @@ function TabNavigator() {
         tabBarStyle: {
           backgroundColor: '#0a0a0a',
           borderTopColor: '#333333',
+          paddingBottom: 20, // Add bottom padding for spacing (includes safe area)
+          paddingTop: 8,
+          height: 70, // Increased from default ~60 to accommodate padding
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
         },
         headerStyle: {
           backgroundColor: '#0a0a0a',
