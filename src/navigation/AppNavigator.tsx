@@ -736,6 +736,21 @@ function TabNavigator() {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
+        tabBarLabel: ({ focused, color }) => {
+          const labelText = route.name === 'HumidorList' ? 'Humidor' : route.name;
+          return (
+            <Text
+              style={{
+                color: focused ? '#DC851F' : '#999999',
+                fontSize: 11,
+                marginTop: -8, // Move label up closer to icon
+                lineHeight: 12,
+              }}
+            >
+              {labelText}
+            </Text>
+          );
+        },
         tabBarActiveTintColor: '#DC851F',
         tabBarInactiveTintColor: '#999999',
         tabBarStyle: {
