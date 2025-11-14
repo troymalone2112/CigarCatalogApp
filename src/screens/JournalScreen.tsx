@@ -379,6 +379,8 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 16,
+    paddingBottom: 140,
+    flexGrow: 1,
   },
   entryCard: {
     backgroundColor: '#1a1a1a',

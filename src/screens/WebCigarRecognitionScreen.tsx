@@ -97,6 +97,38 @@ export default function WebCigarRecognitionScreen({ route }: { route?: any }) {
     setShowCamera(true);
   };
 
+  const cropToGuideArea = async (uri: string) => {
+    if (typeof window === 'undefined') return null;
+    return new Promise<{ uri: string; base64: string } | null>((resolve) => {
+      const image = new Image();
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        const width = image.width;
+        const height = image.height;
+        const cropWidth = width * 0.8;
+        const cropHeight = height * 0.4;
+        const cropX = (width - cropWidth) / 2;
+        const cropY = Math.max(0, height * 0.35 - cropHeight / 2);
+
+        canvas.width = cropWidth;
+        canvas.height = cropHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        resolve({
+          uri: dataUrl,
+          base64: dataUrl.split(',')[1],
+        });
+      };
+      image.onerror = () => resolve(null);
+      image.src = uri;
+    });
+  };
+
   const takePicture = async () => {
     try {
       const videoElement = webCameraRef.current?.getVideoElement();
@@ -105,10 +137,14 @@ export default function WebCigarRecognitionScreen({ route }: { route?: any }) {
         return;
       }
       webVideoRef.current = videoElement;
-      const photo = await capturePhoto({ quality: 0.8, base64: true });
-      setImageUri(photo.uri);
+      const photo = await capturePhoto({ quality: 0.9, base64: true });
+      const cropped = (await cropToGuideArea(photo.uri)) || {
+        uri: photo.uri,
+        base64: photo.base64,
+      };
+      setImageUri(cropped.uri);
       setShowCamera(false);
-      const base64Image = photo.base64 ? `data:image/jpeg;base64,${photo.base64}` : photo.uri;
+      const base64Image = cropped.base64 ? `data:image/jpeg;base64,${cropped.base64}` : cropped.uri;
       await processImage(base64Image);
     } catch (error) {
       console.error('Error taking picture:', error);
@@ -210,7 +246,11 @@ export default function WebCigarRecognitionScreen({ route }: { route?: any }) {
         style={styles.fullScreenBackground}
         imageStyle={styles.tobaccoBackgroundImage}
       >
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.resultScroll}
+          contentContainerStyle={styles.resultContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.cigarCard}>
             {imageUri && <Image source={{ uri: imageUri }} style={styles.cigarImage} />}
 
@@ -517,6 +557,13 @@ const styles = StyleSheet.create({
     color: '#111',
     fontSize: 16,
     fontWeight: '700',
+  },
+  resultScroll: {
+    flex: 1,
+  },
+  resultContent: {
+    padding: 20,
+    paddingBottom: 140,
   },
   cameraContainer: {
     flex: 1,
