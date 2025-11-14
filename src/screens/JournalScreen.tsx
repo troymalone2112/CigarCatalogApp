@@ -339,6 +339,7 @@ export default function JournalScreen() {
     >
       <View style={styles.container}>
         <FlatList
+          style={styles.list}
           ref={flatListRef}
           data={entries}
           renderItem={renderJournalEntry}
@@ -377,9 +378,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent', // Let tobacco background show through
   },
+  list: {
+    flex: 1,
+  },
   listContainer: {
     padding: 16,
-    paddingBottom: 140,
+    paddingBottom: 160,
     flexGrow: 1,
   },
   entryCard: {

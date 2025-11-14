@@ -260,7 +260,11 @@ export default function JournalEntryDetailsScreen({
       style={styles.fullScreenBackground}
       imageStyle={styles.tobaccoBackgroundImage}
     >
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Cigar Information */}
         <View style={styles.cigarInfo}>
           <View style={styles.sectionHeader}>
@@ -515,9 +519,12 @@ const styles = StyleSheet.create({
     opacity: 0.25,
     resizeMode: 'cover',
   },
-  container: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
     backgroundColor: 'transparent',
+    paddingBottom: 160,
   },
   cigarInfo: {
     backgroundColor: '#1a1a1a',

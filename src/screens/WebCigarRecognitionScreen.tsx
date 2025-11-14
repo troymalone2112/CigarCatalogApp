@@ -97,19 +97,20 @@ export default function WebCigarRecognitionScreen({ route }: { route?: any }) {
     setShowCamera(true);
   };
 
-  const cropToGuideArea = async (uri: string) => {
-    if (typeof window === 'undefined') return null;
+  const cropToGuideArea = (uri: string) => {
+    if (typeof window === 'undefined') return Promise.resolve(null);
     return new Promise<{ uri: string; base64: string } | null>((resolve) => {
       const image = new Image();
       image.onload = () => {
-        const canvas = document.createElement('canvas');
         const width = image.width;
         const height = image.height;
         const cropWidth = width * 0.8;
-        const cropHeight = height * 0.4;
+        const cropHeight = height * 0.45;
         const cropX = (width - cropWidth) / 2;
-        const cropY = Math.max(0, height * 0.35 - cropHeight / 2);
+        let cropY = height * 0.45 - cropHeight / 2;
+        cropY = Math.max(0, Math.min(cropY, height - cropHeight));
 
+        const canvas = document.createElement('canvas');
         canvas.width = cropWidth;
         canvas.height = cropHeight;
         const ctx = canvas.getContext('2d');
@@ -118,7 +119,7 @@ export default function WebCigarRecognitionScreen({ route }: { route?: any }) {
           return;
         }
         ctx.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         resolve({
           uri: dataUrl,
           base64: dataUrl.split(',')[1],
@@ -370,13 +371,17 @@ export default function WebCigarRecognitionScreen({ route }: { route?: any }) {
               }}
             >
               <View style={styles.cameraOverlay}>
-                <View style={styles.overlayTop}>
+                <View style={[styles.overlaySection, styles.overlayTop]}>
                   <Text style={styles.overlayText}>Align the cigar within the frame</Text>
                 </View>
-                <View style={styles.cigarGuideArea}>
-                  <View style={styles.cigarGuide} />
+                <View style={styles.overlayMiddle}>
+                  <View style={styles.overlaySide} />
+                  <View style={styles.cigarGuideArea}>
+                    <View style={styles.cigarGuide} />
+                  </View>
+                  <View style={styles.overlaySide} />
                 </View>
-                <View style={styles.overlayBottom}>
+                <View style={[styles.overlaySection, styles.overlayBottom]}>
                   <TouchableOpacity
                     style={styles.cameraControlButton}
                     onPress={() => setShowCamera(false)}
@@ -576,27 +581,43 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'space-between',
   },
+  overlaySection: {
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
   overlayTop: {
     alignItems: 'center',
     paddingTop: 40,
+    paddingBottom: 16,
   },
   overlayText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
-  cigarGuideArea: {
+  overlayMiddle: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  overlaySide: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    height: '100%',
+  },
+  cigarGuideArea: {
+    width: '70%',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 40,
   },
   cigarGuide: {
-    width: '80%',
-    height: 180,
+    width: '100%',
+    height: 200,
     borderRadius: 16,
     borderWidth: 2,
     borderColor: '#FFFFFF',
     borderStyle: 'dashed',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   overlayBottom: {
     flexDirection: 'row',

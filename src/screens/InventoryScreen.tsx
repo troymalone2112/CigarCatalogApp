@@ -466,6 +466,54 @@ const [errorMessage, setErrorMessage] = useState<string | null>(null);
     };
   };
 
+  const renderListHeader = () => (
+    <View style={styles.topContentWrapper}>
+      <View style={styles.headerStats}>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>{inventory.length}</Text>
+          <Text style={styles.statLabel}>Types</Text>
+        </View>
+        <View style={styles.statItem}>
+          <Text style={styles.statValue}>${totalValue.toFixed(0)}</Text>
+          <Text style={styles.statLabel}>Value</Text>
+        </View>
+        {currentHumidor?.capacity && (
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>
+              {Math.round(
+                (inventory.reduce((sum, item) => sum + item.quantity, 0) /
+                  currentHumidor.capacity) *
+                  100,
+              )}
+              %
+            </Text>
+            <Text style={styles.statLabel}>Capacity</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.searchSection}>
+        <View style={styles.searchContainer}>
+          <Ionicons name="search" size={20} color="#666" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search"
+            placeholderTextColor="#999"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+      </View>
+
+      {errorMessage && (
+        <View style={styles.errorBanner}>
+          <Ionicons name="warning-outline" size={18} color="#DC851F" />
+          <Text style={styles.errorText}>{errorMessage}</Text>
+        </View>
+      )}
+    </View>
+  );
+
   return (
     <KeyboardAvoidingView
       style={styles.wrapper}
@@ -478,72 +526,23 @@ const [errorMessage, setErrorMessage] = useState<string | null>(null);
         imageStyle={styles.tobaccoBackgroundImage}
       >
         <View style={styles.container}>
-        {/* Combined Stats and Search Container */}
-        <View style={styles.topContentWrapper}>
-          <View style={styles.headerStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{inventory.length}</Text>
-              <Text style={styles.statLabel}>Types</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                ${totalValue.toFixed(0)}
-              </Text>
-              <Text style={styles.statLabel}>Value</Text>
-            </View>
-            {currentHumidor?.capacity && (
-              <View style={styles.statItem}>
-                <Text style={styles.statValue}>
-                  {Math.round((inventory.reduce((sum, item) => sum + item.quantity, 0) / currentHumidor.capacity) * 100)}%
-                </Text>
-                <Text style={styles.statLabel}>Capacity</Text>
-              </View>
-            )}
-          </View>
-          
-          {/* Search Bar */}
-          <View style={styles.searchSection}>
-            <View style={styles.searchContainer}>
-              <Ionicons name="search" size={20} color="#666" />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search"
-                placeholderTextColor="#999"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-            </View>
-          </View>
-        </View>
+          <FlatList
+            ref={flatListRef}
+            data={filteredInventory}
+            renderItem={renderInventoryItem}
+            keyExtractor={(item) => item.id}
+            style={styles.list}
+            contentContainerStyle={styles.listContainer}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            ListHeaderComponent={renderListHeader}
+            ListEmptyComponent={EmptyState}
+            showsVerticalScrollIndicator={false}
+            onScrollToIndexFailed={(info) => {
+              console.log('Scroll to index failed:', info);
+            }}
+          />
 
-        {/* Inventory List */}
-        {errorMessage && (
-          <View style={styles.errorBanner}>
-            <Ionicons name="warning-outline" size={18} color="#DC851F" />
-            <Text style={styles.errorText}>{errorMessage}</Text>
-          </View>
-        )}
-
-        <FlatList
-          ref={flatListRef}
-          data={filteredInventory}
-          renderItem={renderInventoryItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          ListEmptyComponent={EmptyState}
-          showsVerticalScrollIndicator={false}
-          onScrollToIndexFailed={(info) => {
-            // Fallback if scrollToIndex fails
-            console.log('Scroll to index failed:', info);
-          }}
-        />
-
-          {/* Floating Action Button */}
-          <TouchableOpacity
-            style={styles.fab}
-            onPress={handleAddCigar}
-          >
+          <TouchableOpacity style={styles.fab} onPress={handleAddCigar}>
             <Ionicons name="add" size={24} color="#CCCCCC" />
           </TouchableOpacity>
         </View>
@@ -575,6 +574,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent', // Let tobacco background show through
+  },
+  list: {
+    flex: 1,
   },
   topContentWrapper: {
     backgroundColor: '#1a1a1a',
@@ -624,7 +626,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     padding: 16,
-    paddingBottom: 100, // Add extra padding to prevent FAB from obscuring last card
+    paddingBottom: 140,
   },
   inventoryCard: {
     backgroundColor: '#1a1a1a',
