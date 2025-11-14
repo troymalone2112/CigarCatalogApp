@@ -25,7 +25,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { normalizeStrength } from '../utils/helpers';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import { InventoryCacheService } from '../services/inventoryCacheService';
-import { connectionManager } from '../services/connectionManager';
 
 type InventoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Inventory'>;
 type InventoryScreenRouteProp = RouteProp<RootStackParamList, 'Inventory'>;
@@ -67,9 +66,6 @@ export default function InventoryScreen() {
       setIsLoadingData(true);
       isLoadingRef.current = true;
       
-      // Ensure connection is fresh before loading
-      await connectionManager.ensureFreshConnection();
-
       // Load humidors first
       const humidors = await DatabaseService.getHumidors(user.id);
       setAvailableHumidors(humidors);
@@ -129,12 +125,6 @@ export default function InventoryScreen() {
       // 1) Load from cache instantly if available
       const loadFromCacheThenRefresh = async () => {
         try {
-          // Track activity for connection manager
-          connectionManager.trackActivity();
-          
-          // Ensure connection is fresh (non-blocking)
-          connectionManager.ensureFreshConnection().catch(() => {});
-
           const targetHumidorId = route.params?.humidorId;
           
           // Try to load from cache first

@@ -26,7 +26,6 @@ import { HumidorStats, UserHumidorAggregate, Humidor } from '../types';
 import { useScreenLoading } from '../hooks/useScreenLoading';
 import { useAccessControl } from '../hooks/useAccessControl';
 import { OptimizedHumidorService } from '../services/optimizedHumidorService';
-import { connectionManager } from '../services/connectionManager';
 
 type HumidorListScreenNavigationProp = StackNavigationProp<HumidorStackParamList, 'HumidorListMain'>;
 type HumidorListScreenRouteProp = RouteProp<HumidorStackParamList, 'HumidorListMain'>;
@@ -71,9 +70,6 @@ export default function HumidorListScreen() {
       setIsLoadingData(true);
       console.log('🔄 Loading humidor data for user:', user.id);
 
-      // Ensure connection is fresh before loading
-      await connectionManager.ensureFreshConnection();
-
       // Use optimized service with cache-first approach
       const optimizedData = await OptimizedHumidorService.getOptimizedHumidorData(user.id, {
         useCache: true,
@@ -115,12 +111,6 @@ export default function HumidorListScreen() {
       // 1) Load from cache instantly if available
       const loadFromCacheThenRefresh = async () => {
         try {
-          // Track activity for connection manager
-          connectionManager.trackActivity();
-          
-          // Ensure connection is fresh (non-blocking)
-          connectionManager.ensureFreshConnection().catch(() => {});
-
           // Check cache directly first (faster than full load)
           const { getCachedHumidorData } = await import('../services/humidorCacheService');
           const cachedData = await getCachedHumidorData(user.id);
