@@ -18,7 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RootStackParamList, InventoryItem, TabParamList, Humidor } from '../types';
+import { HumidorStackParamList, InventoryItem, Humidor, RootStackParamList } from '../types';
 import { StorageService } from '../storage/storageService';
 import { DatabaseService } from '../services/supabaseService';
 import { useAuth } from '../contexts/AuthContext';
@@ -26,11 +26,12 @@ import { normalizeStrength } from '../utils/helpers';
 import { getStrengthInfo } from '../utils/strengthUtils';
 import { InventoryCacheService } from '../services/inventoryCacheService';
 
-type InventoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Inventory'>;
-type InventoryScreenRouteProp = RouteProp<RootStackParamList, 'Inventory'>;
+type InventoryScreenNavigationProp = StackNavigationProp<HumidorStackParamList, 'Inventory'>;
+type InventoryScreenRouteProp = RouteProp<HumidorStackParamList, 'Inventory'>;
 
 export default function InventoryScreen() {
   const navigation = useNavigation<InventoryScreenNavigationProp>();
+  const rootNavigation = useNavigation<StackNavigationProp<RootStackParamList>>();
   const route = useRoute<InventoryScreenRouteProp>();
   const { user } = useAuth();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -41,13 +42,14 @@ export default function InventoryScreen() {
   const isLoadingRef = useRef(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [forceUpdate, setForceUpdate] = useState(0);
-  const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
-  const [currentHumidor, setCurrentHumidor] = useState<Humidor | null>(null);
-  const [availableHumidors, setAvailableHumidors] = useState<Humidor[]>([]);
-  const [humidorName, setHumidorName] = useState<string>('');
+const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+const [currentHumidor, setCurrentHumidor] = useState<Humidor | null>(null);
+const [availableHumidors, setAvailableHumidors] = useState<Humidor[]>([]);
+const [humidorName, setHumidorName] = useState<string>('');
   const flatListRef = useRef<FlatList>(null);
   const highlightAnimation = useRef(new Animated.Value(0)).current;
   const processedHighlightId = useRef<string | null>(null);
+const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const hasInventoryRef = useRef(false);
 
@@ -90,6 +92,7 @@ export default function InventoryScreen() {
       // Update state
       setInventory(items);
       setFilteredInventory(items);
+      setErrorMessage(null);
       
       // Cache the fresh results
       if (user.id) {
@@ -97,7 +100,7 @@ export default function InventoryScreen() {
       }
       
       // Check if we need to highlight an item after loading inventory
-      const highlightId = route?.params?.highlightItemId || route?.params?.params?.highlightItemId;
+      const highlightId = route?.params?.highlightItemId;
       if (highlightId && highlightId !== processedHighlightId.current) {
         console.log('🎯 Triggering highlight after inventory load:', highlightId);
         processedHighlightId.current = highlightId;
@@ -105,10 +108,8 @@ export default function InventoryScreen() {
       }
     } catch (error) {
       console.error('❌ Error loading inventory:', error);
-      
-      // Only show error if we don't have cached data
       if (!hasInventoryRef.current) {
-        Alert.alert('Error', 'Failed to load inventory');
+        setErrorMessage('Unable to load inventory. Please check your connection and refresh.');
       }
     } finally {
       setIsLoadingData(false);
@@ -175,7 +176,7 @@ export default function InventoryScreen() {
 
 
   const handleAddCigar = () => {
-    navigation.navigate('CigarRecognition', { humidorId: currentHumidor?.id });
+    rootNavigation.navigate('CigarRecognition', { humidorId: currentHumidor?.id });
   };
 
 
@@ -272,10 +273,8 @@ export default function InventoryScreen() {
       console.log('✅ Quantity updated successfully');
     } catch (error) {
       console.error('Error updating quantity:', error);
-      
-      // Revert local state on error
+      setErrorMessage('Unable to update quantity right now. Please try again.');
       await loadInventory();
-      Alert.alert('Error', 'Failed to update quantity');
     }
   };
 
@@ -294,7 +293,7 @@ export default function InventoryScreen() {
               await loadInventory();
             } catch (error) {
               console.error('Error deleting item:', error);
-              Alert.alert('Error', 'Failed to delete item');
+              setErrorMessage('Unable to delete that cigar right now. Please try again.');
             }
           },
         },
@@ -518,6 +517,13 @@ export default function InventoryScreen() {
         </View>
 
         {/* Inventory List */}
+        {errorMessage && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="warning-outline" size={18} color="#DC851F" />
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          </View>
+        )}
+
         <FlatList
           ref={flatListRef}
           data={filteredInventory}
@@ -836,13 +842,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  deleteButton: {
-    padding: 8,
-    borderRadius: 6,
-    backgroundColor: '#333333',
-    minHeight: 36,
-    minWidth: 36,
-    justifyContent: 'center',
+  errorBanner: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(220, 133, 31, 0.15)',
+    borderWidth: 1,
+    borderColor: '#DC851F',
+    gap: 8,
+  },
+  errorText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    flex: 1,
   },
 });
