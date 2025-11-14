@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { supabase } from './supabaseService';
 import {
   UserRole,
@@ -15,6 +16,9 @@ export class UserManagementService {
    */
   static async getCurrentUserRole(): Promise<UserRole | null> {
     try {
+      if (Platform.OS === 'web') {
+        return 'standard_user';
+      }
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -45,6 +49,9 @@ export class UserManagementService {
    */
   static async isSuperUser(): Promise<boolean> {
     try {
+      if (Platform.OS === 'web') {
+        return false;
+      }
       const {
         data: { user },
       } = await supabase.auth.getUser();
@@ -410,6 +417,13 @@ export class UserManagementService {
     isSuperUser: boolean;
     canAccessAdmin: boolean;
   }> {
+    if (Platform.OS === 'web') {
+      return {
+        role: 'standard_user',
+        isSuperUser: false,
+        canAccessAdmin: false,
+      };
+    }
     const role = await this.getCurrentUserRole();
     const isSuperUser = await this.isSuperUser();
 

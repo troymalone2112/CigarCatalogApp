@@ -405,15 +405,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Set current user in StorageService for user-specific data
         StorageService.setCurrentUser(session.user.id);
 
-        // Sync RevenueCat user ID with Supabase user ID
-        try {
-          const { PaymentService } = await import('../services/paymentService');
-          await PaymentService.setUserId(session.user.id);
-          console.log('✅ RevenueCat user ID synchronized:', session.user.id);
-        } catch (rcError) {
-          console.log('⚠️ Failed to sync RevenueCat user ID:', rcError);
-        }
-
         await loadProfile(session.user.id);
         await loadUserPermissions();
       } else {
@@ -530,15 +521,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             // Cache the fallback profile
             await ProfileCacheService.cacheProfile(fallbackProfile);
             setProfile(fallbackProfile);
-
-            // Set RevenueCat user ID to match Supabase user ID
-            try {
-              const { RevenueCatService } = await import('../services/revenueCatService');
-              await RevenueCatService.setUserId(userId);
-              console.log('✅ RevenueCat user ID synchronized with Supabase');
-            } catch (rcError) {
-              console.log('⚠️ Failed to sync RevenueCat user ID:', rcError);
-            }
 
             return;
           }
@@ -704,21 +686,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       await AuthService.signUp(email, password, fullName);
 
-      // Set RevenueCat user ID after successful signup
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        try {
-          const { RevenueCatService } = await import('../services/revenueCatService');
-          await RevenueCatService.setUserId(user.id);
-          console.log('✅ RevenueCat user ID set for new user:', user.id);
-        } catch (error) {
-          console.error('❌ Failed to set RevenueCat user ID for new user:', error);
-          // Don't throw - RevenueCat setup failure shouldn't break signup
-        }
-      }
-
       // Note: Profile creation is handled automatically by database trigger
     } catch (error) {
       console.error('Sign up error:', error);
@@ -733,19 +700,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       await AuthService.signIn(email, password);
 
-      // Set RevenueCat user ID after successful login
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        try {
-          const { RevenueCatService } = await import('../services/revenueCatService');
-          await RevenueCatService.setUserId(user.id);
-          console.log('✅ RevenueCat user ID set:', user.id);
-        } catch (error) {
-          console.error('❌ Failed to set RevenueCat user ID:', error);
-        }
-      }
     } catch (error) {
       console.error('Sign in error:', error);
       throw error;
@@ -766,17 +720,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         ProfileCacheService.clearCachedProfile(),
         // Clear cold start cache for the current user
         user ? ColdStartCache.clearUserCache(user.id) : Promise.resolve(),
-        // RevenueCat logout with error handling
-        (async () => {
-          try {
-            const { RevenueCatService } = await import('../services/revenueCatService');
-            await RevenueCatService.logOut();
-            console.log('✅ RevenueCat user logged out');
-          } catch (error) {
-            console.error('❌ Failed to log out from RevenueCat:', error);
-            // Don't throw - continue with other cleanup
-          }
-        })(),
         AuthService.signOut(),
       ];
 

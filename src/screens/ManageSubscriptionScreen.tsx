@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -11,110 +11,74 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../contexts/AuthContext';
 import { useSubscription } from '../contexts/SubscriptionContext';
-import { RevenueCatService } from '../services/revenueCatService';
+
+const SUPPORT_EMAIL = 'support@cigarapp.co';
 
 export default function ManageSubscriptionScreen() {
   const navigation = useNavigation();
-  const { user } = useAuth();
-  const { subscriptionStatus, refreshSubscription } = useSubscription();
+  const { subscriptionStatus, refreshSubscription, cancelSubscription } = useSubscription();
   const [loading, setLoading] = useState(false);
-  const [subscriptionDetails, setSubscriptionDetails] = useState<any>(null);
 
-  useEffect(() => {
-    loadSubscriptionDetails();
-  }, []);
+  const derivedStatus = useMemo(() => {
+    if (!subscriptionStatus) return null;
 
-  const loadSubscriptionDetails = async () => {
+    const planLabel =
+      subscriptionStatus.plan?.name ||
+      (subscriptionStatus.isPremium ? 'Premium Access' : subscriptionStatus.isTrialActive ? 'Free Trial' : 'Free Tier');
+
+    return {
+      label: planLabel,
+      status: subscriptionStatus.status || (subscriptionStatus.isPremium ? 'active' : 'free'),
+      hasAccess: subscriptionStatus.hasAccess,
+      isPremium: subscriptionStatus.isPremium,
+      isTrial: subscriptionStatus.isTrialActive,
+      daysRemaining: subscriptionStatus.daysRemaining ?? 0,
+    };
+  }, [subscriptionStatus]);
+
+  const handleContactSupport = () => {
+    Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Subscription%20Question`).catch(() => {});
+  };
+
+  const handleRefresh = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const customerInfo = await RevenueCatService.getCustomerInfo();
-      setSubscriptionDetails(customerInfo);
-    } catch (error) {
-      console.error('Failed to load subscription details:', error);
+      await refreshSubscription();
     } finally {
       setLoading(false);
     }
   };
 
-  const getSubscriptionStatus = () => {
-    if (!subscriptionStatus || !subscriptionDetails) {
-      return null;
-    }
-
-    const isActive = subscriptionStatus.isPremium;
-    const isCancelled = subscriptionDetails.entitlements?.active?.premium?.willRenew === false;
-    const isExpired = !isActive && subscriptionStatus.hasEverSubscribed;
-    const hasBillingIssue =
-      subscriptionDetails.entitlements?.active?.premium?.isActive === false &&
-      subscriptionStatus.hasEverSubscribed;
-
-    // Calculate grace period (16 days from expiration)
-    const gracePeriodDays = 16;
-    const expirationDate = subscriptionDetails.entitlements?.active?.premium?.expirationDate;
-    const gracePeriodEnd = expirationDate
-      ? new Date(new Date(expirationDate).getTime() + gracePeriodDays * 24 * 60 * 60 * 1000)
-      : null;
-    const daysLeftInGrace = gracePeriodEnd
-      ? Math.ceil((gracePeriodEnd.getTime() - new Date().getTime()) / (24 * 60 * 60 * 1000))
-      : 0;
-
-    const planType = subscriptionStatus.planType || 'Monthly';
-    const isYearly =
-      planType.toLowerCase().includes('yearly') || planType.toLowerCase().includes('annual');
-
-    return {
-      isActive,
-      isCancelled,
-      isExpired,
-      hasBillingIssue,
-      planType: isYearly ? 'Yearly' : 'Monthly',
-      expirationDate,
-      gracePeriodEnd,
-      daysLeftInGrace: Math.max(0, daysLeftInGrace),
-    };
-  };
-
-  const handleCancelSubscription = () => {
+  const handleCancel = () => {
     Alert.alert(
-      'Cancel Subscription',
-      "To cancel your subscription, you'll need to go to your Apple ID settings. Your subscription will remain active until the end of your current billing period.",
+      'Cancel Premium Access',
+      'We can immediately mark your subscription as cancelled in our system. You will retain access until the current term ends. Continue?',
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: 'Keep Access', style: 'cancel' },
         {
-          text: 'Open Settings',
-          onPress: () => {
-            Linking.openURL('App-prefs:APPLE_ID&path=SUBSCRIPTIONS');
+          text: 'Cancel Access',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              const result = await cancelSubscription();
+              if (result.success) {
+                Alert.alert('Subscription Updated', 'Your subscription has been marked as cancelled.');
+                await refreshSubscription();
+              } else {
+                Alert.alert('Unable to Cancel', result.error || 'Please try again later.');
+              }
+            } finally {
+              setLoading(false);
+            }
           },
         },
       ],
     );
   };
 
-  const handleRenewSubscription = () => {
-    navigation.navigate('Paywall' as never);
-  };
-
-  const handleUpdatePayment = () => {
-    Alert.alert(
-      'Update Payment Method',
-      "To update your payment method, you'll need to go to your Apple ID settings.",
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Open Settings',
-          onPress: () => {
-            Linking.openURL('App-prefs:APPLE_ID&path=SUBSCRIPTIONS');
-          },
-        },
-      ],
-    );
-  };
-
-  const status = getSubscriptionStatus();
-
-  if (!status) {
+  if (!derivedStatus) {
     return (
       <ImageBackground
         source={require('../../assets/tobacco-leaves-bg.jpg')}
@@ -124,7 +88,7 @@ export default function ManageSubscriptionScreen() {
         <View style={styles.container}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              <Ionicons name='arrow-back' size={24} color='#FFFFFF' />
             </TouchableOpacity>
             <Text style={styles.title}>Manage Subscription</Text>
             <View style={styles.placeholder} />
@@ -138,15 +102,6 @@ export default function ManageSubscriptionScreen() {
     );
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
   return (
     <ImageBackground
       source={require('../../assets/tobacco-leaves-bg.jpg')}
@@ -154,81 +109,74 @@ export default function ManageSubscriptionScreen() {
       imageStyle={styles.tobaccoBackgroundImage}
     >
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            <Ionicons name='arrow-back' size={24} color='#FFFFFF' />
           </TouchableOpacity>
           <Text style={styles.title}>Manage Subscription</Text>
           <View style={styles.placeholder} />
         </View>
 
-        {/* Subscription Status */}
         <View style={styles.statusContainer}>
           <View style={styles.statusCard}>
-            <View style={styles.statusHeader}>
-              <Text style={styles.statusTitle}>
-                Premium Member on the {status.planType} Subscription
-                {status.isCancelled && ' (Cancelled)'}
-                {status.isExpired && ' (Payment Issue)'}
-                {status.hasBillingIssue && ' (Billing Issue)'}
+            <Text style={styles.statusTitle}>{derivedStatus.label}</Text>
+            <Text style={styles.statusSubtitle}>Status: {derivedStatus.status}</Text>
+            {derivedStatus.daysRemaining > 0 && (
+              <Text style={styles.statusSubtitle}>
+                Days Remaining: {derivedStatus.daysRemaining.toString()}
               </Text>
-
-              {status.isCancelled && status.expirationDate && (
-                <Text style={styles.warningText}>
-                  Your subscription is cancelled and you will lose access on{' '}
-                  {formatDate(status.expirationDate)}
-                </Text>
-              )}
-
-              {(status.isExpired || status.hasBillingIssue) && status.daysLeftInGrace > 0 && (
-                <Text style={styles.warningText}>
-                  You have {status.daysLeftInGrace} day{status.daysLeftInGrace !== 1 ? 's' : ''}{' '}
-                  left to resubscribe or update your payment information.
-                </Text>
-              )}
-            </View>
+            )}
+            <Text style={styles.infoText}>
+              {derivedStatus.isPremium
+                ? 'Premium access is active on this account. Contact us if you need to change billing or transfer a plan.'
+                : derivedStatus.isTrial
+                  ? 'Trial access is active. Reach out before it expires if you would like to upgrade.'
+                  : 'Upgrading is handled directly. Contact us whenever you are ready to unlock premium features.'}
+            </Text>
           </View>
         </View>
 
-        {/* Action Buttons */}
         <View style={styles.actionsContainer}>
-          {status.isActive && !status.isCancelled && (
+          {derivedStatus.isPremium && (
             <TouchableOpacity
               style={[styles.actionButton, styles.cancelButton]}
-              onPress={handleCancelSubscription}
+              onPress={handleCancel}
+              disabled={loading}
             >
-              <Ionicons name="close-circle" size={20} color="#FF4444" />
-              <Text style={[styles.actionButtonText, styles.cancelText]}>Cancel Subscription</Text>
-            </TouchableOpacity>
-          )}
-
-          {(status.isCancelled || status.isExpired || status.hasBillingIssue) && (
-            <TouchableOpacity style={styles.actionButton} onPress={handleRenewSubscription}>
-              <Ionicons name="refresh" size={20} color="#FFFFFF" />
-              <Text style={styles.actionButtonText}>Renew Subscription</Text>
-            </TouchableOpacity>
-          )}
-
-          {(status.isExpired || status.hasBillingIssue) && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.secondaryButton]}
-              onPress={handleUpdatePayment}
-            >
-              <Ionicons name="card" size={20} color="#DC851F" />
-              <Text style={[styles.actionButtonText, styles.secondaryText]}>
-                Update Payment Method
+              <Ionicons name='close-circle' size={20} color='#FF4444' />
+              <Text style={[styles.actionButtonText, styles.cancelText]}>
+                {loading ? 'Updating...' : 'Cancel Premium Access'}
               </Text>
             </TouchableOpacity>
           )}
+
+          <TouchableOpacity style={styles.actionButton} onPress={handleRefresh} disabled={loading}>
+            <Ionicons name='refresh' size={20} color='#FFFFFF' />
+            <Text style={styles.actionButtonText}>Refresh Status</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.secondaryButton]}
+            onPress={() => navigation.navigate('Paywall' as never)}
+          >
+            <Ionicons name='pricetag' size={20} color='#DC851F' />
+            <Text style={[styles.actionButtonText, styles.secondaryText]}>View Upgrade Options</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.secondaryButton]}
+            onPress={handleContactSupport}
+          >
+            <Ionicons name='mail-outline' size={20} color='#DC851F' />
+            <Text style={[styles.actionButtonText, styles.secondaryText]}>Contact Support</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Additional Info */}
         <View style={styles.infoContainer}>
           <Text style={styles.infoText}>
-            {status.isActive && !status.isCancelled
-              ? 'Your subscription is active and will automatically renew.'
-              : 'Manage your subscription through your Apple ID settings or renew to continue enjoying premium features.'}
+            Need to change billing or have questions? Email us at{' '}
+            <Text style={styles.highlight}>{SUPPORT_EMAIL}</Text> and we will take care of it
+            quickly.
           </Text>
         </View>
       </ScrollView>
@@ -289,22 +237,18 @@ const styles = StyleSheet.create({
     padding: 20,
     borderWidth: 1,
     borderColor: '#333333',
-  },
-  statusHeader: {
-    alignItems: 'center',
+    gap: 8,
   },
   statusTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 12,
   },
-  warningText: {
+  statusSubtitle: {
     fontSize: 14,
-    color: '#FF4444',
+    color: '#CCCCCC',
     textAlign: 'center',
-    lineHeight: 20,
   },
   actionsContainer: {
     gap: 12,
@@ -351,4 +295,9 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  highlight: {
+    color: '#DC851F',
+    fontWeight: '600',
+  },
 });
+

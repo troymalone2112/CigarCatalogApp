@@ -55,8 +55,6 @@ export default function App() {
     }
   }, []);
 
-  // RevenueCat initialization removed from startup - now handled on-demand by PaymentService
-  // This eliminates the 10-second timeout and network dependency on app startup
   console.log('🚀 Starting Cigar Catalog App with database-first architecture...');
 
   // Log environment variables for debugging
@@ -72,11 +70,6 @@ export default function App() {
     '  Perplexity Key:',
     process.env.EXPO_PUBLIC_PERPLEXITY_API_KEY ? '✅ Set' : '❌ Missing',
   );
-  console.log(
-    '  RevenueCat iOS Key:',
-    process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ? '✅ Set' : '❌ Missing',
-  );
-
   return (
     <ErrorBoundary>
       <SafeAreaProvider>

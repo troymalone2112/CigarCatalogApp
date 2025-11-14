@@ -46,7 +46,6 @@ git push
    EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
    EXPO_PUBLIC_OPENAI_API_KEY=your_openai_key
    EXPO_PUBLIC_PERPLEXITY_API_KEY=your_perplexity_key
-   EXPO_PUBLIC_REVENUECAT_IOS_KEY=your_revenuecat_key
    ```
 
 5. **Deploy**
@@ -78,7 +77,6 @@ git push
    netlify env:set EXPO_PUBLIC_SUPABASE_ANON_KEY "your_supabase_anon_key"
    netlify env:set EXPO_PUBLIC_OPENAI_API_KEY "your_openai_key"
    netlify env:set EXPO_PUBLIC_PERPLEXITY_API_KEY "your_perplexity_key"
-   netlify env:set EXPO_PUBLIC_REVENUECAT_IOS_KEY "your_revenuecat_key"
    ```
 
 5. **Deploy**

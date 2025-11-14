@@ -51,7 +51,6 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       'EXPO_PUBLIC_SUPABASE_ANON_KEY',
       'EXPO_PUBLIC_OPENAI_API_KEY',
       'EXPO_PUBLIC_PERPLEXITY_API_KEY',
-      'EXPO_PUBLIC_REVENUECAT_IOS_KEY',
     ];
 
     console.log('🔍 Checking environment variables:');
@@ -112,8 +111,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
               <Text style={styles.errorTitle}>Common Causes:</Text>
               <Text style={styles.troubleshootText}>
                 • Missing environment variables (Supabase, API keys){'\n'}• Network connectivity
-                issues{'\n'}• Invalid Supabase configuration{'\n'}• Missing RevenueCat configuration
-                {'\n'}• Build configuration problems
+                issues{'\n'}• Invalid Supabase configuration{'\n'}• Build configuration problems
               </Text>
 
               <Text style={styles.errorTitle}>Environment Check:</Text>
@@ -125,8 +123,6 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
                 OpenAI Key: {process.env.EXPO_PUBLIC_OPENAI_API_KEY ? '✅' : '❌'}
                 {'\n'}
                 Perplexity Key: {process.env.EXPO_PUBLIC_PERPLEXITY_API_KEY ? '✅' : '❌'}
-                {'\n'}
-                RevenueCat iOS Key: {process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ? '✅' : '❌'}
               </Text>
             </ScrollView>
 

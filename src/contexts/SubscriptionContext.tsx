@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { SubscriptionService, SubscriptionPlan, SubscriptionStatus } from '../services/subscriptionService';
 import { DatabaseSubscriptionManager } from '../services/databaseSubscriptionManager';
-import { RevenueCatService } from '../services/revenueCatService';
 import { useAuth } from './AuthContext';
 
 interface SubscriptionContextType {
@@ -62,17 +61,6 @@ export const SubscriptionProvider: React.FC<{ children: React.ReactNode }> = ({ 
         plan: dbStatus.planId ? { id: dbStatus.planId, name: dbStatus.planName || '', description: '' } : undefined,
       } as any;
       console.log('🔍 SubscriptionContext - Database status result:', status);
-
-      // Only sync with RevenueCat if user is premium (has upgraded)
-      if (status.isPremium && forceRefresh) {
-        console.log('🔄 Premium user - syncing with RevenueCat...');
-        try {
-          const revenueCatStatus = await RevenueCatService.syncSubscriptionStatus(user.id);
-          console.log('✅ RevenueCat sync completed for premium user');
-        } catch (error) {
-          console.log('⚠️ RevenueCat sync failed, using database status:', error.message);
-        }
-      }
 
       // Get subscription plans
       const plans = await SubscriptionService.getSubscriptionPlans();

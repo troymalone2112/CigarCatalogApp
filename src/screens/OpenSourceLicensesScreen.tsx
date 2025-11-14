@@ -81,12 +81,6 @@ export default function OpenSourceLicensesScreen() {
       description: 'Asynchronous, persistent, key-value storage system',
     },
     {
-      name: 'React Native Purchases',
-      version: '9.5.4',
-      license: 'MIT',
-      description: 'RevenueCat SDK for React Native',
-    },
-    {
       name: 'Expo Image Picker',
       version: '14.0.0',
       license: 'MIT',
