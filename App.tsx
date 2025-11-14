@@ -13,7 +13,6 @@ import { StorageService } from './src/storage/storageService';
 import { DashboardCacheService } from './src/services/dashboardCacheService';
 import ErrorBoundary from './src/components/ErrorBoundary';
 import { initializePWA } from './src/utils/pwaUtils';
-import AddToHomeScreenBanner from './src/components/AddToHomeScreenBanner';
 
 // Preloader component that runs inside AuthProvider
 function AppPreloader() {
@@ -85,7 +84,6 @@ export default function App() {
           <SubscriptionProvider>
             <RecognitionFlowProvider>
               <JournalDraftProvider>
-                {Platform.OS === 'web' && <AddToHomeScreenBanner />}
                 <AppPreloader />
                 <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
                   <AppNavigator />
