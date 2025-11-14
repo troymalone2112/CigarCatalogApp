@@ -88,52 +88,8 @@ export const injectPWAStyles = (): void => {
     return;
   }
 
-  // Add styles to minimize browser UI
-  const styleId = 'pwa-custom-styles';
-  if (document.getElementById(styleId)) {
-    return; // Already injected
-  }
-
-  const style = document.createElement('style');
-  style.id = styleId;
-  style.textContent = `
-    html, body, #root {
-      margin: 0;
-      padding: 0;
-      min-height: 100%;
-      width: 100%;
-      background-color: #0a0a0a;
-    }
-    
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      color: #ffffff;
-    }
-  `;
-
-  document.head.appendChild(style);
-
-  // Additional JavaScript to force viewport height
-  if (typeof window !== 'undefined') {
-    // Set viewport height on load and resize
-    const setViewportHeight = () => {
-      const vh = window.innerHeight * 0.01;
-      document.documentElement.style.setProperty('--vh', `${vh}px`);
-    };
-
-    setViewportHeight();
-    window.addEventListener('resize', setViewportHeight);
-    window.addEventListener('orientationchange', setViewportHeight);
-
-    // Force scroll to top to hide address bar (iOS Safari)
-    if (isIOS()) {
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          window.scrollTo(0, 1);
-        }, 100);
-      });
-    }
-  }
+  document.body.style.backgroundColor = '#0a0a0a';
+  document.documentElement.style.backgroundColor = '#0a0a0a';
 };
 
 /**
