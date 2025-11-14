@@ -29,6 +29,7 @@ import StatsScreen from '../screens/StatsScreen';
 import { NotificationService, AppNotification } from '../services/notificationService';
 import RecommendationsScreen from '../screens/RecommendationsScreen';
 import EnhancedCigarRecognitionScreen from '../screens/EnhancedCigarRecognitionScreen';
+import WebCigarRecognitionScreen from '../screens/WebCigarRecognitionScreen';
 import CigarDetailsScreen from '../screens/CigarDetailsScreen';
 import AddToInventoryScreen from '../screens/AddToInventoryScreen';
 import EditOptionsScreen from '../screens/EditOptionsScreen';
@@ -61,6 +62,9 @@ const Stack = createStackNavigator<RootStackParamList>();
 const HumidorStack = createStackNavigator<HumidorStackParamList>();
 const JournalStack = createStackNavigator<JournalStackParamList>();
 const RecommendationsStack = createStackNavigator<RecommendationsStackParamList>();
+
+const CigarRecognitionScreenComponent =
+  Platform.OS === 'web' ? WebCigarRecognitionScreen : EnhancedCigarRecognitionScreen;
 
 const navTheme = {
   ...DefaultTheme,
@@ -1097,7 +1101,7 @@ export default function AppNavigator() {
           />
             <Stack.Screen
               name="CigarRecognition"
-              component={EnhancedCigarRecognitionScreen}
+              component={CigarRecognitionScreenComponent}
               options={({ navigation }) => ({
                 header: () => (
                   <TabHeader title="Identify Cigar" onBackPress={() => navigation.goBack()} />
