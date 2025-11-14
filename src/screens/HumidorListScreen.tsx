@@ -10,6 +10,7 @@ import {
   ImageBackground,
   Dimensions,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -218,22 +219,6 @@ export default function HumidorListScreen() {
     }).format(amount);
   };
 
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ImageBackground 
-          source={require('../../assets/tobacco-leaves-bg.jpg')}
-          style={styles.backgroundImage}
-          imageStyle={styles.tobaccoBackgroundImage}
-        >
-          <View style={styles.loadingContent}>
-            <Text style={styles.loadingText}>Loading humidors...</Text>
-          </View>
-        </ImageBackground>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <ImageBackground 
@@ -290,7 +275,7 @@ export default function HumidorListScreen() {
         )}
 
         {/* Humidor Cards */}
-        {humidors.length === 0 ? (
+        {humidors.length === 0 && !loading ? (
           <View style={styles.emptyState}>
             <Ionicons name="archive-outline" size={64} color="#666" />
             <Text style={styles.emptyTitle}>No Humidors Yet</Text>
@@ -378,6 +363,13 @@ export default function HumidorListScreen() {
         <TouchableOpacity style={styles.fab} onPress={handleAddHumidor}>
           <Ionicons name="add" size={24} color="#FFFFFF" />
         </TouchableOpacity>
+
+        {loading && (
+          <View style={styles.loadingOverlay} pointerEvents="none">
+            <ActivityIndicator size="large" color="#DC851F" />
+            <Text style={styles.loadingText}>Loading humidors...</Text>
+          </View>
+        )}
       </ImageBackground>
     </View>
   );
@@ -395,19 +387,20 @@ const styles = StyleSheet.create({
     opacity: 0.4,
     resizeMode: 'cover',
   },
-  loadingContainer: {
-    flex: 1,
-    backgroundColor: '#0a0a0a',
-  },
-  loadingContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   loadingText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: 'System',
+    fontSize: 14,
+    marginTop: 12,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(10, 10, 10, 0.65)',
   },
   // Removed header styles - stats bar flows directly from top
   // Summary Statistics - Direct text on dark background (no containers)
