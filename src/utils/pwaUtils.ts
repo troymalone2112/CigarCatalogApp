@@ -97,57 +97,17 @@ export const injectPWAStyles = (): void => {
   const style = document.createElement('style');
   style.id = styleId;
   style.textContent = `
-    /* Full viewport baseline */
-    html, body {
+    html, body, #root {
       margin: 0;
       padding: 0;
-      width: 100%;
       min-height: 100%;
+      width: 100%;
       background-color: #0a0a0a;
     }
     
-    #root {
-      min-height: 100vh;
-      width: 100%;
-    }
-    
-    /* iOS Safari specific - aggressive UI hiding */
-    @supports (-webkit-touch-callout: none) {
-      html, body {
-        -webkit-touch-callout: none;
-        -webkit-tap-highlight-color: transparent;
-      }
-      
-      /* Force viewport to fill screen */
-      body {
-        min-height: 100vh;
-        min-height: -webkit-fill-available;
-      }
-    }
-    
-    /* Prevent text selection on UI elements */
-    button, a, [role="button"], [onClick] {
-      -webkit-tap-highlight-color: transparent;
-      -webkit-touch-callout: none;
-    }
-    
-    /* Safe area insets - make safe areas black */
-    @supports (padding: max(0px)) {
-      body {
-        padding-top: 0;
-        padding-bottom: 0;
-        padding-left: 0;
-        padding-right: 0;
-      }
-    }
-    
-    /* Hide scrollbars but allow scrolling */
-    ::-webkit-scrollbar {
-      display: none;
-    }
-    * {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: #ffffff;
     }
   `;
 
@@ -184,12 +144,6 @@ export const initializePWA = (): void => {
     return;
   }
 
-  // Temporarily skip injecting aggressive PWA styles until we can reintroduce them safely.
-  // injectPWAStyles();
-
-  // Hint browsers to reduce double-tap zoom without blocking gestures
-  if (typeof document !== 'undefined' && document.body) {
-    document.body.style.touchAction = 'manipulation';
-  }
+  injectPWAStyles();
 };
 

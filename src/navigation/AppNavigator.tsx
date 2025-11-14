@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView, Alert, Platform } from 'react-native';
 import { shareCigar } from '../utils/shareUtils';
 import { serializeJournalEntry } from '../utils/journalSerialization';
-import { NavigationContainer, useNavigation } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, useNavigation } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   TabParamList,
   RootStackParamList,
@@ -61,10 +62,22 @@ const HumidorStack = createStackNavigator<HumidorStackParamList>();
 const JournalStack = createStackNavigator<JournalStackParamList>();
 const RecommendationsStack = createStackNavigator<RecommendationsStackParamList>();
 
+const navTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: '#0a0a0a',
+    card: '#0a0a0a',
+    border: '#333333',
+    text: '#FFFFFF',
+  },
+};
+
 // Custom Header Component for Home
 const CustomHeader = ({ title }: { title?: string }) => {
   const { user, profile, signOut } = useAuth();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [showInbox, setShowInbox] = React.useState(false);
   const [unread, setUnread] = React.useState(0);
   const [inbox, setInbox] = React.useState<AppNotification[]>([]);
@@ -131,7 +144,8 @@ const CustomHeader = ({ title }: { title?: string }) => {
   };
 
   return (
-    <View style={headerStyles.container}>
+    <SafeAreaView edges={['top']} style={{ backgroundColor: '#0a0a0a' }}>
+      <View style={headerStyles.container}>
       <View style={headerStyles.userSection}>
         <View style={headerStyles.initialsCircle}>
           <Text style={headerStyles.initialsText}>{userInitials}</Text>
@@ -231,7 +245,8 @@ const CustomHeader = ({ title }: { title?: string }) => {
           <Ionicons name="person-outline" size={24} color="#DC851F" />
         </TouchableOpacity>
       </View>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
@@ -248,21 +263,23 @@ const TabHeader = ({
   rightIconName?: keyof typeof Ionicons.glyphMap;
 }) => {
   return (
-    <View style={headerStyles.tabHeaderContainer}>
-      <TouchableOpacity onPress={onBackPress} style={headerStyles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-      </TouchableOpacity>
-      <Text style={headerStyles.tabHeaderTitle}>
-        {title === 'Smoking Journal' ? 'Notes' : title}
-      </Text>
-      {onRightPress ? (
-        <TouchableOpacity onPress={onRightPress} style={headerStyles.backButton}>
-          <Ionicons name={rightIconName || 'share-social-outline'} size={22} color="#FFFFFF" />
+    <SafeAreaView edges={['top']} style={{ backgroundColor: '#0a0a0a' }}>
+      <View style={headerStyles.tabHeaderContainer}>
+        <TouchableOpacity onPress={onBackPress} style={headerStyles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-      ) : (
-        <View style={headerStyles.headerSpacer} />
-      )}
-    </View>
+        <Text style={headerStyles.tabHeaderTitle}>
+          {title === 'Smoking Journal' ? 'Notes' : title}
+        </Text>
+        {onRightPress ? (
+          <TouchableOpacity onPress={onRightPress} style={headerStyles.backButton}>
+            <Ionicons name={rightIconName || 'share-social-outline'} size={22} color="#FFFFFF" />
+          </TouchableOpacity>
+        ) : (
+          <View style={headerStyles.headerSpacer} />
+        )}
+      </View>
+    </SafeAreaView>
   );
 };
 
@@ -270,20 +287,12 @@ const headerStyles = StyleSheet.create({
   container: {
     backgroundColor: '#0a0a0a',
     paddingHorizontal: 20,
-    paddingVertical: 8,
-    paddingTop: 0, // No top padding - extend to top edge
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: '#333333',
-    // Extend into safe area on web/iOS
-    marginTop: 0,
-    // Ensure black background extends into safe area
-    ...(Platform.OS === 'web' && {
-      position: 'relative',
-      zIndex: 1000,
-    }),
   },
   userSection: {
     flexDirection: 'row',
@@ -365,14 +374,12 @@ const headerStyles = StyleSheet.create({
   tabHeaderContainer: {
     backgroundColor: '#0a0a0a',
     paddingHorizontal: 20,
-    paddingVertical: 8,
-    paddingTop: 0, // No top padding - extend to top edge
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
     borderBottomColor: '#333333',
-    marginTop: 0,
   },
   tabHeaderTitle: {
     fontSize: 14,
@@ -718,6 +725,7 @@ function RecommendationsStackNavigator() {
 function TabNavigator() {
   return (
     <Tab.Navigator
+      sceneContainerStyle={{ backgroundColor: '#0a0a0a' }}
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: keyof typeof Ionicons.glyphMap;
@@ -766,9 +774,6 @@ function TabNavigator() {
           paddingTop: 8, // Add top padding to space icons from top edge
           height: 68, // Increased height to accommodate top padding
           marginBottom: 0,
-          // Remove position: 'absolute' - let React Navigation handle positioning
-          zIndex: 1000, // Ensure tab bar is above other content
-          elevation: 10, // Android shadow/elevation
         },
         tabBarItemStyle: {
           paddingVertical: 0, // No vertical padding
@@ -1055,7 +1060,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={navTheme}>
       {user ? (
         // Only show onboarding when the check is complete and explicitly false
         onboardingCheckComplete && onboardingCompleted === false ? (

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Platform } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { useAuth } from './src/contexts/AuthContext';
 import { SubscriptionProvider } from './src/contexts/SubscriptionContext';
@@ -79,18 +80,22 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <SubscriptionProvider>
-          <RecognitionFlowProvider>
-            <JournalDraftProvider>
-              {Platform.OS === 'web' && <AddToHomeScreenBanner />}
-              <AppPreloader />
-              <AppNavigator />
-              <StatusBar style="light" />
-            </JournalDraftProvider>
-          </RecognitionFlowProvider>
-        </SubscriptionProvider>
-      </AuthProvider>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <SubscriptionProvider>
+            <RecognitionFlowProvider>
+              <JournalDraftProvider>
+                {Platform.OS === 'web' && <AddToHomeScreenBanner />}
+                <AppPreloader />
+                <SafeAreaView style={{ flex: 1, backgroundColor: '#0a0a0a' }}>
+                  <AppNavigator />
+                </SafeAreaView>
+                <StatusBar style="light" />
+              </JournalDraftProvider>
+            </RecognitionFlowProvider>
+          </SubscriptionProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 }
