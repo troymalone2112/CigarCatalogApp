@@ -9,13 +9,16 @@ import {
   ActivityIndicator,
   TouchableWithoutFeedback,
   Keyboard,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList, RecognitionMode } from '../types';
 import { APIService } from '../services/apiService';
-import { getStrengthInfo } from '../utils/strengthUtils';
 
 type JournalManualEntryScreenNavigationProp = StackNavigationProp<
   RootStackParamList,
@@ -42,35 +45,8 @@ export default function JournalManualEntryScreen() {
         userDescription: manualDescription,
       });
 
-      // Convert RecognitionResult to Cigar for navigation
-      const cigar = {
-        id: Date.now().toString(),
-        brand: result.enrichedCigar.brand || 'Unknown',
-        line: result.enrichedCigar.line || '',
-        name: result.enrichedCigar.name || '',
-        size: result.enrichedCigar.size || '',
-        wrapper: result.enrichedCigar.wrapper || '',
-        filler: result.enrichedCigar.filler || '',
-        binder: result.enrichedCigar.binder || '',
-        tobacco: result.enrichedCigar.tobacco || '',
-        strength: getStrengthInfo(result.enrichedCigar.strength || 'Medium').level,
-        flavorProfile: result.enrichedCigar.flavorProfile || [],
-        tobaccoOrigins: result.enrichedCigar.tobaccoOrigins || [],
-        smokingExperience: result.enrichedCigar.smokingExperience || {
-          first: '',
-          second: '',
-          final: '',
-        },
-        recognitionConfidence: result.confidence,
-        overview: result.enrichedCigar.overview,
-        tobaccoOrigin: result.enrichedCigar.tobaccoOrigin,
-        flavorTags: result.enrichedCigar.flavorTags,
-        cigarAficionadoRating: result.enrichedCigar.cigarAficionadoRating,
-        imageUrl: 'placeholder', // Use placeholder for manual entries
-      };
-
-      // Navigate to new single journal entry screen
-      navigation.navigate('NewJournalEntry', { cigar });
+      navigation.navigate('CigarRecognition', { manualResult: result });
+      setManualDescription('');
     } catch (error) {
       console.error('Error processing manual entry:', error);
       Alert.alert('Error', 'Failed to identify cigar. Please try again.');
@@ -80,14 +56,21 @@ export default function JournalManualEntryScreen() {
   };
 
   return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <ImageBackground
-        source={require('../../assets/tobacco-leaves-bg.jpg')}
-        style={styles.fullScreenBackground}
-        imageStyle={styles.tobaccoBackgroundImage}
-      >
-        <View style={styles.container}>
-          <View style={styles.content}>
+    <KeyboardAvoidingView
+      style={styles.fullScreenBackground}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ImageBackground
+          source={require('../../assets/tobacco-leaves-bg.jpg')}
+          style={styles.fullScreenBackground}
+          imageStyle={styles.tobaccoBackgroundImage}
+        >
+          <ScrollView
+            style={styles.container}
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
             <Text style={styles.subtitle}>
               Provide details about the brand, line, size, or any identifying features
             </Text>
@@ -118,10 +101,10 @@ export default function JournalManualEntryScreen() {
                 {isProcessing ? 'Searching...' : 'Search'}
               </Text>
             </TouchableOpacity>
-          </View>
-        </View>
-      </ImageBackground>
-    </TouchableWithoutFeedback>
+          </ScrollView>
+        </ImageBackground>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -138,8 +121,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
   },
-  content: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     padding: 20,
     justifyContent: 'center',
   },
@@ -163,14 +146,13 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   submitButton: {
-    backgroundColor: '#7C2D12',
+    backgroundColor: '#DC851F',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 12,
-    marginBottom: 200,
     gap: 12,
   },
   submitButtonText: {

@@ -94,6 +94,18 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
     }
   }, [route?.params?.openSearch]);
 
+  useEffect(() => {
+    if (route?.params?.manualResult) {
+      setRecognitionResult(route.params.manualResult);
+      setImageUri(null);
+      setShowSimpleSearch(false);
+      navigation.setParams({
+        ...route.params,
+        manualResult: undefined,
+      });
+    }
+  }, [route?.params?.manualResult, navigation, route?.params]);
+
   // Automatically request camera permission on first load
   useEffect(() => {
     const requestInitialPermission = async () => {

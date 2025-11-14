@@ -188,9 +188,8 @@ export default function HomeScreen() {
   };
 
   const handleSearch = () => {
-    // Navigate to search functionality
     if (canScan()) {
-      navigation.navigate('CigarRecognition', { openSearch: true });
+      navigation.navigate('JournalManualEntry');
     }
   };
 

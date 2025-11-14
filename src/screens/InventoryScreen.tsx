@@ -526,6 +526,7 @@ const [errorMessage, setErrorMessage] = useState<string | null>(null);
         imageStyle={styles.tobaccoBackgroundImage}
       >
         <View style={styles.container}>
+          <View style={styles.stickyHeader}>{renderListHeader()}</View>
           <FlatList
             ref={flatListRef}
             data={filteredInventory}
@@ -534,7 +535,6 @@ const [errorMessage, setErrorMessage] = useState<string | null>(null);
             style={styles.list}
             contentContainerStyle={styles.listContainer}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-            ListHeaderComponent={renderListHeader}
             ListEmptyComponent={EmptyState}
             showsVerticalScrollIndicator={false}
             onScrollToIndexFailed={(info) => {
@@ -582,9 +582,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a1a1a',
     marginHorizontal: 0,
     marginTop: 0,
-    marginBottom: 16,
+    marginBottom: 0,
     padding: 16,
     paddingTop: 20, // Add extra padding at top since no margin
+  },
+  stickyHeader: {
+    backgroundColor: '#1a1a1a',
+    paddingBottom: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#333333',
+    zIndex: 2,
   },
   headerStats: {
     flexDirection: 'row',
@@ -625,7 +632,8 @@ const styles = StyleSheet.create({
     color: '#999',
   },
   listContainer: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     paddingBottom: 140,
   },
   inventoryCard: {

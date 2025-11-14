@@ -89,14 +89,14 @@ export default function EditOptionsScreen({ route }: Props) {
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.addMoreButton} onPress={handleAddMore}>
-            <Ionicons name="add-circle" size={24} color="#CCCCCC" />
-            <Text style={styles.addMoreButtonText}>Add More Cigars</Text>
+          <TouchableOpacity style={styles.actionButton} onPress={handleAddMore}>
+            <Ionicons name="add" size={20} color="#FFFFFF" style={styles.buttonIcon} />
+            <Text style={styles.buttonText}>Add More Cigars</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.editButton} onPress={handleEdit}>
-            <Ionicons name="pencil" size={24} color="#CCCCCC" />
-            <Text style={styles.editButtonText}>Edit Entry</Text>
+          <TouchableOpacity style={styles.actionButton} onPress={handleEdit}>
+            <Ionicons name="create" size={20} color="#FFFFFF" style={styles.buttonIcon} />
+            <Text style={styles.buttonText}>Edit Entry</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -173,32 +173,21 @@ const styles = StyleSheet.create({
   actionButtons: {
     gap: 16,
   },
-  addMoreButton: {
+  actionButton: {
     backgroundColor: '#DC851F',
-    padding: 20,
+    paddingVertical: 16,
     borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#DC851F',
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
   },
-  addMoreButtonText: {
+  buttonIcon: {
+    marginRight: 4,
+  },
+  buttonText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     color: '#FFFFFF',
-    marginTop: 8,
-  },
-  editButton: {
-    backgroundColor: '#DC851F',
-    padding: 20,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#DC851F',
-    alignItems: 'center',
-  },
-  editButtonText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#FFFFFF',
-    marginTop: 8,
   },
 });
