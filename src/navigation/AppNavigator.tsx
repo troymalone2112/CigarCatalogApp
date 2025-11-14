@@ -271,7 +271,7 @@ const headerStyles = StyleSheet.create({
     backgroundColor: '#0a0a0a',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    paddingTop: 35, // Reduced from 50 - account for status bar
+    paddingTop: 8, // Minimal padding - just below system status bar
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -359,7 +359,7 @@ const headerStyles = StyleSheet.create({
     backgroundColor: '#0a0a0a',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    paddingTop: 35, // Reduced from 50
+    paddingTop: 8, // Minimal padding - just below system status bar
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -733,12 +733,12 @@ function TabNavigator() {
         tabBarStyle: {
           backgroundColor: '#0a0a0a',
           borderTopColor: '#333333',
-          paddingBottom: 20, // Add bottom padding for spacing (includes safe area)
+          paddingBottom: 8, // Reduced - just enough to clear system UI
           paddingTop: 8,
-          height: 70, // Increased from default ~60 to accommodate padding
+          height: 60, // Reduced height since less padding needed
         },
         tabBarItemStyle: {
-          paddingVertical: 4,
+          paddingVertical: 2, // Reduced vertical padding to move icons up
         },
         headerStyle: {
           backgroundColor: '#0a0a0a',

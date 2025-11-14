@@ -86,7 +86,7 @@ export default function App() {
               {Platform.OS === 'web' && <AddToHomeScreenBanner />}
               <AppPreloader />
               <AppNavigator />
-              <StatusBar style="light" />
+              <StatusBar style="light" backgroundColor="#0a0a0a" translucent={false} />
             </JournalDraftProvider>
           </RecognitionFlowProvider>
         </SubscriptionProvider>

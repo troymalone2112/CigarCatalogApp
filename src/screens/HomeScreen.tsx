@@ -209,7 +209,7 @@ export default function HomeScreen() {
       style={styles.container}
       imageStyle={styles.backgroundImage}
     >
-      <StatusBar barStyle="light-content" backgroundColor="#343330" />
+      <StatusBar barStyle="light-content" backgroundColor="#0a0a0a" />
 
       <ScrollView
         style={styles.scrollView}
