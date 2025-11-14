@@ -50,6 +50,7 @@ export default function HumidorListScreen() {
   const { loading, refreshing, setLoading, setRefreshing } = useScreenLoading(true);
   const hasNavigatedAwayRef = useRef(false);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Show success message when coming from successful cigar addition
   useEffect(() => {
@@ -83,6 +84,7 @@ export default function HumidorListScreen() {
       
     } catch (error) {
       console.error('❌ Error loading humidor data:', error);
+      setErrorMessage('Unable to load humidor data. Please try again soon.');
       
       // Only show empty state if we don't have cached data
       if (humidors.length === 0) {
@@ -95,8 +97,6 @@ export default function HumidorListScreen() {
           avgCigarValue: 0,
           uniqueBrands: 0,
         });
-        
-        Alert.alert('Error', 'Failed to load humidor data. Please try again.');
       }
     } finally {
       setIsLoadingData(false);
@@ -270,6 +270,14 @@ export default function HumidorListScreen() {
           </View>
         )}
 
+        {/* Error message */}
+        {errorMessage && (
+          <View style={styles.errorBanner}>
+            <Ionicons name="warning-outline" size={18} color="#DC851F" />
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          </View>
+        )}
+
         {/* Humidor Cards */}
         {humidors.length === 0 && !loading ? (
           <View style={styles.emptyState}>
@@ -397,6 +405,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(10, 10, 10, 0.65)',
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(220, 133, 31, 0.15)',
+    borderWidth: 1,
+    borderColor: '#DC851F',
+    gap: 8,
+  },
+  errorText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    flex: 1,
   },
   // Removed header styles - stats bar flows directly from top
   // Summary Statistics - Direct text on dark background (no containers)
