@@ -184,8 +184,8 @@ export const initializePWA = (): void => {
     return;
   }
 
-  // Inject PWA styles
-  injectPWAStyles();
+  // Temporarily skip injecting aggressive PWA styles until we can reintroduce them safely.
+  // injectPWAStyles();
 
   // Hint browsers to reduce double-tap zoom without blocking gestures
   if (typeof document !== 'undefined' && document.body) {
