@@ -756,7 +756,7 @@ function TabNavigator() {
         },
         tabBarLabelStyle: {
           marginTop: 4, // More margin between icon and label
-          marginBottom: 0, // No bottom margin
+          marginBottom: -10, // Negative margin to move labels up with icons
           fontSize: 11, // Smaller font to fit better
           paddingBottom: 0, // No padding on label
         },
