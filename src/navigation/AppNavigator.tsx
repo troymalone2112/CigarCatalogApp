@@ -751,6 +751,7 @@ function TabNavigator() {
         tabBarItemStyle: {
           paddingVertical: 0, // No vertical padding
           marginBottom: 0,
+          marginTop: -10, // Move icons up by 10px
           justifyContent: 'flex-start', // Align content to top
         },
         tabBarLabelStyle: {
