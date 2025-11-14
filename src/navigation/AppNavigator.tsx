@@ -279,6 +279,11 @@ const headerStyles = StyleSheet.create({
     borderBottomColor: '#333333',
     // Extend into safe area on web/iOS
     marginTop: 0,
+    // Ensure black background extends into safe area
+    ...(Platform.OS === 'web' && {
+      position: 'relative',
+      zIndex: 1000,
+    }),
   },
   userSection: {
     flexDirection: 'row',
@@ -737,12 +742,15 @@ function TabNavigator() {
           backgroundColor: '#0a0a0a',
           borderTopColor: '#333333',
           paddingBottom: 0, // No bottom padding - extend to bottom
-          paddingTop: 4, // Minimal top padding
-          height: 55, // Reduced height to move icons up
+          paddingTop: 2, // Minimal top padding to move icons up
+          height: 50, // Further reduced height to move icons above white line
           marginBottom: 0,
+          position: 'absolute',
+          bottom: 0,
         },
         tabBarItemStyle: {
           paddingVertical: 0, // No vertical padding - icons at top of tab bar
+          marginBottom: 0,
         },
         headerStyle: {
           backgroundColor: '#0a0a0a',
