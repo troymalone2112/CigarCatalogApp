@@ -292,8 +292,6 @@ export default function HomeScreen() {
   );
 }
 
-const screenWidth = Dimensions.get('window').width;
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
