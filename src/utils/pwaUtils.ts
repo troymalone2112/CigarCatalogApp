@@ -170,6 +170,7 @@ export const injectPWAStyles = (): void => {
         height: env(safe-area-inset-top);
         background-color: #0a0a0a;
         z-index: 9999;
+        pointer-events: none;
       }
       
       html::after {
@@ -181,6 +182,7 @@ export const injectPWAStyles = (): void => {
         height: env(safe-area-inset-bottom);
         background-color: #0a0a0a;
         z-index: 9999;
+        pointer-events: none;
       }
       
       /* Make header extend into safe area with black background */
