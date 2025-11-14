@@ -758,8 +758,8 @@ function TabNavigator() {
           backgroundColor: '#0a0a0a',
           borderTopColor: '#333333',
           paddingBottom: 0, // No bottom padding - extend to bottom
-          paddingTop: 0, // No top padding - content starts at top
-          height: 60, // Reduced height to compress icon and label spacing
+          paddingTop: 8, // Add top padding to space icons from top edge
+          height: 68, // Increased height to accommodate top padding
           marginBottom: 0,
           position: 'absolute',
           bottom: 0,
@@ -767,10 +767,10 @@ function TabNavigator() {
         tabBarItemStyle: {
           paddingVertical: 0, // No vertical padding
           marginBottom: 0,
-          marginTop: -15, // Negative margin to move icons and labels UP
+          marginTop: -8, // Reduced negative margin since we have paddingTop now
           justifyContent: 'center', // Center content
           alignItems: 'center',
-          height: 45, // Constrain item height to compress spacing
+          height: 50, // Slightly increased to accommodate padding
         },
         tabBarIconStyle: {
           marginBottom: 0, // No margin - labels should be right below icons
