@@ -170,6 +170,9 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   tobaccoBackgroundImage: {
     opacity: 0.15,
@@ -178,11 +181,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'rgba(10, 10, 10, 0.9)',
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
   },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
+    width: '100%',
+    maxWidth: '100%',
   },
   content: {
     flex: 1,
@@ -190,6 +198,7 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     alignSelf: 'center',
     width: '100%',
+    maxWidth: '100%',
   },
   header: {
     alignItems: 'center',
