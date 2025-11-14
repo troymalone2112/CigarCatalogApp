@@ -97,36 +97,18 @@ export const injectPWAStyles = (): void => {
   const style = document.createElement('style');
   style.id = styleId;
   style.textContent = `
-    /* Force full viewport - hide Safari UI */
-    html {
-      height: 100%;
-      height: -webkit-fill-available;
-      overflow: hidden;
-      position: fixed;
-      width: 100%;
-    }
-    
-    body {
+    /* Full viewport baseline */
+    html, body {
       margin: 0;
       padding: 0;
       width: 100%;
-      height: 100%;
-      height: -webkit-fill-available;
-      overflow: hidden;
-      position: fixed;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: none;
-      -webkit-user-select: none;
-      user-select: none;
+      min-height: 100%;
+      background-color: #0a0a0a;
     }
     
     #root {
-      width: 100vw;
-      height: 100vh;
-      height: -webkit-fill-available;
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-      position: relative;
+      min-height: 100vh;
+      width: 100%;
     }
     
     /* iOS Safari specific - aggressive UI hiding */
@@ -151,50 +133,11 @@ export const injectPWAStyles = (): void => {
     
     /* Safe area insets - make safe areas black */
     @supports (padding: max(0px)) {
-      /* Remove safe area padding - we want full screen */
       body {
         padding-top: 0;
         padding-bottom: 0;
         padding-left: 0;
         padding-right: 0;
-        background-color: #0a0a0a;
-      }
-      
-      /* Make safe area regions black */
-      html::before {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: env(safe-area-inset-top);
-        background-color: #0a0a0a;
-        z-index: 9999;
-        pointer-events: none;
-      }
-      
-      html::after {
-        content: '';
-        position: fixed;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: env(safe-area-inset-bottom);
-        background-color: #0a0a0a;
-        z-index: 9999;
-        pointer-events: none;
-      }
-      
-      /* Make header extend into safe area with black background */
-      header, [data-header] {
-        padding-top: env(safe-area-inset-top);
-        background-color: #0a0a0a;
-      }
-      
-      /* Make footer extend into safe area with black background */
-      footer, [data-footer] {
-        padding-bottom: env(safe-area-inset-bottom);
-        background-color: #0a0a0a;
       }
     }
     
