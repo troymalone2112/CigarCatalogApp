@@ -11,6 +11,8 @@ import {
   Dimensions,
   Pressable,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -220,8 +222,12 @@ export default function HumidorListScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <ImageBackground 
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      enabled={Platform.OS !== 'web'}
+    >
+      <ImageBackground
         source={require('../../assets/tobacco-leaves-bg.jpg')}
         style={styles.backgroundImage}
         imageStyle={styles.tobaccoBackgroundImage}
@@ -371,7 +377,7 @@ export default function HumidorListScreen() {
           </View>
         )}
       </ImageBackground>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
