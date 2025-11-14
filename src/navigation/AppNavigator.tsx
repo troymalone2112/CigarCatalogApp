@@ -734,7 +734,7 @@ function TabNavigator() {
             iconName = 'ellipse';
           }
 
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <Ionicons name={iconName} size={20} color={color} style={{ marginBottom: -4 }} />;
         },
         tabBarLabel: ({ focused, color }) => {
           const labelText = route.name === 'HumidorList' ? 'Humidor' : route.name;
@@ -743,8 +743,9 @@ function TabNavigator() {
               style={{
                 color: focused ? '#DC851F' : '#999999',
                 fontSize: 11,
-                marginTop: -8, // Move label up closer to icon
-                lineHeight: 12,
+                marginTop: -12, // Larger negative margin to move label up
+                lineHeight: 11,
+                paddingTop: 0,
               }}
             >
               {labelText}
@@ -758,7 +759,7 @@ function TabNavigator() {
           borderTopColor: '#333333',
           paddingBottom: 0, // No bottom padding - extend to bottom
           paddingTop: 0, // No top padding - content starts at top
-          height: 75, // Increased height significantly to move icons and labels up
+          height: 60, // Reduced height to compress icon and label spacing
           marginBottom: 0,
           position: 'absolute',
           bottom: 0,
@@ -767,8 +768,9 @@ function TabNavigator() {
           paddingVertical: 0, // No vertical padding
           marginBottom: 0,
           marginTop: -15, // Negative margin to move icons and labels UP
-          justifyContent: 'flex-start', // Align to top
+          justifyContent: 'center', // Center content
           alignItems: 'center',
+          height: 45, // Constrain item height to compress spacing
         },
         tabBarIconStyle: {
           marginBottom: 0, // No margin - labels should be right below icons
