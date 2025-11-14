@@ -768,6 +768,9 @@ function TabNavigator() {
           marginBottom: 0,
           position: 'absolute',
           bottom: 0,
+          zIndex: 1000, // Ensure tab bar is above other content
+          elevation: 10, // Android shadow/elevation
+          pointerEvents: 'box-none', // Allow touches to pass through to children
         },
         tabBarItemStyle: {
           paddingVertical: 0, // No vertical padding
@@ -776,6 +779,8 @@ function TabNavigator() {
           justifyContent: 'center', // Center content
           alignItems: 'center',
           height: 50, // Slightly increased to accommodate padding
+          zIndex: 1001, // Ensure items are clickable
+          pointerEvents: 'auto', // Ensure items are clickable
         },
         tabBarIconStyle: {
           marginBottom: 0, // No margin - labels should be right below icons
