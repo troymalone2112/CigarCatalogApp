@@ -737,7 +737,12 @@ function TabNavigator() {
           return <Ionicons name={iconName} size={20} color={color} style={{ marginBottom: -4 }} />;
         },
         tabBarLabel: ({ focused, color }) => {
-          const labelText = route.name === 'HumidorList' ? 'Humidor' : route.name;
+          let labelText = route.name;
+          if (route.name === 'HumidorList') {
+            labelText = 'Humidor';
+          } else if (route.name === 'Recommendations') {
+            labelText = 'Discover';
+          }
           return (
             <Text
               style={{
