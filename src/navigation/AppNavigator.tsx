@@ -766,17 +766,12 @@ function TabNavigator() {
           paddingTop: 8, // Add top padding to space icons from top edge
           height: 68, // Increased height to accommodate top padding
           marginBottom: 0,
-          // Remove position: 'absolute' - let React Navigation handle positioning
-          zIndex: 1000, // Ensure tab bar is above other content
-          elevation: 10, // Android shadow/elevation
         },
         tabBarItemStyle: {
           paddingVertical: 0, // No vertical padding
           marginBottom: 0,
-          marginTop: -8, // Reduced negative margin since we have paddingTop now
           justifyContent: 'center', // Center content
           alignItems: 'center',
-          height: 50, // Slightly increased to accommodate padding
         },
         tabBarIconStyle: {
           marginBottom: 0, // No margin - labels should be right below icons
