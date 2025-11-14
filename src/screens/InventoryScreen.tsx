@@ -11,6 +11,9 @@ import {
   TextInput,
   ImageBackground,
   Animated,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
@@ -474,31 +477,18 @@ export default function InventoryScreen() {
     };
   };
 
-  // Show loading state while data is being fetched
-  if (loading) {
-    return (
-      <ImageBackground 
+  return (
+    <KeyboardAvoidingView
+      style={styles.wrapper}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      enabled={Platform.OS !== 'web'}
+    >
+      <ImageBackground
         source={require('../../assets/tobacco-leaves-bg.jpg')}
         style={styles.fullScreenBackground}
         imageStyle={styles.tobaccoBackgroundImage}
       >
         <View style={styles.container}>
-          <View style={styles.loadingContainer}>
-            <Ionicons name="archive-outline" size={64} color="#DC851F" />
-            <Text style={styles.loadingText}>Loading humidor...</Text>
-          </View>
-        </View>
-      </ImageBackground>
-    );
-  }
-
-  return (
-    <ImageBackground 
-      source={require('../../assets/tobacco-leaves-bg.jpg')}
-      style={styles.fullScreenBackground}
-      imageStyle={styles.tobaccoBackgroundImage}
-    >
-      <View style={styles.container}>
         {/* Combined Stats and Search Container */}
         <View style={styles.topContentWrapper}>
           <View style={styles.headerStats}>
@@ -553,20 +543,31 @@ export default function InventoryScreen() {
           }}
         />
 
-        {/* Floating Action Button */}
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={handleAddCigar}
-        >
-          <Ionicons name="add" size={24} color="#CCCCCC" />
-        </TouchableOpacity>
+          {/* Floating Action Button */}
+          <TouchableOpacity
+            style={styles.fab}
+            onPress={handleAddCigar}
+          >
+            <Ionicons name="add" size={24} color="#CCCCCC" />
+          </TouchableOpacity>
+        </View>
 
-      </View>
-    </ImageBackground>
+        {loading && (
+          <View style={styles.loadingOverlay} pointerEvents="none">
+            <ActivityIndicator size="large" color="#DC851F" />
+            <Text style={styles.loadingText}>Loading humidor...</Text>
+          </View>
+        )}
+      </ImageBackground>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flex: 1,
+    backgroundColor: '#0a0a0a',
+  },
   fullScreenBackground: {
     flex: 1,
     backgroundColor: '#0a0a0a', // Fallback color
@@ -780,18 +781,22 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 24,
   },
-  loadingContainer: {
-    flex: 1,
+  loadingText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#FFFFFF',
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 60,
-  },
-  loadingText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#DC851F',
-    marginTop: 16,
-    textAlign: 'center',
+    backgroundColor: 'rgba(10, 10, 10, 0.65)',
   },
   addButton: {
     backgroundColor: '#DC851F',
