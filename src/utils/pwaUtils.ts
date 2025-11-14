@@ -242,29 +242,9 @@ export const initializePWA = (): void => {
   // Inject PWA styles
   injectPWAStyles();
 
-  // Prevent default touch behaviors
-  if (typeof document !== 'undefined') {
-    document.addEventListener('touchmove', (e) => {
-      // Allow scrolling in scrollable containers
-      const target = e.target as HTMLElement;
-      if (target && (target.scrollHeight > target.clientHeight || target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
-        return;
-      }
-      // Prevent default for body scroll
-      if (target === document.body || target === document.documentElement) {
-        e.preventDefault();
-      }
-    }, { passive: false });
-
-    // Prevent zoom on double tap
-    let lastTouchEnd = 0;
-    document.addEventListener('touchend', (e) => {
-      const now = Date.now();
-      if (now - lastTouchEnd <= 300) {
-        e.preventDefault();
-      }
-      lastTouchEnd = now;
-    }, false);
+  // Hint browsers to reduce double-tap zoom without blocking gestures
+  if (typeof document !== 'undefined' && document.body) {
+    document.body.style.touchAction = 'manipulation';
   }
 };
 
