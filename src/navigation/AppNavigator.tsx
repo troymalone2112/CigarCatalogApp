@@ -756,10 +756,10 @@ function TabNavigator() {
           alignItems: 'center',
         },
         tabBarIconStyle: {
-          marginBottom: 2, // Small margin between icon and label
+          marginBottom: 0, // No margin - labels should be right below icons
         },
         tabBarLabelStyle: {
-          marginTop: 0, // Reset margin
+          marginTop: -2, // Negative margin to bring labels closer to icons
           marginBottom: 0, // No bottom margin
           fontSize: 11, // Smaller font to fit better
           paddingBottom: 0, // No padding on label
