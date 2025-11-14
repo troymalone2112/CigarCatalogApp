@@ -755,8 +755,8 @@ function TabNavigator() {
           justifyContent: 'flex-start', // Align content to top
         },
         tabBarLabelStyle: {
-          marginTop: 4, // More margin between icon and label
-          marginBottom: -10, // Negative margin to move labels up with icons
+          marginTop: -6, // Reduced margin to move labels up (was 4, now -6 to move up ~10px)
+          marginBottom: 0, // No bottom margin
           fontSize: 11, // Smaller font to fit better
           paddingBottom: 0, // No padding on label
         },
