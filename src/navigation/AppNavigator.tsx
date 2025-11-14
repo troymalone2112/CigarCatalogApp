@@ -759,10 +759,11 @@ function TabNavigator() {
           marginBottom: 0, // No margin - labels should be right below icons
         },
         tabBarLabelStyle: {
-          marginTop: -2, // Negative margin to bring labels closer to icons
+          marginTop: -8, // Larger negative margin to move labels up closer to icons
           marginBottom: 0, // No bottom margin
           fontSize: 11, // Smaller font to fit better
           paddingBottom: 0, // No padding on label
+          lineHeight: 12, // Tighter line height
         },
         headerStyle: {
           backgroundColor: '#0a0a0a',
