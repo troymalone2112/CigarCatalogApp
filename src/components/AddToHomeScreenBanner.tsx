@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { isStandalone, isIOS, showAddToHomeScreenInstructions } from '../utils/pwaUtils';
 
@@ -51,7 +52,7 @@ export default function AddToHomeScreenBanner() {
   const instructions = showAddToHomeScreenInstructions();
 
   return (
-    <View style={styles.banner}>
+    <SafeAreaView style={styles.banner}>
       <View style={styles.content}>
         <Ionicons name="home" size={24} color="#DC851F" style={styles.icon} />
         <View style={styles.textContainer}>
@@ -66,21 +67,16 @@ export default function AddToHomeScreenBanner() {
           <Ionicons name="close" size={20} color="#CCCCCC" />
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   banner: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
+    position: 'relative',
     backgroundColor: '#1a1a1a',
     borderBottomWidth: 1,
     borderBottomColor: '#333333',
-    zIndex: 10000,
-    paddingTop: Platform.OS === 'web' ? 'env(safe-area-inset-top, 0px)' : 0,
   },
   content: {
     flexDirection: 'row',
