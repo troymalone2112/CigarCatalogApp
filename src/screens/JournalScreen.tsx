@@ -298,8 +298,8 @@ export default function JournalScreen() {
             <View style={styles.actionButtons}>
               <TouchableOpacity
                 style={styles.deleteButton}
-                onPress={(e) => {
-                  e.stopPropagation();
+                onPress={(event) => {
+                  event?.stopPropagation?.();
                   deleteEntry(item.id);
                 }}
               >
@@ -307,8 +307,8 @@ export default function JournalScreen() {
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.editButton}
-                onPress={(e) => {
-                  e.stopPropagation();
+                onPress={(event) => {
+                  event?.stopPropagation?.();
                   navigation.navigate('JournalEntryDetails', {
                     entry: serializeJournalEntry(item),
                   });

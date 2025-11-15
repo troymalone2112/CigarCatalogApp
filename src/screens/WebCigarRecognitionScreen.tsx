@@ -104,11 +104,10 @@ export default function WebCigarRecognitionScreen({ route }: { route?: any }) {
       image.onload = () => {
         const width = image.width;
         const height = image.height;
-        const cropWidth = width * 0.8;
-        const cropHeight = height * 0.45;
+        const cropWidth = width * 0.92;
+        const cropHeight = height * 0.32;
         const cropX = (width - cropWidth) / 2;
-        let cropY = height * 0.45 - cropHeight / 2;
-        cropY = Math.max(0, Math.min(cropY, height - cropHeight));
+        let cropY = (height - cropHeight) / 2;
 
         const canvas = document.createElement('canvas');
         canvas.width = cropWidth;
@@ -370,32 +369,34 @@ export default function WebCigarRecognitionScreen({ route }: { route?: any }) {
                 Alert.alert('Camera Error', err.message || 'Failed to access camera');
               }}
             >
-              <View style={styles.cameraOverlay}>
-                <View style={[styles.overlaySection, styles.overlayTop]}>
-                  <Text style={styles.overlayText}>Align the cigar within the frame</Text>
-                </View>
+              <View style={styles.cameraOverlay} pointerEvents="none">
+                <View style={[styles.overlayShade, styles.overlayTop]} />
                 <View style={styles.overlayMiddle}>
-                  <View style={styles.overlaySide} />
+                  <View style={[styles.overlayShade, styles.overlaySide]} />
                   <View style={styles.cigarGuideArea}>
                     <View style={styles.cigarGuide} />
                   </View>
-                  <View style={styles.overlaySide} />
+                  <View style={[styles.overlayShade, styles.overlaySide]} />
                 </View>
-                <View style={[styles.overlaySection, styles.overlayBottom]}>
-                  <TouchableOpacity
-                    style={styles.cameraControlButton}
-                    onPress={() => setShowCamera(false)}
-                  >
-                    <Ionicons name="close" size={32} color="#FFFFFF" />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.captureButton} onPress={takePicture} />
-                  <TouchableOpacity
-                    style={styles.cameraControlButton}
-                    onPress={() => setType((prev) => (prev === 'back' ? 'front' : 'back'))}
-                  >
-                    <Ionicons name="camera-reverse" size={32} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
+                <View style={[styles.overlayShade, styles.overlayBottom]} />
+              </View>
+
+              <View style={styles.captureControls}>
+                <TouchableOpacity
+                  style={styles.cameraControlButton}
+                  onPress={() => setShowCamera(false)}
+                >
+                  <Ionicons name="close" size={28} color="#FFFFFF" />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
+                  <Ionicons name="camera" size={26} color="#0a0a0a" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.cameraControlButton}
+                  onPress={() => setType((prev) => (prev === 'back' ? 'front' : 'back'))}
+                >
+                  <Ionicons name="camera-reverse" size={28} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
             </WebCameraView>
           </View>
@@ -581,18 +582,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'space-between',
   },
-  overlaySection: {
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  overlayShade: {
+    backgroundColor: 'rgba(0,0,0,0.65)',
   },
   overlayTop: {
-    alignItems: 'center',
-    paddingTop: 40,
-    paddingBottom: 16,
-  },
-  overlayText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
+    height: '28%',
   },
   overlayMiddle: {
     flex: 1,
@@ -605,25 +599,30 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   cigarGuideArea: {
-    width: '70%',
+    width: '90%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 20,
   },
   cigarGuide: {
     width: '100%',
-    height: 200,
+    height: 130,
     borderRadius: 16,
     borderWidth: 2,
     borderColor: '#FFFFFF',
     borderStyle: 'dashed',
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   overlayBottom: {
+    height: '20%',
+  },
+  captureControls: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingVertical: 40,
     paddingHorizontal: 20,
   },
   cameraControlButton: {
@@ -636,12 +635,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   captureButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    borderWidth: 8,
-    borderColor: '#FFFFFF',
+    width: 78,
+    height: 78,
+    borderRadius: 39,
     backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
