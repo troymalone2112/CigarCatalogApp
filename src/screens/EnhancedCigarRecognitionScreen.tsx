@@ -1068,7 +1068,11 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
         </View>
       ) : (
         // Results View
-        <ScrollView style={styles.resultsContainer} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.resultsContainer}
+          contentContainerStyle={styles.resultsContent}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.imagePreview}>
             {imageUri ? (
               <Image source={{ uri: imageUri }} style={styles.previewImage} />
@@ -1597,6 +1601,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    minHeight: 0,
     backgroundColor: '#0a0a0a',
   },
   loadingContainer: {
@@ -1838,6 +1843,10 @@ const styles = StyleSheet.create({
   },
   resultsContainer: {
     flex: 1,
+    minHeight: 0,
+  },
+  resultsContent: {
+    paddingBottom: 160,
   },
   imagePreview: {
     position: 'relative',
