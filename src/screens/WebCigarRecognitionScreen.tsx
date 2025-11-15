@@ -100,10 +100,10 @@ export default function WebCigarRecognitionScreen({ route }: { route?: any }) {
   const cropToGuideArea = (uri: string) => {
     if (typeof window === 'undefined') return Promise.resolve(null);
     return new Promise<{ uri: string; base64: string } | null>((resolve) => {
-      const image = new Image();
-      image.onload = () => {
-        const width = image.width;
-        const height = image.height;
+      const domImage = new window.Image();
+      domImage.onload = () => {
+        const width = domImage.width;
+        const height = domImage.height;
         const cropWidth = width * 0.92;
         const cropHeight = height * 0.3;
         const cropX = (width - cropWidth) / 2;
@@ -117,15 +117,15 @@ export default function WebCigarRecognitionScreen({ route }: { route?: any }) {
           resolve(null);
           return;
         }
-        ctx.drawImage(image, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+        ctx.drawImage(domImage, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
         const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
         resolve({
           uri: dataUrl,
           base64: dataUrl.split(',')[1],
         });
       };
-      image.onerror = () => resolve(null);
-      image.src = uri;
+      domImage.onerror = () => resolve(null);
+      domImage.src = uri;
     });
   };
 
