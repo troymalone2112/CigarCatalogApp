@@ -1072,6 +1072,9 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
           style={styles.resultsContainer}
           contentContainerStyle={styles.resultsContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces
+          overScrollMode="always"
         >
           <View style={styles.imagePreview}>
             {imageUri ? (
@@ -1602,6 +1605,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     minHeight: 0,
+    height: '100%',
     backgroundColor: '#0a0a0a',
   },
   loadingContainer: {
@@ -1846,7 +1850,9 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   resultsContent: {
-    paddingBottom: 160,
+    flexGrow: 1,
+    paddingBottom: 200,
+    paddingHorizontal: 4,
   },
   imagePreview: {
     position: 'relative',
