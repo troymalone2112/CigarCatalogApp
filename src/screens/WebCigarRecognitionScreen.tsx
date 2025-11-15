@@ -105,9 +105,9 @@ export default function WebCigarRecognitionScreen({ route }: { route?: any }) {
         const width = image.width;
         const height = image.height;
         const cropWidth = width * 0.92;
-        const cropHeight = height * 0.32;
+        const cropHeight = height * 0.3;
         const cropX = (width - cropWidth) / 2;
-        let cropY = (height - cropHeight) / 2;
+        const cropY = (height - cropHeight) / 2;
 
         const canvas = document.createElement('canvas');
         canvas.width = cropWidth;
@@ -586,10 +586,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.65)',
   },
   overlayTop: {
-    height: '28%',
+    flex: 1,
   },
   overlayMiddle: {
-    flex: 1,
+    height: 150,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -602,18 +602,18 @@ const styles = StyleSheet.create({
     width: '90%',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 20,
+    height: '100%',
   },
   cigarGuide: {
     width: '100%',
-    height: 130,
+    height: '100%',
     borderRadius: 16,
     borderWidth: 2,
     borderColor: '#FFFFFF',
     borderStyle: 'dashed',
   },
   overlayBottom: {
-    height: '20%',
+    flex: 1,
   },
   captureControls: {
     position: 'absolute',

@@ -105,6 +105,7 @@ export const WebCameraView = forwardRef<WebCameraViewRef, WebCameraViewProps>(({
           width: '100%',
           height: '100%',
           objectFit: 'cover',
+          pointerEvents: 'none',
         }}
       />
       {children}

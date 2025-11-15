@@ -264,6 +264,7 @@ export default function JournalEntryDetailsScreen({
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {/* Cigar Information */}
         <View style={styles.cigarInfo}>
@@ -525,6 +526,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     backgroundColor: 'transparent',
     paddingBottom: 160,
+    flexGrow: 1,
   },
   cigarInfo: {
     backgroundColor: '#1a1a1a',
