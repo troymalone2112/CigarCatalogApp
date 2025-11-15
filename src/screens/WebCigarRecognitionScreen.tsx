@@ -380,25 +380,25 @@ export default function WebCigarRecognitionScreen({ route }: { route?: any }) {
                 </View>
                 <View style={[styles.overlayShade, styles.overlayBottom]} />
               </View>
-
-              <View style={styles.captureControls}>
-                <TouchableOpacity
-                  style={styles.cameraControlButton}
-                  onPress={() => setShowCamera(false)}
-                >
-                  <Ionicons name="close" size={28} color="#FFFFFF" />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
-                  <Ionicons name="camera" size={26} color="#0a0a0a" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.cameraControlButton}
-                  onPress={() => setType((prev) => (prev === 'back' ? 'front' : 'back'))}
-                >
-                  <Ionicons name="camera-reverse" size={28} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
             </WebCameraView>
+
+            <View style={styles.captureControls}>
+              <TouchableOpacity
+                style={styles.cameraControlButton}
+                onPress={() => setShowCamera(false)}
+              >
+                <Ionicons name="close" size={28} color="#FFFFFF" />
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
+                <Ionicons name="camera" size={26} color="#0a0a0a" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.cameraControlButton}
+                onPress={() => setType((prev) => (prev === 'back' ? 'front' : 'back'))}
+              >
+                <Ionicons name="camera-reverse" size={28} color="#FFFFFF" />
+              </TouchableOpacity>
+            </View>
           </View>
         </Modal>
       </View>
@@ -641,6 +641,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: '#DC851F',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
   },
 });
 
