@@ -1,4 +1,4 @@
-import { Image } from 'react-native';
+import { Image, Platform } from 'react-native';
 
 /**
  * Background Image Service
@@ -34,7 +34,13 @@ export const preloadBackgroundImage = async (): Promise<void> => {
     console.log('🖼️ Preloading tobacco background image...');
     const imageSource = getBackgroundImageSource();
 
-    // Use Image.prefetch to preload the image
+    // React Native Web doesn't implement resolveAssetSource/prefetch.
+    if (Platform.OS === 'web') {
+      // Simply allow the <ImageBackground> component to load it normally.
+      console.log('🌐 Skipping explicit prefetch on web (not supported)');
+      return;
+    }
+
     await Image.prefetch(Image.resolveAssetSource(imageSource).uri);
     console.log('✅ Tobacco background image preloaded successfully');
   } catch (error) {

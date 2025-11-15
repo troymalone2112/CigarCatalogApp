@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,13 @@ import {
   Linking,
   ImageBackground,
 } from 'react-native';
-import { CameraView, CameraType, CameraViewRef, useCameraPermissions } from 'expo-camera';
+import {
+  CameraView,
+  CameraType,
+  CameraCapturedPicture,
+  CameraMountError,
+  useCameraPermissions,
+} from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Ionicons } from '@expo/vector-icons';
@@ -44,6 +50,22 @@ interface RecognitionResult {
   sources: string[];
 }
 
+const GUIDE_TOP_OVERLAY_HEIGHT = 120;
+const GUIDE_CAPTURE_HEIGHT = 200;
+const GUIDE_WIDTH_RATIO = 0.92;
+const GUIDE_HEIGHT_MULTIPLIER = 1.2;
+
+type ProcessableImage = {
+  uri: string;
+  width?: number;
+  height?: number;
+  base64?: string | null;
+};
+
+const clampValue = (value: number, min: number, max: number) => {
+  return Math.min(Math.max(value, min), max);
+};
+
 export default function EnhancedCigarRecognitionScreen({ route }: { route?: any }) {
   const navigation = useNavigation<CigarRecognitionNavigationProp>();
   const { user } = useAuth();
@@ -53,7 +75,9 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
   // Camera states
   const [permission, requestPermission] = useCameraPermissions();
   const [type, setType] = useState<CameraType>('back');
-  const cameraRef = useRef<CameraViewRef | null>(null);
+  const cameraRef = useRef<CameraView | null>(null);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
 
   // Recognition states
@@ -122,6 +146,116 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
     const timer = setTimeout(requestInitialPermission, 500);
     return () => clearTimeout(timer);
   }, [permission, requestPermission]);
+
+  const handleCameraRef = useCallback((ref: CameraView | null) => {
+    console.log(`📸 Camera ref ${ref ? 'set' : 'cleared'}`);
+    cameraRef.current = ref;
+    if (!ref) {
+      setIsCameraReady(false);
+    }
+  }, []);
+
+  const handleCameraReady = useCallback(() => {
+    console.log('📷 Camera ready');
+    setIsCameraReady(true);
+  }, []);
+
+  const handleCameraMountError = useCallback(
+    (event: CameraMountError) => {
+      const message = event?.message ?? 'Unable to start the camera. Please try again.';
+      console.error('❌ Camera mount error:', message);
+      Alert.alert('Camera Error', message);
+    },
+    [],
+  );
+
+  const cropPhotoToGuide = useCallback(
+    async (photo: CameraCapturedPicture): Promise<ProcessableImage | null> => {
+      try {
+        console.log('✂️ Starting cropPhotoToGuide', {
+          width: photo?.width,
+          height: photo?.height,
+          uri: photo?.uri,
+        });
+        const { width: imageWidth, height: imageHeight } = photo;
+
+        if (!imageWidth || !imageHeight) {
+          console.warn('⚠️ Photo dimensions unavailable, skipping crop.');
+          return null;
+        }
+
+        const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+        if (!screenWidth || !screenHeight) {
+          return null;
+        }
+
+        const captureHeightRatio = GUIDE_CAPTURE_HEIGHT / screenHeight;
+        const captureCenterRatio =
+          (GUIDE_TOP_OVERLAY_HEIGHT + GUIDE_CAPTURE_HEIGHT / 2) / screenHeight;
+
+        const requestedCropWidth = Math.round(imageWidth * GUIDE_WIDTH_RATIO);
+        const safeCropWidth = Math.round(clampValue(requestedCropWidth, 1, imageWidth));
+
+        const requestedCropHeight = imageHeight * captureHeightRatio * GUIDE_HEIGHT_MULTIPLIER;
+        const safeCropHeight = Math.round(clampValue(requestedCropHeight, 1, imageHeight));
+
+        const cropX = Math.round(
+          clampValue((imageWidth - safeCropWidth) / 2, 0, Math.max(0, imageWidth - safeCropWidth)),
+        );
+
+        const captureCenterY = imageHeight * captureCenterRatio;
+        const cropY = Math.round(
+          clampValue(
+            captureCenterY - safeCropHeight / 2,
+            0,
+            Math.max(0, imageHeight - safeCropHeight),
+          ),
+        );
+
+        if (safeCropWidth <= 0 || safeCropHeight <= 0) {
+          console.warn('⚠️ Computed invalid crop bounds', {
+            cropWidth: safeCropWidth,
+            cropHeight: safeCropHeight,
+            cropX,
+            cropY,
+          });
+          return null;
+        }
+
+        const result = await ImageManipulator.manipulateAsync(
+          photo.uri,
+          [
+            {
+              crop: {
+                originX: cropX,
+                originY: cropY,
+                width: safeCropWidth,
+                height: safeCropHeight,
+              },
+            },
+          ],
+          {
+            compress: 0.85,
+            format: ImageManipulator.SaveFormat.JPEG,
+            base64: true,
+          },
+        );
+        console.log('✂️ Finished cropPhotoToGuide', {
+          uri: result?.uri,
+          width: result?.width,
+          height: result?.height,
+          hasBase64: !!result?.base64,
+        });
+        return result;
+      } catch (error) {
+        console.error('❌ Failed to crop photo to guide area:', error);
+        console.error('✂️ cropPhotoToGuide stack:', (error as Error)?.stack);
+        return null;
+      }
+    },
+    [],
+  );
 
   // Manual entry states
   const [showManualEntry, setShowManualEntry] = useState(false);
@@ -226,127 +360,57 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
   const takePicture = async () => {
     const camera = cameraRef.current;
 
+    console.log('📸 takePicture pressed', {
+      hasCamera: !!camera,
+      isCameraReady,
+      isCapturing,
+    });
+
     if (!camera) {
       console.log('Camera not available');
+      Alert.alert('Camera Not Ready', 'Please wait for the camera to initialize.');
       return;
     }
 
+    if (!isCameraReady) {
+      Alert.alert('Camera Initializing', 'Hang tight while we finish setting up the camera.');
+      return;
+    }
+
+    if (isCapturing) {
+      console.log('Capture already in progress, ignoring additional tap.');
+      return;
+    }
+
+    setIsCapturing(true);
+
     try {
-      // Take the full picture first
+      console.log('📸 Invoking takePictureAsync...');
       const photo = await camera.takePictureAsync({
-        quality: 0.8,
+        quality: 0.85,
+        base64: true,
+      });
+      console.log('📸 Photo captured', {
+        uri: photo?.uri,
+        width: photo?.width,
+        height: photo?.height,
+        hasBase64: !!photo?.base64,
       });
 
-      // Check if camera is still mounted after taking picture
-      if (!cameraRef.current) {
-        console.log('Camera unmounted during photo process');
-        return;
+      const croppedPhoto = await cropPhotoToGuide(photo);
+      const photoForProcessing: ProcessableImage = croppedPhoto ?? photo;
+
+      if (!croppedPhoto) {
+        console.log('⚠️ Using uncropped photo for processing (crop unavailable).');
       }
 
-      // Get the actual image dimensions
-      const imageInfo = await ImageManipulator.manipulateAsync(
-        photo.uri,
-        [], // No manipulations, just get info
-        { format: ImageManipulator.SaveFormat.JPEG },
-      );
-
-      // Get screen dimensions for our overlay layout
-      const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
-      // Define our overlay layout (matching the styles)
-      const topOverlayHeight = 120; // overlayTop height
-      const captureAreaHeight = 200; // cigarGuideArea height
-      const bottomOverlayHeight = screenHeight - topOverlayHeight - captureAreaHeight - 100; // controls area
-
-      // Calculate the scale factors between screen and image
-      const scaleX = imageInfo.width / screenWidth;
-      const scaleY = imageInfo.height / screenHeight;
-
-      // Adjust crop to center the cigar better in the result view
-      const cropOffset = 0; // Start with exact capture area, then adjust
-
-      // Calculate crop coordinates in image pixels, ensuring they stay within image bounds
-      const desiredCropX = Math.round(screenWidth * scaleX * -0.3); // Start 30% before the left edge
-      const desiredCropWidth = Math.round(screenWidth * scaleX * 1.6); // Use 160% of width
-
-      // Ensure crop stays within image boundaries
-      const cropX = Math.max(0, desiredCropX); // Don't go negative
-      const cropWidth = Math.min(desiredCropWidth, imageInfo.width - cropX); // Don't exceed image width
-      let cropY = Math.round((topOverlayHeight - cropOffset) * scaleY);
-      let cropHeight = Math.round((captureAreaHeight + cropOffset * 2) * scaleY);
-
-      // Let's try a different approach - center the crop on the capture area
-      // The capture area should be roughly in the middle of the image
-      const captureAreaCenter = (topOverlayHeight + captureAreaHeight / 2) * scaleY;
-      const cropAroundCapture = Math.round(captureAreaHeight * scaleY * 3.0); // Increase height by 200%
-
-      console.log('Capture area center:', captureAreaCenter);
-      console.log('Crop around capture:', cropAroundCapture);
-
-      // Center the crop around where the capture area should be, but move it down a bit
-      const cropAdjustment = Math.round(100 * scaleY); // Move crop down by ~100 screen pixels (doubled)
-      cropY = Math.max(0, Math.round(captureAreaCenter - cropAroundCapture / 2 + cropAdjustment));
-      cropHeight = Math.min(cropAroundCapture, imageInfo.height - cropY);
-
-      console.log('Crop adjustment:', cropAdjustment);
-
-      console.log('Image dimensions:', imageInfo.width, 'x', imageInfo.height);
-      console.log('Screen dimensions:', screenWidth, 'x', screenHeight);
-      console.log('Scale factors:', scaleX, scaleY);
-      console.log('Overlay layout - top:', topOverlayHeight, 'capture:', captureAreaHeight);
-      console.log('Crop coordinates:', cropX, cropY, cropWidth, cropHeight);
-      console.log(
-        'Crop boundaries check - X:',
-        cropX,
-        'to',
-        cropX + cropWidth,
-        '(max:',
-        imageInfo.width,
-        ')',
-      );
-      console.log(
-        'Crop boundaries check - Y:',
-        cropY,
-        'to',
-        cropY + cropHeight,
-        '(max:',
-        imageInfo.height,
-        ')',
-      );
-      console.log('Crop offset:', cropOffset);
-
-      // Crop the image using expo-image-manipulator
-      const croppedPhoto = await ImageManipulator.manipulateAsync(
-        photo.uri,
-        [
-          {
-            crop: {
-              originX: cropX,
-              originY: cropY,
-              width: cropWidth,
-              height: cropHeight,
-            },
-          },
-        ],
-        {
-          compress: 0.8,
-          format: ImageManipulator.SaveFormat.JPEG,
-          base64: true,
-        },
-      );
-
-      setImageUri(croppedPhoto.uri);
-
-      // Check if camera is still mounted before processing
-      if (!cameraRef.current) {
-        console.log('Camera unmounted before image processing');
-        return;
-      }
+      setImageUri(photoForProcessing.uri);
 
       // Process the image separately to avoid misleading error messages
       try {
-        // Use base64 data for API calls
-        const base64Image = `data:image/jpeg;base64,${croppedPhoto.base64}`;
+        const base64Image = photoForProcessing.base64
+          ? `data:image/jpeg;base64,${photoForProcessing.base64}`
+          : photoForProcessing.uri;
         await processCigarImage(base64Image);
       } catch (processError) {
         console.error('Error processing image:', processError);
@@ -354,7 +418,10 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
       }
     } catch (error) {
       console.error('Error taking picture:', error);
+      console.error('📸 takePicture stack:', (error as Error)?.stack);
       Alert.alert('Error', 'Failed to take picture');
+    } finally {
+      setIsCapturing(false);
     }
   };
 
@@ -800,6 +867,8 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
   const resetRecognition = () => {
     setImageUri(null);
     setRecognitionResult(null);
+    setIsCameraReady(false);
+    setIsCapturing(false);
     setManualBrand('');
     setManualLine('');
     setManualName('');
@@ -936,7 +1005,13 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
       {!imageUri && !isProcessing && !recognitionResult ? (
         // Camera View
         <View style={styles.cameraContainer}>
-          <CameraView style={styles.camera} facing={type} ref={cameraRef} />
+          <CameraView
+            style={styles.camera}
+            facing={type}
+            ref={handleCameraRef}
+            onCameraReady={handleCameraReady}
+            onMountError={handleCameraMountError}
+          />
 
           {/* Visual Guide Overlay */}
           <View style={styles.cameraOverlay} pointerEvents="none">
@@ -968,8 +1043,19 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
               <Ionicons name="images" size={24} color="#CCCCCC" />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
-              <View style={styles.captureButtonInner} />
+            <TouchableOpacity
+              style={[
+                styles.captureButton,
+                (!isCameraReady || isCapturing) && styles.captureButtonDisabled,
+              ]}
+              onPress={takePicture}
+              disabled={!isCameraReady || isCapturing}
+            >
+              {isCapturing ? (
+                <ActivityIndicator size="small" color="#7C2D12" />
+              ) : (
+                <View style={styles.captureButtonInner} />
+              )}
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1740,6 +1826,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#CCCCCC',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  captureButtonDisabled: {
+    opacity: 0.6,
   },
   captureButtonInner: {
     width: 60,

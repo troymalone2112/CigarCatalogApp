@@ -47,11 +47,22 @@ const fileToBase64 = (file: File): Promise<string> => {
  */
 const getImageDimensions = (file: File): Promise<{ width: number; height: number }> => {
   return new Promise((resolve, reject) => {
-    const img = new Image();
+    const img =
+      typeof document !== 'undefined' ? (document.createElement('img') as HTMLImageElement) : null;
+
+    if (!img) {
+      reject(new Error('Image element unavailable in this environment'));
+      return;
+    }
+
     img.onload = () => {
       resolve({ width: img.width, height: img.height });
+      URL.revokeObjectURL(img.src);
     };
-    img.onerror = reject;
+    img.onerror = (error) => {
+      URL.revokeObjectURL(img.src);
+      reject(error);
+    };
     img.src = URL.createObjectURL(file);
   });
 };

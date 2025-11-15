@@ -100,7 +100,11 @@ export default function WebCigarRecognitionScreen({ route }: { route?: any }) {
   const cropToGuideArea = (uri: string) => {
     if (typeof window === 'undefined') return Promise.resolve(null);
     return new Promise<{ uri: string; base64: string } | null>((resolve) => {
-      const domImage = new window.Image();
+      const domImage = typeof document !== 'undefined' ? document.createElement('img') : null;
+      if (!domImage) {
+        resolve(null);
+        return;
+      }
       domImage.onload = () => {
         const width = domImage.width;
         const height = domImage.height;
