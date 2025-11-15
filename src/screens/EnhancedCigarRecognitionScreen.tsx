@@ -13,6 +13,7 @@ import {
   Dimensions,
   Linking,
   ImageBackground,
+  Platform,
 } from 'react-native';
 import {
   CameraView,
@@ -1069,7 +1070,10 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
       ) : (
         // Results View
         <ScrollView
-          style={styles.resultsContainer}
+          style={[
+            styles.resultsContainer,
+            Platform.OS === 'web' && styles.resultsContainerWeb,
+          ]}
           contentContainerStyle={styles.resultsContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -1848,7 +1852,12 @@ const styles = StyleSheet.create({
   resultsContainer: {
     flex: 1,
     minHeight: 0,
+    height: '100%',
   },
+  resultsContainerWeb: {
+    overflowY: 'scroll',
+    WebkitOverflowScrolling: 'touch',
+  } as any,
   resultsContent: {
     flexGrow: 1,
     paddingBottom: 200,
