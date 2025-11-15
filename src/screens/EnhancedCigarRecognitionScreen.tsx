@@ -937,7 +937,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
           <CameraView style={styles.camera} facing={type} ref={(ref) => setCamera(ref)} />
 
           {/* Visual Guide Overlay */}
-          <View style={styles.cameraOverlay}>
+          <View style={styles.cameraOverlay} pointerEvents="none">
             {/* Instruction text at the top */}
             <View style={styles.instructionArea}>
               <Text style={styles.guideText}>Hold cigar horizontally with band visible</Text>
