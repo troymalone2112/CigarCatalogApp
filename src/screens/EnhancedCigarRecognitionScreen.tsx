@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
   Linking,
   ImageBackground,
 } from 'react-native';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import { CameraView, CameraType, CameraViewRef, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,7 +53,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
   // Camera states
   const [permission, requestPermission] = useCameraPermissions();
   const [type, setType] = useState<CameraType>('back');
-  const [camera, setCamera] = useState<CameraView | null>(null);
+  const cameraRef = useRef<CameraViewRef | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
 
   // Recognition states
@@ -224,6 +224,8 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
   };
 
   const takePicture = async () => {
+    const camera = cameraRef.current;
+
     if (!camera) {
       console.log('Camera not available');
       return;
@@ -236,7 +238,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
       });
 
       // Check if camera is still mounted after taking picture
-      if (!camera) {
+      if (!cameraRef.current) {
         console.log('Camera unmounted during photo process');
         return;
       }
@@ -336,7 +338,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
       setImageUri(croppedPhoto.uri);
 
       // Check if camera is still mounted before processing
-      if (!camera) {
+      if (!cameraRef.current) {
         console.log('Camera unmounted before image processing');
         return;
       }
@@ -934,7 +936,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
       {!imageUri && !isProcessing && !recognitionResult ? (
         // Camera View
         <View style={styles.cameraContainer}>
-          <CameraView style={styles.camera} facing={type} ref={(ref) => setCamera(ref)} />
+          <CameraView style={styles.camera} facing={type} ref={cameraRef} />
 
           {/* Visual Guide Overlay */}
           <View style={styles.cameraOverlay} pointerEvents="none">
