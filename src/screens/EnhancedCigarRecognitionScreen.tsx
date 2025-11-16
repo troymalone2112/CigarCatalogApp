@@ -80,6 +80,7 @@ export default function EnhancedCigarRecognitionScreen({ route }: { route?: any 
   const [type, setType] = useState<CameraType>('back');
   const cameraRef = useRef<CameraView | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [isCameraActive, setIsCameraActive] = useState(true);
   const [isCapturing, setIsCapturing] = useState(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
 
@@ -389,6 +390,8 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
 
     try {
       console.log('📸 Invoking takePictureAsync...');
+      // Immediately mark camera inactive so we unmount CameraView ASAP
+      setIsCameraActive(false);
       const photo = await camera.takePictureAsync({
         quality: 0.85,
           base64: true,
@@ -454,6 +457,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
         } catch {}
         cameraRef.current = null;
         setIsCameraReady(false);
+        setIsCameraActive(false);
         setImageUri(result.assets[0].uri);
         // Use base64 data for API calls instead of file URI
         const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
@@ -887,6 +891,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
     setRecognitionResult(null);
     setIsCameraReady(false);
     setIsCapturing(false);
+    setIsCameraActive(true);
     setManualBrand('');
     setManualLine('');
     setManualName('');
@@ -1020,7 +1025,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
         </TouchableOpacity>
       </View>
 
-      {!imageUri && !isProcessing && !recognitionResult ? (
+      {isCameraActive ? (
         // Camera View
         <View style={styles.cameraContainer}>
           <CameraView
@@ -1871,8 +1876,7 @@ const styles = StyleSheet.create({
     WebkitOverflowScrolling: 'touch',
   } as any,
   resultsContent: {
-    flexGrow: 1,
-    paddingBottom: 200,
+    paddingBottom: 260,
     paddingHorizontal: 4,
   },
   imagePreview: {
