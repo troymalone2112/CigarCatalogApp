@@ -15,6 +15,7 @@ import {
   ImageBackground,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   CameraView,
   CameraType,
@@ -995,7 +996,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
   // Don't show loading screen as a replacement, we'll show it as a modal overlay
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       {/* Search Button */}
       <View style={styles.settingsHeader}>
         <TouchableOpacity style={styles.searchButton} onPress={() => setShowSimpleSearch(true)}>
@@ -1604,7 +1605,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
