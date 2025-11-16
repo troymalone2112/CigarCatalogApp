@@ -1310,6 +1310,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
               </View>
             </View>
           ) : null}
+          <View style={styles.bottomPadding} />
         </ScrollView>
       )}
 
@@ -2076,6 +2077,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     marginLeft: 8,
+  },
+  bottomPadding: {
+    height: 80,
   },
   modeIndicator: {
     paddingTop: 16,
