@@ -1077,6 +1077,8 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
           contentContainerStyle={styles.resultsContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          nestedScrollEnabled
+          contentInsetAdjustmentBehavior="automatic"
           bounces
           overScrollMode="always"
         >
@@ -1609,7 +1611,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     minHeight: 0,
-    height: '100%',
     backgroundColor: '#0a0a0a',
   },
   loadingContainer: {
@@ -1852,7 +1853,6 @@ const styles = StyleSheet.create({
   resultsContainer: {
     flex: 1,
     minHeight: 0,
-    height: '100%',
   },
   resultsContainerWeb: {
     overflowY: 'scroll',
