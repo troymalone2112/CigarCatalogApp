@@ -1293,7 +1293,31 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
                       </View>
                     )}
 
-                  {/* Buttons moved to sticky footer below */}
+                  <View style={styles.actionButtons}>
+                    <TouchableOpacity
+                      style={[styles.addButton, isAddingToHumidor && styles.addButtonDisabled]}
+                      onPress={addToInventory}
+                      disabled={isAddingToHumidor}
+                      activeOpacity={isAddingToHumidor ? 1 : 0.7}
+                    >
+                      {isAddingToHumidor ? (
+                        <ActivityIndicator
+                          size="small"
+                          color="#FFFFFF"
+                          style={styles.addButtonSpinner}
+                        />
+                      ) : (
+                        <Ionicons name="add" size={20} color="#FFFFFF" style={styles.addButtonIcon} />
+                      )}
+                      <Text style={styles.addButtonText}>
+                        {isAddingToHumidor ? 'Saving...' : 'Add to Humidor'}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.smokeButton} onPress={startJournaling}>
+                      <Ionicons name="create" size={20} color="#DC851F" />
+                      <Text style={styles.smokeButtonText}>Let's Journal!</Text>
+                    </TouchableOpacity>
+                  </View>
 
                   <View style={styles.modeIndicator}>
                     <Text style={styles.modeText}></Text>
@@ -1305,30 +1329,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
         </ScrollView>
       )}
 
-      {/* Sticky footer actions to ensure buttons are always reachable */}
-      {imageUri && !isProcessing && recognitionResult && (
-        <View style={styles.footerActions}>
-          <TouchableOpacity
-            style={[styles.addButton, isAddingToHumidor && styles.addButtonDisabled]}
-            onPress={addToInventory}
-            disabled={isAddingToHumidor}
-            activeOpacity={isAddingToHumidor ? 1 : 0.7}
-          >
-            {isAddingToHumidor ? (
-              <ActivityIndicator size="small" color="#FFFFFF" style={styles.addButtonSpinner} />
-            ) : (
-              <Ionicons name="add" size={20} color="#FFFFFF" style={styles.addButtonIcon} />
-            )}
-            <Text style={styles.addButtonText}>
-              {isAddingToHumidor ? 'Saving...' : 'Add to Humidor'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.smokeButton} onPress={startJournaling}>
-            <Ionicons name="create" size={20} color="#DC851F" />
-            <Text style={styles.smokeButtonText}>Let's Journal!</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      {/* No sticky footer: header and tab bar remain fixed by navigator */}
 
       {/* Custom Entry Modal */}
       <Modal visible={showManualEntry} animationType="slide" presentationStyle="pageSheet">
@@ -2094,19 +2095,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   bottomPadding: {
-    height: 80,
-  },
-  footerActions: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
-    backgroundColor: 'rgba(10, 10, 10, 0.98)',
-    borderTopWidth: 1,
-    borderTopColor: '#333',
+    height: 120,
   },
   modeIndicator: {
     paddingTop: 16,
