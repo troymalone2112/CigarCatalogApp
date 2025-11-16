@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  FlatList,
   TextInput,
   Modal,
   Dimensions,
@@ -1084,7 +1085,6 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
           </View>
         </View>
       ) : (
-        // Results View
         <ScrollView
           style={[
             styles.resultsContainer,
@@ -1092,242 +1092,237 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
           ]}
           contentContainerStyle={styles.resultsContent}
           showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
           nestedScrollEnabled
-          contentInsetAdjustmentBehavior="automatic"
-          bounces
-          overScrollMode="always"
         >
-          <View style={styles.imagePreview}>
-            {imageUri ? (
-              <Image source={{ uri: imageUri }} style={styles.previewImage} />
-            ) : (
-              <Image
-                source={require('../../assets/cigar-placeholder.jpg')}
-                style={styles.previewImage}
-              />
-            )}
-            <TouchableOpacity style={styles.retakeButton} onPress={resetRecognition}>
-              <Ionicons name="camera" size={20} color="#CCCCCC" />
-              <Text style={styles.retakeText}>Retake</Text>
-            </TouchableOpacity>
-          </View>
-
-          {isProcessing ? (
-            <View style={styles.processingContainer}>
-              <ActivityIndicator size="large" color="#7C2D12" />
-              <Text style={styles.processingText}>
-                {processingMessages[currentProcessingMessage]}
-              </Text>
-            </View>
-          ) : recognitionResult ? (
-            <View style={styles.resultCard}>
-              <View style={styles.resultHeader}>
-                <View style={styles.titleWithEdit}>
-                  <Text style={styles.sectionTitle}>{recognitionResult.enrichedCigar.brand}</Text>
-                  <TouchableOpacity
-                    style={styles.editButton}
-                    onPress={() => {
-                      setEditBrand(recognitionResult.enrichedCigar.brand || '');
-                      setEditName(recognitionResult.enrichedCigar.name || '');
-                      setShowEditModal(true);
-                    }}
-                  >
-                    <Ionicons name="pencil" size={16} color="#DC851F" />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.confidenceBadge}>
-                  <Text style={styles.confidenceText}>{recognitionResult.confidence}%</Text>
-                </View>
+            <>
+              <View style={styles.imagePreview}>
+                {imageUri ? (
+                  <Image source={{ uri: imageUri }} style={styles.previewImage} />
+                ) : (
+                  <Image
+                    source={require('../../assets/cigar-placeholder.jpg')}
+                    style={styles.previewImage}
+                  />
+                )}
+                <TouchableOpacity style={styles.retakeButton} onPress={resetRecognition}>
+                  <Ionicons name="camera" size={20} color="#CCCCCC" />
+                  <Text style={styles.retakeText}>Retake</Text>
+                </TouchableOpacity>
               </View>
 
-              <View style={styles.nameWithEdit}>
-                <Text style={styles.resultSubtitle}>
-                  {recognitionResult.enrichedCigar.name &&
-                  recognitionResult.enrichedCigar.name !== 'Unknown Name'
-                    ? recognitionResult.enrichedCigar.name
-                    : recognitionResult.enrichedCigar.line}
-                </Text>
-              </View>
-
-              {/* Cigar Description */}
-              {recognitionResult.enrichedCigar.overview && (
-                <Text style={styles.cigarDescription}>
-                  {recognitionResult.enrichedCigar.overview}
-                </Text>
-              )}
-
-              {((recognitionResult.enrichedCigar.flavorTags &&
-                recognitionResult.enrichedCigar.flavorTags.length > 0) ||
-                (recognitionResult.enrichedCigar.flavorProfile &&
-                  recognitionResult.enrichedCigar.flavorProfile.length > 0)) && (
-                <View style={styles.flavorSection}>
-                  <Text style={styles.sectionTitle}>Flavor Profile</Text>
-                  <View style={styles.flavorTags}>
-                    {(
-                      recognitionResult.enrichedCigar.flavorTags ||
-                      recognitionResult.enrichedCigar.flavorProfile ||
-                      []
-                    ).map((flavor, index) => (
-                      <View key={index} style={styles.flavorTag}>
-                        <Text style={styles.flavorText}>{flavor}</Text>
-                      </View>
-                    ))}
-                  </View>
+              {isProcessing ? (
+                <View style={styles.processingContainer}>
+                  <ActivityIndicator size="large" color="#7C2D12" />
+                  <Text style={styles.processingText}>
+                    {processingMessages[currentProcessingMessage]}
+                  </Text>
                 </View>
-              )}
-
-              {/* Strength Section */}
-              {recognitionResult.enrichedCigar.strength && (
-                <View style={styles.strengthSection}>
-                  <Text style={styles.sectionTitle}>Strength</Text>
-                  <View style={styles.flavorTags}>
-                    <View
-                      style={[
-                        styles.flavorTag,
-                        {
-                          backgroundColor: getStrengthInfo(recognitionResult.enrichedCigar.strength)
-                            .color,
-                        },
-                      ]}
-                    >
-                      <Text style={styles.flavorText}>
-                        {getStrengthInfo(recognitionResult.enrichedCigar.strength).label}
-                      </Text>
+              ) : recognitionResult ? (
+                <View style={styles.resultCard}>
+                  <View style={styles.resultHeader}>
+                    <View style={styles.titleWithEdit}>
+                      <Text style={styles.sectionTitle}>{recognitionResult.enrichedCigar.brand}</Text>
+                      <TouchableOpacity
+                        style={styles.editButton}
+                        onPress={() => {
+                          setEditBrand(recognitionResult.enrichedCigar.brand || '');
+                          setEditName(recognitionResult.enrichedCigar.name || '');
+                          setShowEditModal(true);
+                        }}
+                      >
+                        <Ionicons name="pencil" size={16} color="#DC851F" />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.confidenceBadge}>
+                      <Text style={styles.confidenceText}>{recognitionResult.confidence}%</Text>
                     </View>
                   </View>
-                </View>
-              )}
 
-              {/* Drink Pairings Section */}
-              {recognitionResult.enrichedCigar.drinkPairings &&
-              (recognitionResult.enrichedCigar.drinkPairings.alcoholic?.length > 0 ||
-                recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic?.length > 0) ? (
-                <View style={styles.drinkPairingsSection}>
-                  <Text style={styles.sectionTitle}>Drink Pairings</Text>
-
-                  {recognitionResult.enrichedCigar.drinkPairings.alcoholic &&
-                    recognitionResult.enrichedCigar.drinkPairings.alcoholic.length > 0 && (
-                      <View style={styles.pairingCategory}>
-                        <Text style={styles.pairingCategoryTitle}>Alcoholic</Text>
-                        <View style={styles.flavorTags}>
-                          {recognitionResult.enrichedCigar.drinkPairings.alcoholic.map(
-                            (drink, index) => (
-                              <View key={`alc-${index}`} style={styles.pairingTag}>
-                                <Ionicons name="wine" size={14} color="#DC851F" />
-                                <Text style={styles.pairingText}>{drink}</Text>
-                              </View>
-                            ),
-                          )}
-                        </View>
-                      </View>
-                    )}
-
-                  {recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic &&
-                    recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic.length > 0 && (
-                      <View style={styles.pairingCategory}>
-                        <Text style={styles.pairingCategoryTitle}>Non-Alcoholic</Text>
-                        <View style={styles.flavorTags}>
-                          {recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic.map(
-                            (drink, index) => (
-                              <View key={`non-${index}`} style={styles.pairingTag}>
-                                <Ionicons name="cafe" size={14} color="#DC851F" />
-                                <Text style={styles.pairingText}>{drink}</Text>
-                              </View>
-                            ),
-                          )}
-                        </View>
-                      </View>
-                    )}
-                </View>
-              ) : null}
-
-              {/* Tobacco Section */}
-              {(recognitionResult.enrichedCigar.tobacco ||
-                recognitionResult.enrichedCigar.wrapper) && (
-                <View style={styles.detailsGrid}>
-                  <View style={styles.detailItem}>
-                    <Text style={styles.sectionTitle}>Tobacco</Text>
-                    <Text style={styles.detailValue}>
-                      {recognitionResult.enrichedCigar.tobacco ||
-                        recognitionResult.enrichedCigar.wrapper}
+                  <View style={styles.nameWithEdit}>
+                    <Text style={styles.resultSubtitle}>
+                      {recognitionResult.enrichedCigar.name &&
+                      recognitionResult.enrichedCigar.name !== 'Unknown Name'
+                        ? recognitionResult.enrichedCigar.name
+                        : recognitionResult.enrichedCigar.line}
                     </Text>
                   </View>
-                </View>
-              )}
 
-              {/* Box Pricing */}
-              {recognitionResult.enrichedCigar.msrp &&
-                recognitionResult.enrichedCigar.msrp.trim() !== '' && (
-                  <View style={styles.detailsGrid}>
-                    <View style={styles.detailItem}>
-                      <Text style={styles.sectionTitle}>Box Price</Text>
-                      <Text style={styles.detailValue}>
-                        {recognitionResult.enrichedCigar.msrp.split('\n').map((line, index) => (
-                          <Text key={index}>
-                            {line.trim()}
-                            {index < recognitionResult.enrichedCigar.msrp.split('\n').length - 1 &&
-                              '\n'}
-                          </Text>
-                        ))}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-
-              {/* Stick Pricing */}
-              {recognitionResult.enrichedCigar.singleStickPrice &&
-                recognitionResult.enrichedCigar.singleStickPrice.trim() !== '' && (
-                  <View style={styles.detailsGrid}>
-                    <View style={styles.detailItem}>
-                      <Text style={styles.sectionTitle}>Per Stick</Text>
-                      <Text style={styles.detailValue}>
-                        {recognitionResult.enrichedCigar.singleStickPrice
-                          .split('\n')
-                          .map((line, index) => (
-                            <Text key={index}>
-                              {line.trim()}
-                              {index <
-                                recognitionResult.enrichedCigar.singleStickPrice.split('\n')
-                                  .length -
-                                  1 && '\n'}
-                            </Text>
-                          ))}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  style={[styles.addButton, isAddingToHumidor && styles.addButtonDisabled]}
-                  onPress={addToInventory}
-                  disabled={isAddingToHumidor}
-                  activeOpacity={isAddingToHumidor ? 1 : 0.7}
-                >
-                  {isAddingToHumidor ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" style={styles.addButtonSpinner} />
-                  ) : (
-                    <Ionicons name="add" size={20} color="#FFFFFF" style={styles.addButtonIcon} />
+                  {recognitionResult.enrichedCigar.overview && (
+                    <Text style={styles.cigarDescription}>
+                      {recognitionResult.enrichedCigar.overview}
+                    </Text>
                   )}
-                  <Text style={styles.addButtonText}>
-                    {isAddingToHumidor ? 'Saving...' : 'Add to Humidor'}
-                  </Text>
-                </TouchableOpacity>
 
-                <TouchableOpacity style={styles.smokeButton} onPress={startJournaling}>
-                  <Ionicons name="create" size={20} color="#DC851F" />
-                  <Text style={styles.smokeButtonText}>Let's Journal!</Text>
-                </TouchableOpacity>
-              </View>
+                  {((recognitionResult.enrichedCigar.flavorTags &&
+                    recognitionResult.enrichedCigar.flavorTags.length > 0) ||
+                    (recognitionResult.enrichedCigar.flavorProfile &&
+                      recognitionResult.enrichedCigar.flavorProfile.length > 0)) && (
+                    <View style={styles.flavorSection}>
+                      <Text style={styles.sectionTitle}>Flavor Profile</Text>
+                      <View style={styles.flavorTags}>
+                        {(
+                          recognitionResult.enrichedCigar.flavorTags ||
+                          recognitionResult.enrichedCigar.flavorProfile ||
+                          []
+                        ).map((flavor, index) => (
+                          <View key={index} style={styles.flavorTag}>
+                            <Text style={styles.flavorText}>{flavor}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
 
-              <View style={styles.modeIndicator}>
-                <Text style={styles.modeText}></Text>
-              </View>
-            </View>
-          ) : null}
+                  {recognitionResult.enrichedCigar.strength && (
+                    <View style={styles.strengthSection}>
+                      <Text style={styles.sectionTitle}>Strength</Text>
+                      <View style={styles.flavorTags}>
+                        <View
+                          style={[
+                            styles.flavorTag,
+                            {
+                              backgroundColor: getStrengthInfo(recognitionResult.enrichedCigar.strength)
+                                .color,
+                            },
+                          ]}
+                        >
+                          <Text style={styles.flavorText}>
+                            {getStrengthInfo(recognitionResult.enrichedCigar.strength).label}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  )}
+
+                  {recognitionResult.enrichedCigar.drinkPairings &&
+                  (recognitionResult.enrichedCigar.drinkPairings.alcoholic?.length > 0 ||
+                    recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic?.length > 0) ? (
+                    <View style={styles.drinkPairingsSection}>
+                      <Text style={styles.sectionTitle}>Drink Pairings</Text>
+                      {recognitionResult.enrichedCigar.drinkPairings.alcoholic &&
+                        recognitionResult.enrichedCigar.drinkPairings.alcoholic.length > 0 && (
+                          <View style={styles.pairingCategory}>
+                            <Text style={styles.pairingCategoryTitle}>Alcoholic</Text>
+                            <View style={styles.flavorTags}>
+                              {recognitionResult.enrichedCigar.drinkPairings.alcoholic.map(
+                                (drink, index) => (
+                                  <View key={`alc-${index}`} style={styles.pairingTag}>
+                                    <Ionicons name="wine" size={14} color="#DC851F" />
+                                    <Text style={styles.pairingText}>{drink}</Text>
+                                  </View>
+                                ),
+                              )}
+                            </View>
+                          </View>
+                        )}
+                      {recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic &&
+                        recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic.length > 0 && (
+                          <View style={styles.pairingCategory}>
+                            <Text style={styles.pairingCategoryTitle}>Non-Alcoholic</Text>
+                            <View style={styles.flavorTags}>
+                              {recognitionResult.enrichedCigar.drinkPairings.nonAlcoholic.map(
+                                (drink, index) => (
+                                  <View key={`non-${index}`} style={styles.pairingTag}>
+                                    <Ionicons name="cafe" size={14} color="#DC851F" />
+                                    <Text style={styles.pairingText}>{drink}</Text>
+                                  </View>
+                                ),
+                              )}
+                            </View>
+                          </View>
+                        )}
+                    </View>
+                  ) : null}
+
+                  {(recognitionResult.enrichedCigar.tobacco ||
+                    recognitionResult.enrichedCigar.wrapper) && (
+                    <View style={styles.detailsGrid}>
+                      <View style={styles.detailItem}>
+                        <Text style={styles.sectionTitle}>Tobacco</Text>
+                        <Text style={styles.detailValue}>
+                          {recognitionResult.enrichedCigar.tobacco ||
+                            recognitionResult.enrichedCigar.wrapper}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  {recognitionResult.enrichedCigar.msrp &&
+                    recognitionResult.enrichedCigar.msrp.trim() !== '' && (
+                      <View style={styles.detailsGrid}>
+                        <View style={styles.detailItem}>
+                          <Text style={styles.sectionTitle}>Box Price</Text>
+                          <Text style={styles.detailValue}>
+                            {recognitionResult.enrichedCigar.msrp.split('\n').map((line, index) => (
+                              <Text key={index}>
+                                {line.trim()}
+                                {index <
+                                  recognitionResult.enrichedCigar.msrp.split('\n').length - 1 &&
+                                  '\n'}
+                              </Text>
+                            ))}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                  {recognitionResult.enrichedCigar.singleStickPrice &&
+                    recognitionResult.enrichedCigar.singleStickPrice.trim() !== '' && (
+                      <View style={styles.detailsGrid}>
+                        <View style={styles.detailItem}>
+                          <Text style={styles.sectionTitle}>Per Stick</Text>
+                          <Text style={styles.detailValue}>
+                            {recognitionResult.enrichedCigar.singleStickPrice
+                              .split('\n')
+                              .map((line, index) => (
+                                <Text key={index}>
+                                  {line.trim()}
+                                  {index <
+                                    recognitionResult.enrichedCigar.singleStickPrice.split('\n')
+                                      .length -
+                                      1 && '\n'}
+                                </Text>
+                              ))}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+
+                  {/* Buttons moved to sticky footer below */}
+
+                  <View style={styles.modeIndicator}>
+                    <Text style={styles.modeText}></Text>
+                  </View>
+                </View>
+              ) : null}
+            </>
           <View style={styles.bottomPadding} />
         </ScrollView>
+      )}
+
+      {/* Sticky footer actions to ensure buttons are always reachable */}
+      {imageUri && !isProcessing && recognitionResult && (
+        <View style={styles.footerActions}>
+          <TouchableOpacity
+            style={[styles.addButton, isAddingToHumidor && styles.addButtonDisabled]}
+            onPress={addToInventory}
+            disabled={isAddingToHumidor}
+            activeOpacity={isAddingToHumidor ? 1 : 0.7}
+          >
+            {isAddingToHumidor ? (
+              <ActivityIndicator size="small" color="#FFFFFF" style={styles.addButtonSpinner} />
+            ) : (
+              <Ionicons name="add" size={20} color="#FFFFFF" style={styles.addButtonIcon} />
+            )}
+            <Text style={styles.addButtonText}>
+              {isAddingToHumidor ? 'Saving...' : 'Add to Humidor'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.smokeButton} onPress={startJournaling}>
+            <Ionicons name="create" size={20} color="#DC851F" />
+            <Text style={styles.smokeButtonText}>Let's Journal!</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Custom Entry Modal */}
@@ -2096,6 +2091,18 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 80,
+  },
+  footerActions: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+    backgroundColor: 'rgba(10, 10, 10, 0.98)',
+    borderTopWidth: 1,
+    borderTopColor: '#333',
   },
   modeIndicator: {
     paddingTop: 16,
