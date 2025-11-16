@@ -267,8 +267,12 @@ export default function HomeScreen() {
                 key={entry.id || index}
                 style={styles.journalEntryItem}
                 onPress={() =>
-                  navigation.navigate('JournalEntryDetails', {
-                    entry: serializeJournalEntry(entry),
+                  navigation.navigate('MainTabs', {
+                    screen: 'Journal',
+                    params: {
+                      screen: 'JournalEntryDetails',
+                      params: { entry: serializeJournalEntry(entry) },
+                    },
                   })
                 }
               >
