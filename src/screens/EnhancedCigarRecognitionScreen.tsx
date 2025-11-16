@@ -407,6 +407,14 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
       }
 
       setImageUri(photoForProcessing.uri);
+      // Explicitly stop camera preview to release camera/mic indicator
+      try {
+        (camera as any)?.pausePreview?.();
+        (camera as any)?.stopRecording?.();
+      } catch {}
+      // Clear ref so preview is fully released
+      cameraRef.current = null;
+      setIsCameraReady(false);
 
       // Process the image separately to avoid misleading error messages
       try {
@@ -438,6 +446,13 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
       });
 
       if (!result.canceled && result.assets[0]) {
+        // If camera was open, ensure it is stopped before switching to results
+        try {
+          (cameraRef.current as any)?.pausePreview?.();
+          (cameraRef.current as any)?.stopRecording?.();
+        } catch {}
+        cameraRef.current = null;
+        setIsCameraReady(false);
         setImageUri(result.assets[0].uri);
         // Use base64 data for API calls instead of file URI
         const base64Image = `data:image/jpeg;base64,${result.assets[0].base64}`;
