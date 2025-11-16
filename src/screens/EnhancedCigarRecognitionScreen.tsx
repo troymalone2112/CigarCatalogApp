@@ -380,8 +380,8 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
 
     if (isCapturing) {
       console.log('Capture already in progress, ignoring additional tap.');
-      return;
-    }
+        return;
+      }
 
     setIsCapturing(true);
 
@@ -389,7 +389,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
       console.log('📸 Invoking takePictureAsync...');
       const photo = await camera.takePictureAsync({
         quality: 0.85,
-        base64: true,
+          base64: true,
       });
       console.log('📸 Photo captured', {
         uri: photo?.uri,
@@ -1055,7 +1055,7 @@ const [isAddingToHumidor, setIsAddingToHumidor] = useState(false);
               {isCapturing ? (
                 <ActivityIndicator size="small" color="#7C2D12" />
               ) : (
-                <View style={styles.captureButtonInner} />
+              <View style={styles.captureButtonInner} />
               )}
             </TouchableOpacity>
 
